@@ -1,0 +1,7 @@
+﻿  pch.cpp
+  cpu.cpp
+  DNS.cpp
+  main.cpp
+  winsock.cpp
+  Generating Code...
+  463-sample.vcxproj -> C:\Users\Joshua\Documents\github\PersonalGit\csce-463-Distributed-Networks\hw 1 web crawler\463-sample\x64\Debug\463-sample.exe
