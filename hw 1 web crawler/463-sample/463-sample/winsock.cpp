@@ -4,9 +4,14 @@
  */
 #include "pch.h"
 #pragma comment(lib, "ws2_32.lib")
+#include <iostream>
+#include "HTMLParserBase.h"
+
 
 void winsock_test (void)
 {
+	
+//	std::wcout << HTMLParser->UrlList << std::endl;
 	// string pointing to an HTTP server (DNS name or IP)
 	char str [] = "www.tamu.edu";
 	//char str [] = "128.194.135.72";

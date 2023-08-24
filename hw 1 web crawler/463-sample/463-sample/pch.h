@@ -11,7 +11,6 @@
 
 #include <stdio.h>
 #include <windows.h>
-
 #include "DNS.h"
 #include "cpu.h"
 
