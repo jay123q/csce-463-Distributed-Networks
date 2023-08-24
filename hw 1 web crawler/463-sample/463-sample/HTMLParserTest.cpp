@@ -3,6 +3,7 @@
 // CSCE 463 sample code
 //
 #include "stdafx.h"
+#include "HTMLParseBase.h"
 
 int main(int argc, char** argv)
 {

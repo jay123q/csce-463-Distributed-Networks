@@ -26,6 +26,13 @@ void winsock_test (void)
 		return;
 	}
 
+	// this should be done in main, rest passed in
+
+
+
+	//below socket object
+
+
 	// open a TCP socket
 	SOCKET sock = socket (AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (sock == INVALID_SOCKET)
@@ -42,6 +49,7 @@ void winsock_test (void)
 	struct sockaddr_in server;
 
 	// first assume that the string is an IP address
+	// convert string into integer
 	DWORD IP = inet_addr (str);
 	if (IP == INADDR_NONE)
 	{
@@ -53,6 +61,10 @@ void winsock_test (void)
 		}
 		else // take the first IP address and copy into sin_addr
 			memcpy ((char *)&(server.sin_addr), remote->h_addr, remote->h_length);
+		// debugging! 
+		// 
+		//	printf ("Connection error: %d\n", WSAGetLastError ());
+
 	}
 	else
 	{
@@ -81,3 +93,7 @@ void winsock_test (void)
 	// call cleanup when done with everything and ready to exit program
 	WSACleanup ();
 }
+
+// now you write send and recieve
+// send a message, first format, make a get in a ccharacter buffer 
+// send msvc API SEND
