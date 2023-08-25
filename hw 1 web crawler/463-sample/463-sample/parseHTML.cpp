@@ -54,7 +54,7 @@ std::vector<std::string> parseString(const char  * link) {
         }
         else
         {
-            parsedValue.push_back(" single / ");
+            parsedValue.push_back(" single /");
         }
     }
     else
@@ -142,10 +142,10 @@ std::vector<std::string> parseString(const char  * link) {
 
    
 
-    for (int i = 0; i < parsedValue.size(); i++)
-    {
-        std::cout << parsedValue[i] << std::endl;
-    }
+    //for (int i = 0; i < parsedValue.size(); i++)
+    //{
+    //    std::cout << parsedValue[i] << std::endl;
+    //}
 
     return parsedValue;
 }

@@ -21,14 +21,13 @@ std::vector<std::string> parseString(const char* link);
 
 int main(void)
 {
-// #ifdef DEBUG
-	//std::wcout << GetExePath() << '\n';
 
-// #endif // DEBUG
-	//char * filename[] = "C:\\Users\\Joshua\\Documents\\github\\PersonalGit\\csce-463-Distributed-Networks\\hw 1 web crawler\\463-sample\\463-sample\\100url.txt";
-	/*
+
+	// this is sample code given in HTMLParser
 	// open html file
-	HANDLE hFile = CreateFile((LPCSTR) (&"100url.txt"), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
+	
+	/*
+	HANDLE hFile = CreateFile((LPCSTR)(&"100url.txt"), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
 		FILE_ATTRIBUTE_NORMAL, NULL);
 	// process errors
 	if (hFile == INVALID_HANDLE_VALUE)
@@ -106,6 +105,9 @@ int main(void)
 		WSACleanup();
 		return;
 	}
+
+	// start the sockets to read
+	Socket startSocket;
 
 	return 0;
 }
