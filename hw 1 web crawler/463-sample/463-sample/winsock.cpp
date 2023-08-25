@@ -15,7 +15,7 @@ void winsock_test (void)
 	// string pointing to an HTTP server (DNS name or IP)
 	char str [] = "www.tamu.edu";
 	//char str [] = "128.194.135.72";
-
+	/*
 	WSADATA wsaData;
 
 	//Initialize WinSock; once per program run
@@ -25,7 +25,7 @@ void winsock_test (void)
 		WSACleanup();	
 		return;
 	}
-
+	*/
 	// this should be done in main, rest passed in
 
 

@@ -95,7 +95,17 @@ int main(void)
 	delete fileBuf;
 	*/
 
-	parseString("http://as.com/baloncesto/2015/01/01/euroliga/1420149317_950099.html");
+	parseString("http://tamu.edu#something");
+
+	WSADATA wsaData;
+
+	//Initialize WinSock; once per program run
+	WORD wVersionRequested = MAKEWORD(2, 2);
+	if (WSAStartup(wVersionRequested, &wsaData) != 0) {
+		printf("WSAStartup error %d\n", WSAGetLastError());
+		WSACleanup();
+		return;
+	}
 
 	return 0;
 }
