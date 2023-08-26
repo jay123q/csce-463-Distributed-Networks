@@ -157,7 +157,7 @@
     <ClCompile Include="DNS.cpp" />
 	  <ClCompile Include="parseHTML.cpp" />
     <ClCompile Include="main.cpp" />
-	<ClCompile Include="Socket.cpp"/>
+	<ClCompile Include="socket.cpp"/>
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
@@ -179,4 +179,4 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
-</Project>/
+</Project>

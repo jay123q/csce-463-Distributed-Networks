@@ -4,8 +4,7 @@ Csce 463-500
 */
 #include "pch.h"
 #include <string>
-
-#include "HTMLParserBase.h"
+#include "socket.cpp"
 #include <windows.h>
 #include <iostream>
 #include <vector>
@@ -29,7 +28,7 @@ int main(void)
 	if (WSAStartup(wVersionRequested, &wsaData) != 0) {
 		printf("WSAStartup error %d\n", WSAGetLastError());
 		WSACleanup();
-		return;
+		return 0;
 	}
 
 // #ifdef DEBUG
@@ -45,7 +44,7 @@ int main(void)
 	if (hFile == INVALID_HANDLE_VALUE)
 	{
 		printf("CreateFile failed with %d\n", GetLastError());
-		return 0;
+		////return 0;
 	}
 
 	// get file size
@@ -105,12 +104,12 @@ int main(void)
 	delete parser;		// this internally deletes linkBuffer
 	delete fileBuf;
 	*/
-
-	parseString("http://tamu.edu#something");
+	cout << "check chnange " << std::endl;
+	parseString("http://tamu.edu:999#something");
 
 
 	// handle socketing
-	socket webSocket;
+	Socket * webSocket = new Socket();
 
 
 	return 0;

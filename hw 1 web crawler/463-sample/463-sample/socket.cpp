@@ -9,7 +9,7 @@ const int INITIAL_BUF_SIZE = 8512;
 
 class Socket {
 	SOCKET sock; // socket handle
-	char* buf; // current buffer
+	char* buf[INITIAL_BUF_SIZE]; // current buffer
 	int allocatedSize; // bytes allocated for buf
 	int curPos; // current position in buffer
 	// extra stuff as needed
@@ -22,7 +22,6 @@ class Socket {
 Socket::Socket()
 {
 	// create this buffer once, then possibly reuse for multiple connections in Part 3
-		char* buf[INITIAL_BUF_SIZE]; // either new char [INITIAL_BUF_SIZE] or malloc (INITIAL_BUF_SIZE)
 		this->allocatedSize = INITIAL_BUF_SIZE;
 		this->curPos = 0;
 		// ripping from winsock
@@ -58,10 +57,13 @@ bool Socket::Read(void)
 	fd_set exceptFds;
 
 	// check this
-	clock_t timeout = clock(); // I think this is 10 seconds check
+	timeval* timeout;
+	timeout->tv_sec = 10;
+	timeout->tv_usec = 0;
 	// check this
 
 	clock_t start = clock(); /// suspect
+	clock_t finish = clock(); // shut up compiler
 	while (true)
 	{
 		// wait to see if socket has any data (see MSDN)
@@ -69,7 +71,7 @@ bool Socket::Read(void)
 		if ( ret  > 0)
 		{
 			// new data available; now read the next segment
-			int bytes = recv( sock, buf + curPos, allocatedSize – curPos, 0 );
+			int bytes = recv( sock, *(this->buf) + this->curPos, (allocatedSize - this->curPos), 0 );
 			if (errors)
 				// print WSAGetLastError()
 				break;
@@ -77,18 +79,24 @@ bool Socket::Read(void)
 				// NULL-terminate buffer
 				return true; // normal completion
 			curPos += bytes; // adjust where the next recv goes
-			if (allocatedSize – curPos < THRESHOLD)
+			if (allocatedSize - curPos < 1024)
 				// resize buffer; you can use realloc(), HeapReAlloc(), or
 			   // memcpy the buffer into a bigger array
 		}
 		else if (timeout)
+		{
 			// report timeout
-			clock_t finish = clock();
-			duration = (double)(finish - start) / CLOCKS_PER_SEC;
+			buf[curPos + 1] = '\0'; // something done goofed, wrap it up chief.
+			finish = clock();
+			double duration = (double)(finish - start) / CLOCKS_PER_SEC;
+			printf("finished at %. durration with %d bytes \n", duration * 1000, curPos);
+			
 			break;
+		}
 		else
 			// print WSAGetLastError()
 			// ret returned a 0 which means no sockkets opened
+
 			printf("Connection error: %d\n", WSAGetLastError());
 
 			break;
