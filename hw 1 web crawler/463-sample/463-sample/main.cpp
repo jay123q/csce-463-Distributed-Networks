@@ -21,6 +21,17 @@ std::vector<std::string> parseString(const char* link);
 
 int main(void)
 {
+
+	WSADATA wsaData;
+
+	//Initialize WinSock; once per program run
+	WORD wVersionRequested = MAKEWORD(2, 2);
+	if (WSAStartup(wVersionRequested, &wsaData) != 0) {
+		printf("WSAStartup error %d\n", WSAGetLastError());
+		WSACleanup();
+		return;
+	}
+
 // #ifdef DEBUG
 	//std::wcout << GetExePath() << '\n';
 
@@ -97,15 +108,10 @@ int main(void)
 
 	parseString("http://tamu.edu#something");
 
-	WSADATA wsaData;
 
-	//Initialize WinSock; once per program run
-	WORD wVersionRequested = MAKEWORD(2, 2);
-	if (WSAStartup(wVersionRequested, &wsaData) != 0) {
-		printf("WSAStartup error %d\n", WSAGetLastError());
-		WSACleanup();
-		return;
-	}
+	// handle socketing
+	socket webSocket;
+
 
 	return 0;
 }

@@ -21,6 +21,10 @@ std::vector<std::string> parseString(const char  * link) {
         //const char * link = newLink.c_str();
        // cout << " removed fragment " << fragment << std::endl;
     }
+    else
+    {
+        parsedValue.push_back("no fragment");
+    }
 
 
     const char* queryStart = strchr(link, '?');
@@ -32,6 +36,10 @@ std::vector<std::string> parseString(const char  * link) {
         std::string query(queryStart + 1, queryEnd - queryStart - 1); // Exclude '?' and '#'
         parsedValue.push_back(query);
       //  cout << " removed query " << query << std::endl;
+    }
+    else
+    {
+        parsedValue.push_back("no query");
     }
 
     // const char* host = strchr(link, '/');
@@ -67,6 +75,13 @@ std::vector<std::string> parseString(const char  * link) {
     const char* portStart = strchr(hostStart, ':');
     if (portStart != nullptr)
     {
+        // check for malformed port
+        const char* portMalFormed = strstr(hostStart, ":-");
+        if (portMalFormed != nullptr)
+        {
+            cout << " port is malformed parsedHtml.cpp " << std::endl;
+            parsedValue.push_back("- negative port");
+        }
         const char* portEndBackSlash = strchr(hostStart, '/');
         const char* portEndQuery = strchr(hostStart, '?');
         const char* portEndFragment = strchr(hostStart, '#');
@@ -96,6 +111,7 @@ std::vector<std::string> parseString(const char  * link) {
 
             std::string port(portStart + 1);
             parsedValue.push_back(port);
+            cout << " port is empty if this is spewing gargage " << port <<  " line 99  to fix " << std::endl;
         }
 
         //cout << " new port " << parsedValue.at(parsedValue.size() - 1) << endl;
