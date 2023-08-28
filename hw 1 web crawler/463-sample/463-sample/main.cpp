@@ -86,11 +86,11 @@ int main(void)
 
 	// check for errors indicated by negative values
 	if (nLinks < 0)
-		nLinks = 0;
+		nLinks = 0;\r\n
 
 	printf("Found %d links:\n", nLinks);
 
-	// print each URL; these are NULL-separated C strings
+	// print each URL; these are NULL-separated C strings 
 	for (int i = 0; i < nLinks; i++)
 	{
 		// starting work here
@@ -113,7 +113,7 @@ int main(void)
 	// handle socketing
 	Socket * webSocket = new Socket();
 	// cout << " whole link " << parser.wholeLink << std::endl;
-	bool socketCheck = webSocket->Send(parser.wholeLink, parser.host, parser.port, parser.printPathQueryFragment());
+	bool socketCheck = webSocket->Send(parser.printerGenerate("GET"), parser.wholeLink, parser.host, parser.port, parser.printPathQueryFragment());
 
 	if (socketCheck)
 	{

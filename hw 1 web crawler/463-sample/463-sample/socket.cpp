@@ -32,7 +32,7 @@ void Socket::closeSocket()
 }
 
 
-bool Socket::Send(string link, string host, int port, string pathQueryFragment)
+bool Socket::Send(string sendRequest , string link, string host, int port, string pathQueryFragment)
 {
 
 	cout << "URL: " << link << std::endl;
@@ -116,12 +116,13 @@ bool Socket::Send(string link, string host, int port, string pathQueryFragment)
 
 	//https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-send
 	// add a +1 for nnull terminator
-	if (send(this->sock, link.c_str(), strlen(link.c_str()) + 1, 0) == SOCKET_ERROR)
+	// char* sendBuf = new char[strlen(link.c_str()) + 1];
+	if (send(this->sock, buf , strlen(link.c_str()), 0) == SOCKET_ERROR)
 	{
 		printf("Connection error: %d\n", WSAGetLastError());
 		return false;
 	}
-
+	cout << " passed successfully connected " << std::endl;
 
 	return true;
 }

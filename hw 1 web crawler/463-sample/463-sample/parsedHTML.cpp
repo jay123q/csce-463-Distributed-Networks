@@ -243,10 +243,11 @@ string parsedHtml::printerGenerate(string request)
 {
     // this function is to hadnle the stray / and # that got filtered
 
-    string total = request + printPath() + printQuery() + " HTTP/" + this->httpStatus + '\n';
-    total += "User-agent: JoshTamuCrawler/1.1 " + '\n';
-    total += "Host: " + this->host + '\n';
-    total += " connecction type should be pritned next bud! " + '\n';
+    string total = request + printPath() + printQuery() + " HTTP/1.0\r\n";
+    total += "User-agent: JoshTamuCrawler/1.1\r\n";
+    total += "Host: " + this->host + "\r\n";
+    total += "Connection: close\r\n";
 
+    cout << "total is " << total << std::endl;
     return total;
 }

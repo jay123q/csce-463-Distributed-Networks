@@ -15,7 +15,7 @@ public:
 	// extra stuff as needed
 	Socket();
 	bool Read(void);
-	bool Send(std::string link, std::string host, int port, std::string pathQueryFragment);
+	bool Send(std::string sendRequest , std::string link, std::string host, int port, std::string pathQueryFragment);
 	void closeSocket();
 	std::string printBuf()
 	{
