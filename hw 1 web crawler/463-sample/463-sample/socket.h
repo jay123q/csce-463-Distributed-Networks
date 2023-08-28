@@ -1,47 +1,25 @@
 #pragma once
+#include <string>
+#include <iostream>
 
 
+const int INITIAL_BUF_SIZE = 8192;
 
 class Socket {
+private:
 	SOCKET sock; // socket handle
-	char* buf; // current buffer
+	char* buf[INITIAL_BUF_SIZE]; // current buffer
 	int allocatedSize; // bytes allocated for buf
 	int curPos; // current position in buffer
-	... // extra stuff as needed
-};
-Socket::Socket()
-{
-	// create this buffer once, then possibly reuse for multiple connections in Part 3
-	buf = ... // either new char [INITIAL_BUF_SIZE] or malloc (INITIAL_BUF_SIZE)
-		allocatedSize = INITIAL_BUF_SIZE;
-}
-bool Socket::Read(void)
-{
-	// set timeout to 10 seconds
-	while (true)
+public:
+	// extra stuff as needed
+	Socket();
+	bool Read(void);
+	bool Send(std::string link, std::string host, int port, std::string pathQueryFragment);
+	void closeSocket();
+	std::string printBuf()
 	{
-		// wait to see if socket has any data (see MSDN)
-		if ((ret = select(0, &fd, ..., timeout)) > 0)
-		{
-			// new data available; now read the next segment
-			int bytes = recv(sock, buf + curPos, allocatedSize – curPos, ...);
-			if (errors)
-				// print WSAGetLastError()
-				break;
-			if (connection closed)
-				// NULL-terminate buffer
-				return true; // normal completion
-			curPos += bytes; // adjust where the next recv goes
-			if (allocatedSize – curPos < THRESHOLD)
-				// resize buffer; you can use realloc(), HeapReAlloc(), or
-			   // memcpy the buffer into a bigger array
-		}
-		else if (timeout)
-			// report timeout
-			break;
-		else
-			// print WSAGetLastError()
-			break;
+		return *buf;
 	}
-	return false;
-}
+	// void CreateSocket(void);
+};

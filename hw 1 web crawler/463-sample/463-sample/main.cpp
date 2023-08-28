@@ -4,7 +4,8 @@ Csce 463-500
 */
 #include "pch.h"
 #include <string>
-#include "socket.cpp"
+#include "socket.h"
+#include "parsedHTML.h"
 #include <windows.h>
 #include <iostream>
 #include <vector>
@@ -14,7 +15,8 @@ using namespace std;
 */
 
 void winsock_test(void);
-std::vector<std::string> parseString(const char* link);
+
+
 
 
 
@@ -104,12 +106,26 @@ int main(void)
 	delete parser;		// this internally deletes linkBuffer
 	delete fileBuf;
 	*/
-	cout << "check chnange " << std::endl;
-	parseString("http://tamu.edu:999#something");
+	parsedHtml parser;
+	parser.parseString("http://tamu.edu/");
 
 
 	// handle socketing
 	Socket * webSocket = new Socket();
+	// cout << " whole link " << parser.wholeLink << std::endl;
+	bool socketCheck = webSocket->Send(parser.wholeLink, parser.host, parser.port, parser.printPathQueryFragment());
+
+	if (socketCheck)
+	{
+		// now try to read
+		if (webSocket->Read())
+		{
+			// so now the html should return the buffer soo
+			const char* result = webSocket->printBuf().c_str();
+
+			cout << "PASSED READ CHECK AND THE READ!!!! " << std::endl;
+		}
+	}
 
 
 	return 0;
