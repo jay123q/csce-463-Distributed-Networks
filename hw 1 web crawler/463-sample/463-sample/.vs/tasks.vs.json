@@ -20,6 +20,11 @@
       "taskLabel": "task-main",
       "appliesTo": "main.cpp",
       "type": "launch"
+    },
+    {
+      "taskLabel": "task-463-sample",
+      "appliesTo": "/",
+      "type": "launch"
     }
   ]
 }
