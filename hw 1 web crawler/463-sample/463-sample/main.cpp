@@ -4,8 +4,8 @@ Csce 463-500
 */
 #include "pch.h"
 #include <string>
-
-#include "HTMLParserBase.h"
+#include "socket.h"
+#include "parsedHTML.h"
 #include <windows.h>
 #include <iostream>
 #include <vector>
@@ -15,25 +15,38 @@ using namespace std;
 */
 
 void winsock_test(void);
-std::vector<std::string> parseString(const char* link);
+
+
 
 
 
 int main(void)
 {
 
+	WSADATA wsaData;
 
-	// this is sample code given in HTMLParser
-	// open html file
-	
+	//Initialize WinSock; once per program run
+	WORD wVersionRequested = MAKEWORD(2, 2);
+	if (WSAStartup(wVersionRequested, &wsaData) != 0) {
+		printf("WSAStartup error %d\n", WSAGetLastError());
+		WSACleanup();
+		return 0;
+	}
+
+// #ifdef DEBUG
+	//std::wcout << GetExePath() << '\n';
+
+// #endif // DEBUG
+	//char * filename[] = "C:\\Users\\Joshua\\Documents\\github\\PersonalGit\\csce-463-Distributed-Networks\\hw 1 web crawler\\463-sample\\463-sample\\100url.txt";
 	/*
-	HANDLE hFile = CreateFile((LPCSTR)(&"100url.txt"), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
+	// open html file
+	HANDLE hFile = CreateFile((LPCSTR) (&"100url.txt"), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
 		FILE_ATTRIBUTE_NORMAL, NULL);
 	// process errors
 	if (hFile == INVALID_HANDLE_VALUE)
 	{
 		printf("CreateFile failed with %d\n", GetLastError());
-		return 0;
+		////return 0;
 	}
 
 	// get file size
@@ -93,21 +106,27 @@ int main(void)
 	delete parser;		// this internally deletes linkBuffer
 	delete fileBuf;
 	*/
+	parsedHtml parser;
+	parser.parseString("http://tamu.edu/");
 
-	parseString("http://tamu.edu#something");
 
-	WSADATA wsaData;
+	// handle socketing
+	Socket * webSocket = new Socket();
+	// cout << " whole link " << parser.wholeLink << std::endl;
+	bool socketCheck = webSocket->Send(parser.wholeLink, parser.host, parser.port, parser.printPathQueryFragment());
 
-	//Initialize WinSock; once per program run
-	WORD wVersionRequested = MAKEWORD(2, 2);
-	if (WSAStartup(wVersionRequested, &wsaData) != 0) {
-		printf("WSAStartup error %d\n", WSAGetLastError());
-		WSACleanup();
-		return;
+	if (socketCheck)
+	{
+		// now try to read
+		if (webSocket->Read())
+		{
+			// so now the html should return the buffer soo
+			const char* result = webSocket->printBuf().c_str();
+
+			cout << "PASSED READ CHECK AND THE READ!!!! " << std::endl;
+		}
 	}
 
-	// start the sockets to read
-	Socket startSocket;
 
 	return 0;
 }

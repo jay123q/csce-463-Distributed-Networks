@@ -155,7 +155,8 @@
   <ItemGroup>
     <ClCompile Include="cpu.cpp" />
     <ClCompile Include="DNS.cpp" />
-	  <ClCompile Include="parseHTML.cpp" />
+	<ClCompile Include="socket.cpp"/>
+	  <ClCompile Include="parsedHTML.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="pch.cpp">
 		<ClCompile Include="socket.cpp" />
@@ -167,6 +168,8 @@
     <ClCompile Include="winsock.cpp" />
   </ItemGroup>
   <ItemGroup>
+	  <ClInclude Include="parsedHTML.h" />
+	  <ClInclude Include ="socket.h" />
     <ClInclude Include="cpu.h" />
     <ClInclude Include="DNS.h" />
     <ClInclude Include="pch.h" />
