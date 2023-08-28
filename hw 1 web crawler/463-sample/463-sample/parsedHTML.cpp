@@ -18,14 +18,14 @@ void parsedHtml::parseString(const char  * link) {
     const char* fragmentStart = strchr (link, '#');
     if (fragmentStart != nullptr) {
         std::string fragment(fragmentStart + 1); // Skip the '#'
-        parsedValue.push_back(fragment);
+        this->fragment = fragment;
         //std::string newLink(hostStart, fragmentStart);
         //const char * link = newLink.c_str();
        // cout << " removed fragment " << fragment << std::endl;
     }
     else
     {
-        parsedValue.push_back("no fragment");
+        this->fragment = '\0';
     }
 
 
@@ -36,12 +36,13 @@ void parsedHtml::parseString(const char  * link) {
             queryEnd = link + strlen(link);
         }
         std::string query(queryStart + 1, queryEnd - queryStart - 1); // Exclude '?' and '#'
-        parsedValue.push_back(query);
+        this->query = query;
       //  cout << " removed query " << query << std::endl;
     }
     else
     {
-        parsedValue.push_back("no query");
+      //  parsedValue.push_back("no query");
+        this->query = '\0';
     }
 
     // const char* host = strchr(link, '/');
@@ -52,28 +53,33 @@ void parsedHtml::parseString(const char  * link) {
         // if I have to do this ever again, i will be penduluminng myself off the highest bbuilding
         const char* pathEndQuery = strchr(hostStart, '?'); // check query
         const char* pathEndFragment = strchr(hostStart, '#'); // check fragent
+
         if (pathEndQuery != nullptr)
         {
             std::string path(pathStart + 1, pathEndQuery - pathStart - 1);
-            parsedValue.push_back(path);
+            // parsedValue.push_back(path);
+            this->path = path;
         }
         else if (pathEndFragment != nullptr) //check fragment
         {
             std::string path(pathStart + 1, pathEndFragment - pathStart - 1); // +1 removes forwrd, -1 removes backward
-            parsedValue.push_back(path);
+            // parsedValue.push_back(path);
+            this->path = path;
         }
         else
         {
-            parsedValue.push_back("single /");
+            //  parsedValue.push_back("single /");
+            this->path = '/';
         }
     }
     else
     {
-        parsedValue.push_back("single /");
+      //  parsedValue.push_back("single /");
+        this->path = '/';
     }
    // cout << " new path " << parsedValue.at(parsedValue.size()-1) << endl;
     // this is because the link can have a : in the middle of the ppath
-
+    
     const char* portStart = strchr(hostStart, ':');
     if (portStart != nullptr)
     {
@@ -82,6 +88,7 @@ void parsedHtml::parseString(const char  * link) {
         if (portMalFormed != nullptr)
         {
             cout << " port is malformed parsedHtml.cpp " << std::endl;
+            std::string portString("- negative port");
             parsedValue.push_back("- negative port");
         }
         const char* portEndBackSlash = strchr(hostStart, '/');
@@ -125,49 +132,63 @@ void parsedHtml::parseString(const char  * link) {
     {
         //cout << " port check host " << std::endl;
         std::string host(hostStart, portStart - hostStart);
-        parsedValue.push_back(host);
+        cout << " parsed Value " << parsedValue.size();
+
+       // parsedValue.push_back(host);
+        cout << " port path check " << host << std::endl;
+        this->host = host;
     }
     else if (pathStart != nullptr)
     {
-        //cout << " port check path " << std::endl;
-
         std::string host(hostStart, pathStart - hostStart);
-        parsedValue.push_back(host);
+
+       // parsedValue.push_back(host);
+        this->host = host;
+       // cout << " host path check " << host << std::endl;
     }
     else if (queryStart != nullptr)
     {
        // cout << " port check query " << std::endl;
 
         std::string host(hostStart, queryStart - hostStart);
-        parsedValue.push_back(host);
+       // parsedValue.push_back(host);
+        this->host = host;
+        cout << " query path check " << host << std::endl;
+
     }
     else if (fragmentStart != nullptr)
     {
         //cout << " port check fragment " << std::endl;
 
         std::string host(hostStart, fragmentStart - hostStart);
-        parsedValue.push_back(host);
+       // parsedValue.push_back(host);
+        this->host = host;
+        cout << " fragment path check " << host << std::endl;
+
     }
     else
     {
         std::string host(hostStart);
-        parsedValue.push_back(host);
+      //  parsedValue.push_back(host);
+        this->host = host;
+        cout << " host print " << host << std::endl;
     }
 
 
-     for (int i = 0; i < parsedValue.size(); i++)
-     {
-        std::cout << parsedValue[i] << std::endl;
-     }
+    // for (int i = 0; i < parsedValue.size(); i++)
+    // {
+    //    std::cout << parsedValue[i] << std::endl;
+    // }
     //cout << " new host " << parsedValue.at(parsedValue.size() - 1) << endl;
 
-    this->host = parsedValue.at(4);
+    cout << " 174 check " << std::endl;
+//    this->host = parsedValue.at(4);
 
 
     try
     {
         // if there is a -, or if the port is nullptr
-        if ( strchr(parsedValue.at(3).c_str(), '-') !=  nullptr )
+        if ( strchr(parsedValue.at(0).c_str(), '-') !=  nullptr )
         {
             // if we found a negative port 
             cout << "negtaive port spotted parsed html 162 " << std::endl;
@@ -176,8 +197,8 @@ void parsedHtml::parseString(const char  * link) {
         }
         else
         {
-            cout << " checking waht parsed value got " << parsedValue.at(3) << std::endl;
-            this->port = stoi(parsedValue.at(3));
+            cout << " checking waht parsed value got " << parsedValue.at(0) << std::endl;
+            this->port = stoi(parsedValue.at(0));
             if (this->port == 0)
             {
                 this->port = 65536;
@@ -194,11 +215,11 @@ void parsedHtml::parseString(const char  * link) {
     }
 
 
-
-
+    cout << " 206 check " << std::endl;
+    /*
     if (  strstr(parsedValue.at(2).c_str(), "single /") != nullptr )
     {
-        cout << "parsed value " << strstr(parsedValue.at(2).c_str(), "single /") << " pottato " << std::endl;
+        cout << "parsed value " << strstr(parsedValue.at(2).c_str(), "single /")  << std::endl;
         this->path = '\0';
         // handle this in printer
        // cout << " check if the path is correct as it reads nothing parsedHtml.cpp " << this->path << std::endl;
@@ -209,6 +230,8 @@ void parsedHtml::parseString(const char  * link) {
         cout << " path push " << this->path << std::endl;
     }
 
+
+    cout << " 222 check " << std::endl;
 
     if (strstr(parsedValue.at(1).c_str(), "no query") != nullptr)
     {
@@ -232,23 +255,22 @@ void parsedHtml::parseString(const char  * link) {
         this->fragment = parsedValue.at(0).c_str();
     }
 
+    */
 
-    
+    cout << " path final check is " << this->path << std::endl;
 
    
 
 }
 
-string parsedHtml::printerGenerate(string request)
+void parsedHtml::generateRequesttoSend( string request)
 {
-    // this function is to hadnle the stray / and # that got filtered
+    // this function is to make the request to send to connect on the socket
+    total = request + ' ' + this->path + this->query + " HTTP/1.0\r\n";
+    total += "User-agent: JoshTamuCrawler/1.1\r\nHost: " + host + "\r\nConnection: close\r\n\r\n";
+    cout << " total " << total << std::endl;\
+        cout << " |" << path << "|" << " |" << query << "| " << std::endl;
+    this->total =  "GET / HTTP/1.1\r\nUser-agent: JoshTamuCrawler/1.1\r\nHost: google.com\r\nConnection: close\r\n\r\n"; // CORRECT
+    this->total = "GET /" + " HTTP / 1.1\r\nUser - agent: JoshTamuCrawler / 1.1\r\nHost: google.com\r\nConnection: close\r\n\r\n"; // INCORRECT
 
-    string total = request + " " + printPath() + this->query + " HTTP/1.0\r\n";
-    total += "User-agent: JoshTamuCrawler/1.1\r\n";
-    total += "Host: " + this->host + "\r\n";
-    total += "Connection: close\r\n";
-    total += "\r\n";
-
-    cout << "total is :\n" << total << std::endl;
-    return total;
 }

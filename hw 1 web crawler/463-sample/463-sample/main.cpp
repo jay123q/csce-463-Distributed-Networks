@@ -23,15 +23,6 @@ void winsock_test(void);
 int main(void)
 {
 
-	WSADATA wsaData;
-
-	//Initialize WinSock; once per program run
-	WORD wVersionRequested = MAKEWORD(2, 2);
-	if (WSAStartup(wVersionRequested, &wsaData) != 0) {
-		printf("WSAStartup error %d\n", WSAGetLastError());
-		WSACleanup();
-		return 0;
-	}
 
 // #ifdef DEBUG
 	//std::wcout << GetExePath() << '\n';
@@ -98,32 +89,34 @@ int main(void)
 		linkBuffer += strlen(linkBuffer) + 1;
 		// printf("%s\n", linkBuffer);
 	}
-	
-
-
-
-
 	delete parser;		// this internally deletes linkBuffer
 	delete fileBuf;
 	*/
+	
+	
 	parsedHtml parser;
-	parser.parseString("http://tamu.edu/");
+	parser.parseString("http://tamu.edu");
 
 
 	// handle socketing
 	Socket * webSocket = new Socket();
 	// cout << " whole link " << parser.wholeLink << std::endl;
-	bool socketCheck = webSocket->Send(parser.printerGenerate("GET"), parser.wholeLink, parser.host, parser.port, parser.printPathQueryFragment());
+	parser.generateRequesttoSend("GET");
+	bool socketCheck = webSocket->Send(parser.total, parser.wholeLink, parser.host, parser.port, parser.printPathQueryFragment());
 
 	if (socketCheck)
 	{
 		// now try to read
 		if (webSocket->Read())
 		{
+			webSocket->closeSocket(); // maybe move this into read? 
 			// so now the html should return the buffer soo
 			const char* result = webSocket->printBuf().c_str();
-
-			cout << "PASSED READ CHECK AND THE READ!!!! " << std::endl;
+			cout << " the result  is " << webSocket->printBuf() << std::endl;
+			cout << "\t Verifying header... ";
+			// const char* httpStatus = strstr(webSocket->printBuf(), "HTTP/1.1");
+			// llook for \r\n\r\n to parse
+			const char * headerPointer = strstr(webSocket->printBuf().c_str(), "\r\n\r\n");
 		}
 	}
 

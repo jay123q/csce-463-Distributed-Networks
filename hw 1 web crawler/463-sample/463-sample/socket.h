@@ -8,7 +8,7 @@ const int INITIAL_BUF_SIZE = 8192;
 class Socket {
 private:
 	SOCKET sock; // socket handle
-	char* buf[INITIAL_BUF_SIZE]; // current buffer
+	char* buf; // current buffer
 	int allocatedSize; // bytes allocated for buf
 	int curPos; // current position in buffer
 public:
@@ -19,7 +19,7 @@ public:
 	void closeSocket();
 	std::string printBuf()
 	{
-		return *buf;
+		return buf;
 	}
 	// void CreateSocket(void);
 };

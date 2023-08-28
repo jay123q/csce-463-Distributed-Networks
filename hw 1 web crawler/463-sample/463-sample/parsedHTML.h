@@ -14,18 +14,19 @@ class parsedHtml
 		string query;
 		string path;
 		string wholeLink;
+		string total;
 		string httpStatus;
 
 
 		void parseString(const char* link);
-		string printerGenerate( string request );
+		void generateRequesttoSend( string request );
 		string printHost()
 		{
 			return "http://" + this->host;
 		};
 		string printPath()
 		{
-			return '/' + this->path;
+			return this->path;
 		}
 		string printPort()
 		{
@@ -47,7 +48,7 @@ class parsedHtml
 		string printPathQueryFragment()
 		{
 			string total = this->path;
-			cout << " path die " << this->path << std::endl;
+
 			if ( this->query[0] != '\0' )
 			{
 				total += '?' + this->query;

@@ -11,9 +11,19 @@ using namespace std;
 
 Socket::Socket()
 {
+	WSADATA wsaData;
+
+	//Initialize WinSock; once per program run
+	WORD wVersionRequested = MAKEWORD(2, 2);
+	if (WSAStartup(wVersionRequested, &wsaData) != 0) {
+		printf("WSAStartup error %d\n", WSAGetLastError());
+		WSACleanup();
+		return;
+	}
 	// create this buffer once, then possibly reuse for multiple connections in Part 3
 		this->allocatedSize = INITIAL_BUF_SIZE;
 		this->curPos = 0;
+		this->buf = new char [INITIAL_BUF_SIZE];
 		// ripping from winsock
 		this->sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 		if (sock == INVALID_SOCKET)
@@ -28,7 +38,13 @@ Socket::Socket()
 
 void Socket::closeSocket()
 {
-	closesocket(this->sock);
+	// https://stackoverflow.com/questions/15504016/c-winsock-socket-error-10038-wsaenotsock#:~:text=%22%20Select()%20function%20error%20code,checked%20by%20the%20select%20function.
+	// yoinked from  ^^^^ 
+	if (closesocket(sock) == SOCKET_ERROR)
+	{
+		printf("closesocket() generate error: %d", WSAGetLastError());
+		return;
+	}
 }
 
 
@@ -51,7 +67,7 @@ bool Socket::Send(string sendRequest , string link, string host, int port, strin
 		cout << " failed with invalid port " << std::endl;
 		return false;
 	}
-	cout << "host " << host << ", port " << port << ", request /" << pathQueryFragment << std::endl;
+	cout << "host " << host << ", port " << port << ", request " << pathQueryFragment << std::endl;
 
 
 	struct hostent* remote;
@@ -65,7 +81,8 @@ bool Socket::Send(string sendRequest , string link, string host, int port, strin
 	clock_t finish = clock(); // compiler wont shut up about this
 
 
-	double ip = inet_addr(host.c_str());
+	ULONG ip = inet_addr(host.c_str());
+
 	if (ip == INADDR_NONE)
 	{
 		// dns lookup
@@ -97,12 +114,14 @@ bool Socket::Send(string sendRequest , string link, string host, int port, strin
 
 
 	// task 3
+	// https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-connect
+	// yoinked from here ^
 	cout << '\t' << "Connecting on page... ";
 	start = clock();
 	server.sin_family = AF_INET; // IPv4
-	server.sin_port = port; // port #
+	server.sin_port = htons(port); // port #
 
-		if (connect(sock, (struct sockaddr*)&server,sizeof(struct sockaddr_in)) == SOCKET_ERROR)
+		if (connect( sock, ( struct sockaddr* ) &server, sizeof( struct sockaddr_in ) ) == SOCKET_ERROR)
 		{
 			printf("Connection error: %d\n", WSAGetLastError());
 			return false;
@@ -116,13 +135,19 @@ bool Socket::Send(string sendRequest , string link, string host, int port, strin
 
 	//https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-send
 	// add a +1 for nnull terminator
-	// char* sendBuf = new char[strlen(link.c_str()) + 1];
-	if (send(this->sock, sendRequest.c_str(), strlen(sendRequest.c_str())+1, 0) == SOCKET_ERROR)
+	// std::string tamusendfuckyou("GET / HTTP/1.0\r\n User-agent: myTAMUcrawler/1.0\r\n Host: tamu.edu\r\n Connection: close\r\n");
+	// char* sendBuf = new char[strlen(sendRequest.c_str()+1)];
+//	cout <<'|' << sendRequest.length() << '|' << std::endl;
+//	printf(" send bytes:: ", sendRequest.length());
+	// string get_http = "GET / HTTP/1.1\r\nHost: http://tamu.edu\r\nConnection: close\r\n\r\n";
+	// const char* httpRequest = "GET / HTTP/1.1\r\nHost: google.com\r\nConnection: close\r\n\r\n";
+	if (send( this->sock, sendRequest.c_str() , strlen(sendRequest.c_str()), 0) == SOCKET_ERROR)
 	{
+
 		printf("Connection error: %d\n", WSAGetLastError());
 		return false;
 	}
-	cout << " passed successfully connected " << std::endl;
+	// cout << " passed successfully connected " << std::endl;
 
 	return true;
 }
@@ -135,66 +160,91 @@ bool Socket::Read(void)
 	// set timeout to 10 seconds
 	// int timer = clock();
 	fd_set readFds;
-	fd_set writeFds;
-	fd_set exceptFds;
+	// fd_set writeFds;
+	// fd_set exceptFds;
 
 	// check this
 	timeval timeout;
 	timeout.tv_sec = 10;
 	timeout.tv_usec = 0;
 	// check this
-
+	this->curPos = 0;
 	clock_t start = clock(); /// suspect
 	clock_t finish = clock(); // shut up compiler
+
+	int counter = 0;
 	while (true)
 	{
+
+		FD_ZERO(&readFds); // this sets the file descriptor 
+		// I learend a good lesson here, it dont work if you dont got a file descriiptor
+		// https://learn.microsoft.com/en-us/windows/win32/api/winsock/ns-winsock-fd_set
+		FD_SET(sock, &readFds); // assign a socket to a descriptor
+
+
 		// wait to see if socket has any data (see MSDN)
-		int ret = select(0, &readFds, &writeFds, &exceptFds, &timeout);
+		// https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-select
+		int ret = select(0, &readFds, NULL , NULL , &timeout);
+		// cout << " loop  counter " << counter << std::endl;
+		counter++;
+		// cout << " return from select " << ret << std::endl;
 		if (ret > 0)
 		{
+			// cout << " select has passed! " << '\n';
 			// new data available; now read the next segment
-			int bytes = recv(sock, *(this->buf) + this->curPos, (allocatedSize - this->curPos), 0);
+			int bytes = recv(sock, this->buf + curPos, allocatedSize - curPos, 0);
+
 			if (bytes < 0)
 			{
-				printf("Connection error: %d\n", WSAGetLastError());
+				printf("Failed with %d\n", WSAGetLastError());
 				break;
 			}
 			if (bytes == 0)
 			{
-				*buf[curPos + 1] = '\0';
+				// cout << " bytes done " << std::endl;
+				this->buf[curPos + 1] = '\0';
 				// NULL-terminate buffer
 				finish = clock();
 				double duration = (double)(finish - start) / CLOCKS_PER_SEC;
-				printf("finished at %.1f durration with %d bytes \n", duration * 1000, curPos);
+				printf("finished at %.1f ms durration with %d bytes \n", duration * 1000, curPos);
 				curPos += bytes; // adjust where the next recv goes
 				return true; // normal completion
 			}
+
+			// take 512 bites beofre resizing
 			if (this->allocatedSize - curPos < 1024)
 			{
+				// cout << " allocated size and cur pos " << allocatedSize - curPos << std::endl;
 				//resize
-				char* tmp = new char [this->allocatedSize * 2];
+				char* tmp = new char[this->allocatedSize * 2];
 				memcpy(tmp, buf, this->allocatedSize);
 				this->allocatedSize *= 2;
-				*buf = tmp;
-				delete [] tmp;
+				delete buf;
+				this->buf = tmp;
 
 				// resize buffer; you can use realloc(), HeapReAlloc(), or
 			   // memcpy the buffer into a bigger array
 			}
+			// cout << this->allocatedSize - curPos << " bytes from the buffer " << std::endl;
+			curPos += bytes; // update cursor
+
 		}
-		else if (ret == 0 )
+		else if (ret == 0)
 		{
 			// ret returned a 0 which means no sockkets opened
 			// report timeout
-			cout << "connecction timeod out, failed on ret, returned 0 meaning no sockets opened, select in socket.cpp" << std::endl;
+			cout << " failed with timeout" << std::endl;
 			break;
 		}
 		else
 			// print WSAGetLastError()
-
+		{
 			printf("Connection error: %d\n", WSAGetLastError());
 
 			break;
+		}
 	}
 	return false;
 }
+
+
