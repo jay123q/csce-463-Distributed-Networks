@@ -249,6 +249,6 @@ string parsedHtml::printerGenerate(string request)
     total += "Connection: close\r\n";
     total += "\r\n";
 
-    cout << "total is " << total << std::endl;
+    cout << "total is :\n" << total << std::endl;
     return total;
 }

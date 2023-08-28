@@ -117,7 +117,7 @@ bool Socket::Send(string sendRequest , string link, string host, int port, strin
 	//https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-send
 	// add a +1 for nnull terminator
 	// char* sendBuf = new char[strlen(link.c_str()) + 1];
-	if (send(this->sock, sendRequest.c_str(), strlen(sendRequest.c_str()), 0) == SOCKET_ERROR)
+	if (send(this->sock, sendRequest.c_str(), strlen(sendRequest.c_str())+1, 0) == SOCKET_ERROR)
 	{
 		printf("Connection error: %d\n", WSAGetLastError());
 		return false;
