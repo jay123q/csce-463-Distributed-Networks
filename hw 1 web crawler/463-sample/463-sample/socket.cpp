@@ -52,7 +52,7 @@ bool Socket::Send(string sendRequest , string link, string host, int port, strin
 {
 
 	cout << "URL: " << link << std::endl;
-	cout << "\tParsing URL... ";
+	cout << "\t   Parsing URL... ";
 	const char* httpLinkCheck = strstr(link.c_str(), "://");
 
 	if (httpLinkCheck  == nullptr)
@@ -76,35 +76,34 @@ bool Socket::Send(string sendRequest , string link, string host, int port, strin
 	// 
 	// 
 	// task 2
-	cout << '\t' << "Doing DNS... ";
+	cout << '\t' << "   Doing DNS... ";
 	clock_t start = clock();
 	clock_t finish = clock(); // compiler wont shut up about this
 
 
-	ULONG ip = inet_addr(host.c_str());
-
-	if (ip == INADDR_NONE)
+	DWORD IP = inet_addr(host.c_str());
+	if (IP == INADDR_NONE)
 	{
-		// dns lookup
-		remote = gethostbyname(host.c_str());
-
-		if (remote == nullptr)
+		// if not a valid IP, then do a DNS lookup
+		if ((remote = gethostbyname(host.c_str())) == NULL)
 		{
-			printf("failed with %d\n", WSAGetLastError());
+			printf("Connection error: %d\n", WSAGetLastError());
 			return false;
 		}
-		
-		
-		// check this if it aint working
-
-
-		memcpy( &server.sin_addr, remote->h_addr, remote->h_length);
+		else // take the first IP address and copy into sin_addr
+			memcpy((char*)&(server.sin_addr), remote->h_addr, remote->h_length);
+		// debugging! 
+		// 
+		//	printf ("Connection error: %d\n", WSAGetLastError ());
 
 	}
 	else
 	{
-		server.sin_addr.S_un.S_addr = ip;
+		// if a valid IP, directly drop its binary version into sin_addr
+		server.sin_addr.S_un.S_addr = IP;
 	}
+
+
 	finish = clock();
 	double timepassed = double(finish - start) / (double)CLOCKS_PER_SEC;
 
@@ -116,12 +115,12 @@ bool Socket::Send(string sendRequest , string link, string host, int port, strin
 	// task 3
 	// https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-connect
 	// yoinked from here ^
-	cout << '\t' << "Connecting on page... ";
+	cout << '\t' << " * Connecting on page... ";
 	start = clock();
 	server.sin_family = AF_INET; // IPv4
 	server.sin_port = htons(port); // port #
 
-		if (connect( sock, ( struct sockaddr* ) &server, sizeof( struct sockaddr_in ) ) == SOCKET_ERROR)
+		if (connect( this->sock, ( struct sockaddr* ) &server, sizeof( struct sockaddr_in ) ) == SOCKET_ERROR)
 		{
 			printf("Connection error: %d\n", WSAGetLastError());
 			return false;
@@ -154,7 +153,7 @@ bool Socket::Send(string sendRequest , string link, string host, int port, strin
 
 bool Socket::Read(void)
 {
-	cout << '\t' << "Loading... ";
+	cout << '\t' << "   Loading... ";
 	//https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-select
 	// 
 	// set timeout to 10 seconds
@@ -206,7 +205,7 @@ bool Socket::Read(void)
 				// NULL-terminate buffer
 				finish = clock();
 				double duration = (double)(finish - start) / CLOCKS_PER_SEC;
-				printf("finished at %.1f ms durration with %d bytes \n", duration * 1000, curPos);
+				printf("done in %.1f ms with %d bytes \n", duration * 1000, curPos);
 				curPos += bytes; // adjust where the next recv goes
 				return true; // normal completion
 			}
@@ -246,5 +245,59 @@ bool Socket::Read(void)
 	}
 	return false;
 }
+
+/*
+void Socket::ReadSendCheckStatus(parsedHtml *parser)
+{
+	parser.generateRequesttoSend("HEAD");
+	bool socketCheck = this->Send(parser.total, parser.wholeLink, parser.host, parser.port, parser.printPathQueryFragment());
+
+	if (socketCheck)
+	{
+		// now try to read
+		if (Read())
+		{
+			closeSocket(); // maybe move this into read? 
+			// so now the html should return the buffer soo
+			const char* result = this->printBuf().c_str();
+			// cout << " the result  is " << this->printBuf() << std::endl;
+			double statusCode = stod(this->printBuf().substr(9.3).c_str());
+			cout << "\t Verifying header... ";
+			cout << " status code " << statusCode << std::endl;
+			if (statusCode <= 199 || statusCode >= 299)
+			{
+				clock_t start = clock();
+				clock_t finish = clock();
+				cout << "\t Parsing page... ";
+				HTMLParserBase htmlLinkRipper;
+				int nLinks = 0;
+				char* linkCounter = htmlLinkRipper.Parse((char * ) result ,strlen(result),(char *) parser.wholeLink.c_str() , strlen(parser.wholeLink.c_str()), &nLinks);
+				if (nLinks < 0)
+					nLinks = 0;
+				finish = clock();
+				double timer = (double)(finish - start) / CLOCKS_PER_SEC;
+				printf("done in %.1f ms with %d links", timer *1000 ,nLinks);
+
+
+			}
+			else
+			{
+				//int skipBadLinks = webSocket->printBuf().find("\r\n\r\n");
+				cout << "status code " << statusCode << std::endl;
+			}
+
+
+			// cout << "status code " << statusCode << std::endl;
+			// const char* httpStatus = strstr(webSocket->printBuf(), "HTTP/1.1");
+			// llook for \r\n\r\n to parse
+			// int skipBadLinks = this->printBuf().find("\r\n\r\n");
+			// now modify the pointer/string so we can remove the essentail first half
+
+		}
+	}
+}
+*/
+
+
 
 

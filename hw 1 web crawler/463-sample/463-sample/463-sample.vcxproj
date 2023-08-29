@@ -157,6 +157,7 @@
     <ClCompile Include="DNS.cpp" />
 	<ClCompile Include="socket.cpp"/>
 	  <ClCompile Include="parsedHTML.cpp" />
+
     <ClCompile Include="main.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -171,6 +172,7 @@
 	  <ClInclude Include ="socket.h" />
     <ClInclude Include="cpu.h" />
     <ClInclude Include="DNS.h" />
+	  <ClCompile Include="HTMLParserBase.h" />
     <ClInclude Include="pch.h" />
 	 <ClInclude Include ="socket.h" />
   </ItemGroup>

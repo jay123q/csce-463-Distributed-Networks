@@ -66,6 +66,10 @@ void parsedHtml::parseString(const char  * link) {
             // parsedValue.push_back(path);
             this->path = path;
         }
+        else if (pathStart + 1 != nullptr)
+        {
+            this->path = pathStart;
+        }
         else
         {
             //  parsedValue.push_back("single /");
@@ -87,7 +91,7 @@ void parsedHtml::parseString(const char  * link) {
         const char* portMalFormed = strstr(hostStart, ":-");
         if (portMalFormed != nullptr)
         {
-            cout << " port is malformed parsedHtml.cpp " << std::endl;
+           // cout << " port is malformed parsedHtml.cpp " << std::endl;
             std::string portString("- negative port");
             parsedValue.push_back("- negative port");
         }
@@ -96,20 +100,20 @@ void parsedHtml::parseString(const char  * link) {
         const char* portEndFragment = strchr(hostStart, '#');
         if (portEndBackSlash != nullptr)
         {
-            cout << "1" << std::endl;
+           // cout << "1" << std::endl;
             std::string port(portStart + 1, pathStart - portStart - 1); // remove  :, and /
             parsedValue.push_back(port);
         }
         else if (portEndQuery != nullptr)
         {
-            cout << "2" << std::endl;
+           // cout << "2" << std::endl;
 
             std::string port(portStart + 1, portEndQuery - portStart - 1); // remove  :, and ?
             parsedValue.push_back(port);
         }
         else if (portEndFragment != nullptr)
         {
-            cout << "3" << std::endl;
+         //   cout << "3" << std::endl;
 
    //         std::string port(portStart + 1, portEndFragment - portStart - 1); // remove  :, and #
             std::string port(portStart + 1, portEndFragment - portStart - 1); // remove  :, and #
@@ -120,11 +124,11 @@ void parsedHtml::parseString(const char  * link) {
     }
     else // empty port
     {
-        cout << "4" << std::endl;
+        //cout << "4" << std::endl;
 
         std::string port("80");
         parsedValue.push_back(port);
-        cout << " port is empty if this is spewing gargage " << port << " line 99  to fix " << std::endl;
+       // cout << " port is empty if this is spewing gargage " << port << " line 99  to fix " << std::endl;
     }
 
         
@@ -132,10 +136,10 @@ void parsedHtml::parseString(const char  * link) {
     {
         //cout << " port check host " << std::endl;
         std::string host(hostStart, portStart - hostStart);
-        cout << " parsed Value " << parsedValue.size();
+        //cout << " parsed Value " << parsedValue.size();
 
-       // parsedValue.push_back(host);
-        cout << " port path check " << host << std::endl;
+
+      //  cout << " port path check " << host << std::endl;
         this->host = host;
     }
     else if (pathStart != nullptr)
@@ -153,7 +157,7 @@ void parsedHtml::parseString(const char  * link) {
         std::string host(hostStart, queryStart - hostStart);
        // parsedValue.push_back(host);
         this->host = host;
-        cout << " query path check " << host << std::endl;
+     //   cout << " query path check " << host << std::endl;
 
     }
     else if (fragmentStart != nullptr)
@@ -163,7 +167,7 @@ void parsedHtml::parseString(const char  * link) {
         std::string host(hostStart, fragmentStart - hostStart);
        // parsedValue.push_back(host);
         this->host = host;
-        cout << " fragment path check " << host << std::endl;
+     //   cout << " fragment path check " << host << std::endl;
 
     }
     else
@@ -171,18 +175,14 @@ void parsedHtml::parseString(const char  * link) {
         std::string host(hostStart);
       //  parsedValue.push_back(host);
         this->host = host;
-        cout << " host print " << host << std::endl;
+        // cout << " host print " << host << std::endl;
     }
 
 
-    // for (int i = 0; i < parsedValue.size(); i++)
-    // {
-    //    std::cout << parsedValue[i] << std::endl;
-    // }
-    //cout << " new host " << parsedValue.at(parsedValue.size() - 1) << endl;
 
-    cout << " 174 check " << std::endl;
-//    this->host = parsedValue.at(4);
+
+//    cout << " 174 check " << std::endl;
+
 
 
     try
@@ -191,13 +191,13 @@ void parsedHtml::parseString(const char  * link) {
         if ( strchr(parsedValue.at(0).c_str(), '-') !=  nullptr )
         {
             // if we found a negative port 
-            cout << "negtaive port spotted parsed html 162 " << std::endl;
+          //  cout << "negtaive port spotted parsed html 162 " << std::endl;
             this->port = 65536; // one above port range if its invalid or dne
 
         }
         else
         {
-            cout << " checking waht parsed value got " << parsedValue.at(0) << std::endl;
+           // cout << " checking waht parsed value got " << parsedValue.at(0) << std::endl;
             this->port = stoi(parsedValue.at(0));
             if (this->port == 0)
             {
@@ -209,13 +209,13 @@ void parsedHtml::parseString(const char  * link) {
     }
     catch (...)
     {
-        cout << "setting port to 80, parsedhtml.cpp 173 " << port << std::endl;
+        //cout << "setting port to 80, parsedhtml.cpp 173 " << port << std::endl;
         // else there is no port so it becomes 80
         this->port = 80; // one above port range if its invalid or dne
     }
 
 
-    cout << " 206 check " << std::endl;
+   // cout << " 206 check " << std::endl;
     /*
     if (  strstr(parsedValue.at(2).c_str(), "single /") != nullptr )
     {
@@ -257,7 +257,7 @@ void parsedHtml::parseString(const char  * link) {
 
     */
 
-    cout << " path final check is " << this->path << std::endl;
+   // cout << " path final check is " << this->path << std::endl;
 
    
 
@@ -265,12 +265,18 @@ void parsedHtml::parseString(const char  * link) {
 
 void parsedHtml::generateRequesttoSend( string request)
 {
-    // this function is to make the request to send to connect on the socket
-    total = request + ' ' + this->path + this->query + " HTTP/1.0\r\n";
-    total += "User-agent: JoshTamuCrawler/1.1\r\nHost: " + host + "\r\nConnection: close\r\n\r\n";
-    cout << " total " << total << std::endl;\
-        cout << " |" << path << "|" << " |" << query << "| " << std::endl;
-    this->total =  "GET / HTTP/1.1\r\nUser-agent: JoshTamuCrawler/1.1\r\nHost: google.com\r\nConnection: close\r\n\r\n"; // CORRECT
-    this->total = "GET /" + " HTTP / 1.1\r\nUser - agent: JoshTamuCrawler / 1.1\r\nHost: google.com\r\nConnection: close\r\n\r\n"; // INCORRECT
 
+    // something to note for future semesters here, theres something odd with the strings and how they work in the send
+    // if this->path + this->query are used it will throw a error saying bad webpage, however if the combined function is called
+    // which is literally this->path + this->query, then there is no error
+    // this is nonsneical, and took me a day to debug
+    // 
+    // this function is to make the request to send to connect on the socket
+    std::string getRequest = "GET ";
+  //  cout << " get request |" << getRequest << "| \n";
+  //  cout << " path " << printPathQueryFragment() << std::endl;
+    this->total =  "GET / HTTP/1.1\r\nUser-agent: JoshTamuCrawler/1.1\r\nHost: tamu.edu\r\nConnection: close\r\n\r\n"; // CORRECT
+    this->total = getRequest + printPathQueryFragment() + " HTTP/1.1\r\nUser-agent: JoshTamuCrawler/1.1\r\nHost: "+this->host+"\r\nConnection: close\r\n\r\n"; // INCORRECT
+  //  cout << " total \n" << this->total << std::endl;
+   // this->total = "GET /IRL7 HTTP/1.0\r\nUser-agent: JoshTamuCrawler/1.1\r\nHost: s2.irl.cs.tamu.edu\r\nConnection: close\r\n\r\n";
 }

@@ -1,5 +1,5 @@
 #pragma once
-
+#include "pch.h"
 #ifdef _WIN64
 #ifdef _DEBUG
 #pragma comment (lib, "HTMLParser_debug_x64.lib")

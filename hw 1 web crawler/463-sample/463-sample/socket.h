@@ -1,7 +1,8 @@
 #pragma once
 #include <string>
 #include <iostream>
-
+#include "parsedHTML.h"
+#include "HTMLParserBase.h"
 
 const int INITIAL_BUF_SIZE = 8192;
 
@@ -17,6 +18,7 @@ public:
 	bool Read(void);
 	bool Send(std::string sendRequest , std::string link, std::string host, int port, std::string pathQueryFragment);
 	void closeSocket();
+	//void ReadSendCheckStatus(parsedHtml &parser);
 	std::string printBuf()
 	{
 		return buf;

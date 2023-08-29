@@ -20,106 +20,101 @@ void winsock_test(void);
 
 
 
-int main(void)
+int main(int argc, char* argv[])
 {
 
-
-// #ifdef DEBUG
-	//std::wcout << GetExePath() << '\n';
-
-// #endif // DEBUG
-	//char * filename[] = "C:\\Users\\Joshua\\Documents\\github\\PersonalGit\\csce-463-Distributed-Networks\\hw 1 web crawler\\463-sample\\463-sample\\100url.txt";
-	/*
-	// open html file
-	HANDLE hFile = CreateFile((LPCSTR) (&"100url.txt"), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
-		FILE_ATTRIBUTE_NORMAL, NULL);
-	// process errors
-	if (hFile == INVALID_HANDLE_VALUE)
-	{
-		printf("CreateFile failed with %d\n", GetLastError());
-		////return 0;
-	}
-
-	// get file size
-	LARGE_INTEGER li;
-	BOOL bRet = GetFileSizeEx(hFile, &li);
-	// process errors
-	if (bRet == 0)
-	{
-		printf("GetFileSizeEx error %d\n", GetLastError());
-		return 0;
-	}
-
-	// read file into a buffer
-	int fileSize = (DWORD)li.QuadPart;			// assumes file size is below 2GB; otherwise, an __int64 is needed
-	DWORD bytesRead;
-	// allocate buffer
-	char* fileBuf = new char[fileSize];
-	// read into the buffer
-	bRet = ReadFile(hFile, fileBuf, fileSize, &bytesRead, NULL);
-	// process errors
-	if (bRet == 0 || bytesRead != fileSize)
-	{
-		printf("ReadFile failed with %d\n", GetLastError());
-		return 0;
-	}
-
-	// done with the file
-	CloseHandle(hFile);
-	cout << fileBuf << '/n';
-	// create new parser object
-	HTMLParserBase* parser = new HTMLParserBase;
-
-	char baseUrl[] = "http://www.tamu.edu";		// where this page came from; needed for construction of relative links
-
-	int nLinks;
-	char* linkBuffer = parser->Parse(fileBuf, fileSize, baseUrl, (int)strlen(baseUrl), &nLinks);
-
-	// check for errors indicated by negative values
-	if (nLinks < 0)
-		nLinks = 0;\r\n
-
-	printf("Found %d links:\n", nLinks);
-
-	// print each URL; these are NULL-separated C strings 
-	for (int i = 0; i < nLinks; i++)
-	{
-		// starting work here
-		parseString(linkBuffer);
-		linkBuffer += strlen(linkBuffer) + 1;
-		// printf("%s\n", linkBuffer);
-	}
-	delete parser;		// this internally deletes linkBuffer
-	delete fileBuf;
-	*/
+	// ayo these are guess, I cant get the vs community to open the properties tab and then show the defaul to throw in the texts
+	// no idea tf is happening.
 	
+	if (argc != 2)
+	{
+		cout << " invalid form! " << std::endl;
+		cout << " should be ./main name.hmtl " << std::endl;
+		return 0;
+	}
+	std::string url = argv[1];
+	
+
+
+	// this was used for all testing locally
+	// std::string url = "http://ftp.gnu.org:21/";
+	WSADATA wsaData;
+
+	//Initialize WinSock; once per program run
+	WORD wVersionRequested = MAKEWORD(2, 2);
+	if (WSAStartup(wVersionRequested, &wsaData) != 0) {
+		printf("WSAStartup error %d\n", WSAGetLastError());
+		WSACleanup();
+		return -1;
+	}
+
 	
 	parsedHtml parser;
-	parser.parseString("http://tamu.edu");
+	parser.parseString(url.c_str());
+	//if (strlen(parser.host.c_str()) < MAX_HOST_LEN) >????
+	//{
 
 
-	// handle socketing
-	Socket * webSocket = new Socket();
-	// cout << " whole link " << parser.wholeLink << std::endl;
-	parser.generateRequesttoSend("GET");
-	bool socketCheck = webSocket->Send(parser.total, parser.wholeLink, parser.host, parser.port, parser.printPathQueryFragment());
 
-	if (socketCheck)
-	{
-		// now try to read
-		if (webSocket->Read())
+		// handle socketing
+		Socket* webSocket = new Socket();
+		// cout << " whole link " << parser.wholeLink << std::endl;
+		parser.generateRequesttoSend("GET");
+		bool socketCheck = webSocket->Send(parser.total, parser.wholeLink, parser.host, parser.port, parser.printPathQueryFragment());
+
+		if (socketCheck)
 		{
-			webSocket->closeSocket(); // maybe move this into read? 
-			// so now the html should return the buffer soo
-			const char* result = webSocket->printBuf().c_str();
-			cout << " the result  is " << webSocket->printBuf() << std::endl;
-			cout << "\t Verifying header... ";
-			// const char* httpStatus = strstr(webSocket->printBuf(), "HTTP/1.1");
-			// llook for \r\n\r\n to parse
-			const char * headerPointer = strstr(webSocket->printBuf().c_str(), "\r\n\r\n");
-		}
-	}
+			// now try to read
+			if (webSocket->Read() )
+			{
+				// HERE && strlen(webSocket->printBuf().c_str()) < MAX_REQUEST_LEN ???
+				webSocket->closeSocket(); // maybe move this into read? 
+				// so now the html should return the buffer soo
+				const char* result = webSocket->printBuf().c_str();
+				// cout << " the result  is " << this->printBuf() << std::endl;
+				double statusCode = stod(webSocket->printBuf().substr(9.3).c_str());
+				cout << "\t   Verifying header... ";
 
+				if (statusCode > 199 && statusCode < 300)
+				{
+					cout << "status code " << statusCode << std::endl;
+					clock_t start = clock();
+					clock_t finish = clock();
+					cout << "\t + Parsing page... ";
+					HTMLParserBase htmlLinkRipper;
+					int nLinks = 0;
+					char* linkCounter = htmlLinkRipper.Parse((char*)result, (int)strlen(result), (char*)parser.wholeLink.c_str(), strlen(parser.wholeLink.c_str()), &nLinks);
+
+					finish = clock();
+					double timer = (double)(finish - start) / CLOCKS_PER_SEC;
+					printf("done in %.1f ms with %d links\n", timer * 1000, nLinks);
+					printf("=======================================================\n");
+
+					// int httpPointer = webSocket->printBuf().find("HTTP/");
+
+				}
+				else
+				{
+					//int skipBadLinks = webSocket->printBuf().find("\r\n\r\n");
+					cout << "status code " << statusCode << std::endl;
+					printf("=======================================================\n");
+					//cout << "web socket " << webSocket->printBuf() << std::endl;
+
+					//cout << " html pointer is " << htmlPointer << std::endl;
+				}
+				int htmlPointer = webSocket->printBuf().find("\r\n\r\n");
+				std::string header = webSocket->printBuf().substr(0, htmlPointer);
+				cout << header;
+				// cout << "status code " << statusCode << std::endl;
+				// cout << webSocket->printBuf() << std::endl;
+				// const char* httpStatus = strstr(webSocket->printBuf(), "HTTP/1.1");
+				// llook for \r\n\r\n to parse
+				// int skipBadLinks = this->printBuf().find("\r\n\r\n");
+				// now modify the pointer/string so we can remove the essentail first half
+
+			}
+		}
+	//}
 
 	return 0;
 }

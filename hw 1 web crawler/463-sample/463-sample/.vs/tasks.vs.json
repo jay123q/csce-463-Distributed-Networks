@@ -25,6 +25,11 @@
       "taskLabel": "task-463-sample",
       "appliesTo": "/",
       "type": "launch"
+    },
+    {
+      "taskLabel": "task-463-sample",
+      "appliesTo": "/",
+      "type": "launch"
     }
   ]
 }
