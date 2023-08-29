@@ -6,6 +6,7 @@
 
 int main(int argc, char** argv)
 {
+	
 	char filename [] = "tamu2018.html";
 
 	// open html file
@@ -44,11 +45,12 @@ int main(int argc, char** argv)
 
 	// done with the file
 	CloseHandle(hFile);
+	
 
 	// create new parser object
 	HTMLParserBase *parser = new HTMLParserBase;
 
-	char baseUrl [] = "http://www.tamu.edu";		// where this page came from; needed for construction of relative links
+	char baseUrl [] = "http://s2.irl.cs.tamu.edu/IRL7";		// where this page came from; needed for construction of relative links
 	
 	int nLinks;
 	char *linkBuffer = parser->Parse (fileBuf, fileSize, baseUrl, (int) strlen (baseUrl), &nLinks);
