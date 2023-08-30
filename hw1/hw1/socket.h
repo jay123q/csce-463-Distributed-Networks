@@ -23,5 +23,9 @@ public:
 	{
 		return buf;
 	}
+	int getCurPos()
+	{
+		return this->curPos;
+	}
 	// void CreateSocket(void);
 };

@@ -246,6 +246,8 @@ bool Socket::Read(void)
 	return false;
 }
 
+
+
 /*
 void Socket::ReadSendCheckStatus(parsedHtml *parser)
 {

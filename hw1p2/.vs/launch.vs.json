@@ -1,0 +1,12 @@
+{
+  "version": "0.2.1",
+  "defaults": {},
+  "configurations": [
+    {
+      "type": "default",
+      "project": "hw1.vcxproj",
+      "projectTarget": "",
+      "name": "hw1.vcxproj"
+    }
+  ]
+}
