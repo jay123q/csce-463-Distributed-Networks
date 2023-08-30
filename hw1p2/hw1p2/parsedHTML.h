@@ -1,9 +1,12 @@
 #pragma once
 #include "pch.h"
 #include <string>
+#include <fstream>
+#include <vector>
 #include <iostream>
 using namespace std;
 #include "HTMLParserBase.h"
+#include "socket.h"
 class parsedHtml
 {
 
@@ -21,7 +24,9 @@ class parsedHtml
 
 		void parseString(const char* link);
 		void generateRequesttoSend( string request );
-		// void parseTXTFile(const char* filename);
+		std::vector <std::string> parseTXTFile(std::string filename);
+
+		void ParseSendRead(string url);
 		string printHost()
 		{
 			return "http://" + this->host;

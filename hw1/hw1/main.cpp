@@ -96,6 +96,7 @@ int main(int argc, char* argv[])
 					cout << " correct bytes to parse " << numberBytesToParse << ' \n ';
 
 
+
 					int nLinks = 0;
 					HTMLParserBase htmlLinkRipper;
 					// chec if totalBytesRecieved - totalBytesHeader is the number of bytes to parse
