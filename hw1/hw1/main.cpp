@@ -6,6 +6,7 @@ Csce 463-500
 #include <string>
 #include "socket.h"
 #include "parsedHTML.h"
+#include "HTMLParserBase.h"
 #include <windows.h>
 #include <iostream>
 #include <vector>
@@ -39,15 +40,6 @@ int main(int argc, char* argv[])
 
 	// this was used for all testing locally
 	std::string url = "http://s2.irl.cs.tamu.edu/IRL8";
-	WSADATA wsaData;
-
-	//Initialize WinSock; once per program run
-	WORD wVersionRequested = MAKEWORD(2, 2);
-	if (WSAStartup(wVersionRequested, &wsaData) != 0) {
-		printf("WSAStartup error %d\n", WSAGetLastError());
-		WSACleanup();
-		return -1;
-	}
 
 	
 	parsedHtml parser;
@@ -74,17 +66,23 @@ int main(int argc, char* argv[])
 				// HERE && strlen(webSocket->printBuf().c_str()) < MAX_REQUEST_LEN ???
 				webSocket->closeSocket(); // maybe move this into read? 
 				// so now the html should return the buffer soo
-				std::string result = webSocket->printBuf();
+				const char * result = webSocket->printBuf();
 				// cout << " print the result and junk \n " << webSocket->printBuf() << std::endl;
 				// cout << " the result  is " << this->printBuf() << std::endl;
-				double statusCode = stod( webSocket->printBuf().substr(9.3).c_str() );
+				string status(webSocket->printBuf());
+				double statusCode = stod(status.substr(9.3).c_str() );
 				cout << "\t   Verifying header... ";
+				string stringResult(result);
 				// parse header now
-				int htmlPointer = webSocket->printBuf().find("\r\n\r\n");
-				std::string header = webSocket->printBuf().substr(0, htmlPointer);
-				std::string notHeader  = webSocket->printBuf().substr(htmlPointer,strlen(webSocket->printBuf().c_str()));
+				//char * pastHeaderPtr = stringResult.find("\r\n\r\n");
 
-				cout << " bytes to parse by curPos " << webSocket->getCurPos() << '\n';
+
+
+
+//				std::string header = webSocket->printBuf().substr(0, pastHeaderPtr);
+//				std::string notHeader  = webSocket->printBuf().substr(pastHeaderPtr,webSocket->getCurPos());
+
+				//cout << " bytes to parse by curPos " << webSocket->getCurPos() << '\n';
 			//	cout << " print the information that is not in the header \n" << notHeader << std::endl;
 				if (statusCode > 199 && statusCode < 300)
 				{
@@ -92,18 +90,47 @@ int main(int argc, char* argv[])
 					clock_t start = clock();
 					clock_t finish = clock();
 					cout << "\t + Parsing page... ";
-					int numberBytesToParse = strlen(webSocket->printBuf().c_str()) - strlen(header.c_str());
-					cout << " correct bytes to parse " << numberBytesToParse << ' \n ';
+
+					const char* pastHeaderPtr = strchr(result, '\r\n\r\n');
+
+					int bytes_recieved = webSocket->getCurPos();
+					int bytes_header = pastHeaderPtr - result; // header bytes
+					int bytes_file = bytes_recieved - bytes_header;
 
 
-
+					// int numberBytesToParse = htmlPointer - webSocket->getCurPos();
+					//asdf
 					int nLinks = 0;
 					HTMLParserBase htmlLinkRipper;
-					// chec if totalBytesRecieved - totalBytesHeader is the number of bytes to parse
-					// char* linkCounter = htmlLinkRipper.Parse( (char *) result.c_str(), strlen(result.c_str()),
-					//	(char*)parser.wholeLink.c_str(), numberBytesToParse, &nLinks);					
-					char* linkCounter = htmlLinkRipper.Parse( (char *) result.c_str(), strlen(result.c_str()),
-						(char*)parser.wholeLink.c_str(), strlen(parser.wholeLink.c_str()), &nLinks);
+
+
+				//	char* linkCounter = htmlLinkRipper.Parse( (char *)stringResult.c_str(), bytes_recieved,
+				//		(char*)parser.wholeLink.c_str(), bytes_file , &nLinks); //-1
+				
+				//	char* linkCounter = htmlLinkRipper.Parse((char*)stringResult.c_str(), bytes_header,
+				//		(char*)parser.wholeLink.c_str(), bytes_file, &nLinks); //-1
+
+				//	char* linkCounter = htmlLinkRipper.Parse((char*)stringResult.c_str(), bytes_file,
+				//		(char*)parser.wholeLink.c_str(), bytes_recieved, &nLinks); //-1
+
+				//	char* linkCounter = htmlLinkRipper.Parse((char*)stringResult.c_str(), bytes_header,
+				//		(char*)parser.wholeLink.c_str(), bytes_recieved, &nLinks); //-1
+
+				//	char* linkCounter = htmlLinkRipper.Parse((char*)stringResult.c_str(), bytes_recieved,
+				//		(char*)parser.wholeLink.c_str(), bytes_header, &nLinks); //43
+
+				//	char* linkCounter = htmlLinkRipper.Parse((char*)stringResult.c_str(), bytes_file,
+				//		(char*)parser.wholeLink.c_str(), bytes_header, &nLinks);  //43
+				
+				//	char* linkCounter = htmlLinkRipper.Parse( (char*)stringResult.c_str(), bytes_file,
+				//		(char*)parser.wholeLink.c_str() , strlen((char*)parser.wholeLink.c_str()), &nLinks);  //43	
+
+				//	char* linkCounter = htmlLinkRipper.Parse( (char*)stringResult.c_str(), bytes_recieved,
+				//		(char*)parser.wholeLink.c_str() , strlen((char*)parser.wholeLink.c_str()), &nLinks);  //	43	
+
+					char* linkCounter = htmlLinkRipper.Parse( (char*)stringResult.c_str(), bytes_header,
+						(char*)parser.wholeLink.c_str() , strlen((char*)parser.wholeLink.c_str()), &nLinks);  // 43
+
 
 					finish = clock();
 					double timer = (double)(finish - start) / CLOCKS_PER_SEC;
@@ -122,7 +149,10 @@ int main(int argc, char* argv[])
 
 					//cout << " html pointer is " << htmlPointer << std::endl;
 				}
-				cout << header;
+				std::string resultButString(result);
+				int findHeader = resultButString.find("\r\n\r\n");
+				std::string header = resultButString.substr(0, findHeader);
+					cout << header;
 				// cout << "status code " << statusCode << std::endl;
 				// cout << webSocket->printBuf() << std::endl;
 				// const char* httpStatus = strstr(webSocket->printBuf(), "HTTP/1.1");

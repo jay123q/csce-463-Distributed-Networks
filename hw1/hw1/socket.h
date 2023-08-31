@@ -19,9 +19,10 @@ public:
 	bool Send(std::string sendRequest , std::string link, std::string host, int port, std::string pathQueryFragment);
 	void closeSocket();
 	//void ReadSendCheckStatus(parsedHtml &parser);
-	std::string printBuf()
+	const char * printBuf()
 	{
-		return buf;
+		const char* newBuf = buf;
+		return newBuf;
 	}
 	int getCurPos()
 	{
