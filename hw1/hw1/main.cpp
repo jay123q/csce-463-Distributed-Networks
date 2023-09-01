@@ -74,16 +74,6 @@ int main(int argc, char* argv[])
 				cout << "\t   Verifying header... ";
 				string stringResult(result);
 				// parse header now
-				//char * pastHeaderPtr = stringResult.find("\r\n\r\n");
-
-
-
-
-//				std::string header = webSocket->printBuf().substr(0, pastHeaderPtr);
-//				std::string notHeader  = webSocket->printBuf().substr(pastHeaderPtr,webSocket->getCurPos());
-
-				//cout << " bytes to parse by curPos " << webSocket->getCurPos() << '\n';
-			//	cout << " print the information that is not in the header \n" << notHeader << std::endl;
 				if (statusCode > 199 && statusCode < 300)
 				{
 					cout << "status code " << statusCode << std::endl;
@@ -102,33 +92,7 @@ int main(int argc, char* argv[])
 					//asdf
 					int nLinks = 0;
 					HTMLParserBase htmlLinkRipper;
-
-
-				//	char* linkCounter = htmlLinkRipper.Parse( (char *)stringResult.c_str(), bytes_recieved,
-				//		(char*)parser.wholeLink.c_str(), bytes_file , &nLinks); //-1
-				
-				//	char* linkCounter = htmlLinkRipper.Parse((char*)stringResult.c_str(), bytes_header,
-				//		(char*)parser.wholeLink.c_str(), bytes_file, &nLinks); //-1
-
-				//	char* linkCounter = htmlLinkRipper.Parse((char*)stringResult.c_str(), bytes_file,
-				//		(char*)parser.wholeLink.c_str(), bytes_recieved, &nLinks); //-1
-
-				//	char* linkCounter = htmlLinkRipper.Parse((char*)stringResult.c_str(), bytes_header,
-				//		(char*)parser.wholeLink.c_str(), bytes_recieved, &nLinks); //-1
-
-				//	char* linkCounter = htmlLinkRipper.Parse((char*)stringResult.c_str(), bytes_recieved,
-				//		(char*)parser.wholeLink.c_str(), bytes_header, &nLinks); //43
-
-				//	char* linkCounter = htmlLinkRipper.Parse((char*)stringResult.c_str(), bytes_file,
-				//		(char*)parser.wholeLink.c_str(), bytes_header, &nLinks);  //43
-				
-				//	char* linkCounter = htmlLinkRipper.Parse( (char*)stringResult.c_str(), bytes_file,
-				//		(char*)parser.wholeLink.c_str() , strlen((char*)parser.wholeLink.c_str()), &nLinks);  //43	
-
-				//	char* linkCounter = htmlLinkRipper.Parse( (char*)stringResult.c_str(), bytes_recieved,
-				//		(char*)parser.wholeLink.c_str() , strlen((char*)parser.wholeLink.c_str()), &nLinks);  //	43	
-
-					char* linkCounter = htmlLinkRipper.Parse( (char*)stringResult.c_str(), bytes_header,
+					char* linkCounter = htmlLinkRipper.Parse((char*)stringResult.c_str(), bytes_file,
 						(char*)parser.wholeLink.c_str() , strlen((char*)parser.wholeLink.c_str()), &nLinks);  // 43
 
 

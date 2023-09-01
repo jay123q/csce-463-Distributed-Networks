@@ -24,6 +24,7 @@ class parsedHtml
 
 		void parseString(const char* link);
 		void generateRequesttoSend( string request );
+		void generateRobots(void);
 		std::vector <std::string> parseTXTFile(std::string filename);
 
 		void ParseSendRead(string url);

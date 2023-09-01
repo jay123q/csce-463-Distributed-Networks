@@ -192,12 +192,13 @@ bool Socket::Read(void)
 			// cout << " select has passed! " << '\n';
 			// new data available; now read the next segment
 			int bytes = recv(sock, this->buf + curPos, allocatedSize - curPos, 0);
-
+			// cout << " bytes recieved per loop : " << bytes << '\n';
 			if (bytes < 0)
 			{
 				printf("Failed with %d\n", WSAGetLastError());
 				break;
 			}
+			curPos += bytes; // update cursor
 			if (bytes == 0)
 			{
 				// cout << " bytes done " << std::endl;
@@ -225,7 +226,6 @@ bool Socket::Read(void)
 			   // memcpy the buffer into a bigger array
 			}
 			// cout << this->allocatedSize - curPos << " bytes from the buffer " << std::endl;
-			curPos += bytes; // update cursor
 
 		}
 		else if (ret == 0)
