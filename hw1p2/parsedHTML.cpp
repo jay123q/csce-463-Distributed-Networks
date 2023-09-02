@@ -362,15 +362,19 @@ std::vector<std::string> parsedHtml::parseTXTFile( std::string filename )
     
  }
 
-void parsedHtml::ParseSendRead(std::string url)
+bool parsedHtml::ParseRobotSendRead(std::string url)
 {
 
     this->parseString(url.c_str());
     // handle socketing
-    Socket* webSocket = new Socket();
+    this->webSocket = new Socket();
     // cout << " whole link " << parser.wholeLink << std::endl;
-    this->generateRequesttoSend("GET");
-    bool socketCheck = webSocket->Send(this->total, this->wholeLink, this->host, this->port, this->printPathQueryFragment());
+
+    // handle ROBOTS
+    cout << "\t   Connecting on Robots ";
+
+    this->generateRobots();
+    bool socketCheck = this->webSocket->Send(this->total, this->host, this->port);
 
     if (socketCheck)
     {
@@ -379,11 +383,59 @@ void parsedHtml::ParseSendRead(std::string url)
         {
             webSocket->closeSocket(); // maybe move this into read? 
             // so now the html should return the buffer soo
-            const char* result = webSocket->printBuf();
+            WSACleanup();
+            string status(webSocket->printBuf());
+            const unsigned int statusCode = stoi(status.substr(9.3).c_str());
+
+            if (statusCode >= 400)
+            {
+                // robots allowed
+                cout << "\t   Verifying header... ";
+                // parse header now
+
+                cout << "status code " << statusCode << std::endl;
+
+
+                // int httpPointer = webSocket->printBuf().find("HTTP/");
+
+            }
+            else if (statusCode < 400 && statusCode >= 200)
+            {
+                return false;
+            }
+            //std::string resultButString(result);
+            //int findHeader = resultButString.find("\r\n\r\n");
+            //std::string header = resultButString.substr(0, findHeader);
+            //cout << header;
+
+
+        }
+    }
+ 
+    return false;
+    
+}
+
+
+bool parsedHtml::ParseHostSend( std::string wholeLink )
+{
+   
+    this->generateRequesttoSend("GET");
+    bool socketCheck = this->webSocket->Send(this->total, this->host, this->port);
+
+    if (socketCheck)
+    {
+        // now try to read
+        if (this->webSocket->Read())
+        {
+            // HERE && strlen(webSocket->printBuf().c_str()) < MAX_REQUEST_LEN ???
+            this->webSocket->closeSocket(); // maybe move this into read? 
+            // so now the html should return the buffer soo
+            const char* result = this->webSocket->printBuf();
             // cout << " print the result and junk \n " << webSocket->printBuf() << std::endl;
             // cout << " the result  is " << this->printBuf() << std::endl;
             string status(webSocket->printBuf());
-            int statusCode = stod(status.substr(9.3).c_str());
+            const unsigned int statusCode = stoi(status.substr(9.3).c_str());
             cout << "\t   Verifying header... ";
             string stringResult(result);
             // parse header now
@@ -406,7 +458,7 @@ void parsedHtml::ParseSendRead(std::string url)
                 int nLinks = 0;
                 HTMLParserBase htmlLinkRipper;
                 char* linkCounter = htmlLinkRipper.Parse((char*)stringResult.c_str(), bytes_file,
-                    (char*)this->wholeLink.c_str(), strlen((char*)this->wholeLink.c_str()), &nLinks);  // 43
+                    (char*)wholeLink.c_str(), strlen((char*)wholeLink.c_str()), &nLinks);  // 43
 
 
                 finish = clock();
@@ -415,22 +467,68 @@ void parsedHtml::ParseSendRead(std::string url)
                 printf("=======================================================\n");
 
                 // int httpPointer = webSocket->printBuf().find("HTTP/");
-
             }
-            else
-            {
-                //int skipBadLinks = webSocket->printBuf().find("\r\n\r\n");
-                cout << "status code " << statusCode << std::endl;
-                printf("=======================================================\n");
-                //cout << "web socket " << webSocket->printBuf() << std::endl;
-
-                //cout << " html pointer is " << htmlPointer << std::endl;
-            }
-            std::string resultButString(result);
-            int findHeader = resultButString.find("\r\n\r\n");
-            std::string header = resultButString.substr(0, findHeader);
-            cout << header;
-
         }
     }
+    // robots did not connect
+    return false;
 }
+
+bool parsedHtml::urlCheck(std::string link, string pathQueryFragment)
+            {
+
+                cout << "URL: " << link << std::endl;
+                cout << "\t   Parsing URL... ";
+                const char* httpLinkCheck = strstr(link.c_str(), "://");
+
+                if (httpLinkCheck == nullptr)
+                {
+                    //cout << " linkcheck HTTPS " << httpLinkCheck << std::endl;
+                    cout << "failed with invalid scheme " << std::endl;
+
+                    return false;
+                }
+                if (port == 65536)
+                {
+                    cout << " failed with invalid port " << std::endl;
+                    return false;
+                }
+                cout << "host " << host << ", port " << port << ", request " << pathQueryFragment << std::endl;
+
+                // chhecking host uniqueness
+
+
+
+                cout << '\t   ' << "Checking host uniqueness... " << std::endl;
+                set<string> seenHosts;
+                auto resultHostCheck = seenHosts.insert(host.c_str());
+                if (resultHostCheck.second != true)
+                { // duplicate host
+
+                    cout << "failed" << '\n';
+                    return false;
+                }
+
+                // Socket* webSocket = new Socket();
+                bool DNSpass = this->webSocket->DNSCheck(host.c_str());
+                if (DNSpass != true)
+                {
+                    cout << " parsed HTML DNS FAILED IN  URL CHECK 515 REMOVE LATER \n";
+                    return false;
+                }
+
+
+
+                set<DWORD> seenIPs;
+                auto resultIpCheck = seenIPs.insert(stod(inet_ntoa(this->webSocket->getServer().sin_addr)));
+                // if a valid IP, directly drop its binary version into sin_addr
+                if (resultIpCheck.second != true)
+                { // duplicate host
+
+                    cout << "failed" << '\n';
+                    return false;
+                }
+                cout << "passed \n";
+
+                return true;
+            }

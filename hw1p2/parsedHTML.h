@@ -4,9 +4,15 @@
 #include <fstream>
 #include <vector>
 #include <iostream>
-using namespace std;
 #include "HTMLParserBase.h"
 #include "socket.h"
+#include <string>
+#include <set>
+
+
+class Socket;
+
+using namespace std;
 class parsedHtml
 {
 
@@ -19,6 +25,7 @@ class parsedHtml
 		string wholeLink;
 		string total;
 		string httpStatus;
+		Socket* webSocket;
 		char* readFileBuf;
 		int intFileSize;
 
@@ -27,11 +34,13 @@ class parsedHtml
 		void generateRobots(void);
 		std::vector <std::string> parseTXTFile(std::string filename);
 
-		void ParseSendRead(string url);
+		bool ParseRobotSendRead(string url);
+		bool ParseHostSend(std::string wholeLink);
+		bool urlCheck(std::string link, string pathQueryFragment);
 		string printHost()
 		{
 			return "http://" + this->host;
-		};
+		}
 		string printPath()
 		{
 			return this->path;

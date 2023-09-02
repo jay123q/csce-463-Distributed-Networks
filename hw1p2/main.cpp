@@ -16,7 +16,29 @@ using namespace std;
 
 void winsock_test(void);
 
+int contiuneRunning(parsedHtml* parser, const char * urlLink )
+{
+	parser->parseString(urlLink);
+	bool urlPass = parser->urlCheck(parser->wholeLink, parser->printPathQueryFragment());
+	if (urlPass != true)
+	{
+		cout << " moving on to next url move this laster \n main.cpp \n";
+		return -2;
+	}
+	bool robotPass = parser->ParseRobotSendRead(parser->wholeLink);
+	if (robotPass != true)
+	{
+		cout << " sending to robots failed in main \n, moving on to next \n";
+		return -2;
+	}
+	bool sendPass = parser->ParseHostSend(parser->wholeLink);
+	if (sendPass != true)
+	{
+		cout << " sending the request has failed in main, could not be a issue, moving to next remove me \n";
+		return -2;
+	}
 
+}
 
 
 
@@ -57,7 +79,8 @@ int main(int argc, char* argv[])
 
 	*/
 	
-	parser.parseTXTFile("100url.txt");
+	std::vector<string> urlList = parser.parseTXTFile("100url.txt");
+
 
 	// this was used for all testing locally
 

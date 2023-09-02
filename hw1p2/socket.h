@@ -10,13 +10,17 @@ class Socket {
 private:
 	SOCKET sock; // socket handle
 	char* buf; // current buffer
+	bool robots;
 	int allocatedSize; // bytes allocated for buf
 	int curPos; // current position in buffer
+	struct hostent* remote;
+	struct sockaddr_in server;
 public:
 	// extra stuff as needed
 	Socket();
 	bool Read(void);
-	bool Send(std::string sendRequest , std::string link, std::string host, int port, std::string pathQueryFragment);
+	bool Send(std::string sendRequest, std::string host, int port);
+	bool DNSCheck(std::string host);
 	void closeSocket();
 	//void ReadSendCheckStatus(parsedHtml &parser);
 	const char * printBuf()
@@ -26,6 +30,14 @@ public:
 	int getCurPos()
 	{
 		return this->curPos;
+	}
+	hostent* getRemote()
+	{
+		return this->remote;
+	}
+	sockaddr_in getServer()
+	{
+		return this->server;
 	}
 	// void CreateSocket(void);
 };
