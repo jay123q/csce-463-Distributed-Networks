@@ -5,6 +5,21 @@
 using namespace std;
 
 
+void parsedHtml::resetParser(void)
+{
+    this->port = 80;
+    this->host = '\0';
+    this->fragment = '\0';
+    this->query = '\0';
+    this->path = '\0';
+    this->wholeLink = '\0';
+    this->total = '\0';
+    this->httpStatus='\0';
+    this->webSocket=new Socket();
+    // this->readFileBuf[0] = '\0';
+    this->intFileSize=0;
+}
+
 void parsedHtml::parseString(const char  * link) {
 
     this->wholeLink = link;
@@ -214,55 +229,10 @@ void parsedHtml::parseString(const char  * link) {
     }
 
 
-   // cout << " 206 check " << std::endl;
-    /*
-    if (  strstr(parsedValue.at(2).c_str(), "single /") != nullptr )
-    {
-        cout << "parsed value " << strstr(parsedValue.at(2).c_str(), "single /")  << std::endl;
-        this->path = '\0';
-        // handle this in printer
-       // cout << " check if the path is correct as it reads nothing parsedHtml.cpp " << this->path << std::endl;
-    }
-    else
-    {
-        this->path = parsedValue.at(2).c_str();
-        cout << " path push " << this->path << std::endl;
-    }
-
-
-    cout << " 222 check " << std::endl;
-
-    if (strstr(parsedValue.at(1).c_str(), "no query") != nullptr)
-    {
-        this->query = '\0';
-        cout << " query is " << strstr(parsedValue.at(1).c_str(), "no query") << " pathh is " << this->query << std::endl;
-    }
-    else
-    {
-
-        this->query = parsedValue.at(1).c_str();
-    }
-
-    if (strstr(parsedValue.at(0).c_str(), "no fragment") != nullptr)
-    {
-        this->fragment = '\0';
-        cout << " fragment is " << strstr(parsedValue.at(0).c_str(), "no fragment") << " pathh is " << this->fragment << std::endl;
-
-    }
-    else
-    {
-        this->fragment = parsedValue.at(0).c_str();
-    }
-
-    */
-
-   // cout << " path final check is " << this->path << std::endl;
-
-   
 
 }
 
-void parsedHtml::generateRequesttoSend( string request)
+void parsedHtml::generateGETrequestToSend( void )
 {
 
     // something to note for future semesters here, theres something odd with the strings and how they work in the send
@@ -275,14 +245,14 @@ void parsedHtml::generateRequesttoSend( string request)
   //  cout << " get request |" << getRequest << "| \n";
   //  cout << " path " << printPathQueryFragment() << std::endl;
    // this->total =  "GET / HTTP/1.1\r\nUser-agent: JoshTamuCrawler/1.1\r\nHost: tamu.edu\r\nConnection: close\r\n\r\n"; // CORRECT
-    this->total = request + printPathQueryFragment() + " HTTP/1.2\r\nUser-agent: JoshTamuCrawler/1.1\r\nHost: "+this->host+"\r\nConnection: close\r\n\r\n"; // INCORRECT
+    this->total = "GET " + printPathQueryFragment() + " HTTP/1.1\r\nUser-agent: JoshTamuCrawler/1.1\r\nHost: " + this->host + "\r\nConnection: close\r\n\r\n"; 
   //  cout << " total \n" << this->total << std::endl;
    // this->total = "GET /IRL7 HTTP/1.0\r\nUser-agent: JoshTamuCrawler/1.1\r\nHost: s2.irl.cs.tamu.edu\r\nConnection: close\r\n\r\n";
 }
 
-void parsedHtml::generateRobots(void)
+void parsedHtml::generateHEADrequestToSend(void)
 {
-this->total = "HEAD /robots.txt HTTP/1.1\r\nUser-agent: JoshTamuCrawler/1.2\r\nHost: " + this->host + "\r\nConnection: close\r\n\r\n"; // INCORRECT
+this->total = "HEAD /robots.txt HTTP/1.1\r\nUser-agent: JoshTamuCrawler/1.2\r\nHost: " + this->host + "\r\nConnection: close\r\n\r\n"; 
 }
 
 
@@ -362,19 +332,18 @@ std::vector<std::string> parsedHtml::parseTXTFile( std::string filename )
     
  }
 
-bool parsedHtml::ParseRobotSendRead(std::string url)
+bool parsedHtml::RobotSendRead(void)
 {
+    cout << "\t   Connecting on robots... ";
 
-    this->parseString(url.c_str());
-    // handle socketing
-    this->webSocket = new Socket();
-    // cout << " whole link " << parser.wholeLink << std::endl;
+    bool connect = this->webSocket->Connect(this->port);
+    if (connect != true)
+    {
 
-    // handle ROBOTS
-    cout << "\t   Connecting on Robots ";
-
-    this->generateRobots();
-    bool socketCheck = this->webSocket->Send(this->total, this->host, this->port);
+        return false;
+    }
+    this->generateHEADrequestToSend();
+    bool socketCheck = this->webSocket->Send(this->total, this->host);
 
     if (socketCheck)
     {
@@ -383,26 +352,29 @@ bool parsedHtml::ParseRobotSendRead(std::string url)
         {
             webSocket->closeSocket(); // maybe move this into read? 
             // so now the html should return the buffer soo
-            WSACleanup();
+           // WSACleanup();
+            
             string status(webSocket->printBuf());
             const unsigned int statusCode = stoi(status.substr(9.3).c_str());
+            cout << "\t   Verifying header... ";
 
             if (statusCode >= 400)
             {
                 // robots allowed
-                cout << "\t   Verifying header... ";
                 // parse header now
 
                 cout << "status code " << statusCode << std::endl;
 
 
                 // int httpPointer = webSocket->printBuf().find("HTTP/");
-                cout << " parsing HTML ROBOT CHECK PASSED REMOVE ME LATER \n";
+               // cout << " parsing HTML ROBOT CHECK PASSED REMOVE ME LATER \n";
                 return true; // go back to the main parsing url
 
             }
             else if (statusCode < 400 && statusCode >= 200)
             {
+                cout << "status code " << statusCode << std::endl;
+                this->webSocket->robots = false;
                 return false;
             }
             //std::string resultButString(result);
@@ -419,11 +391,19 @@ bool parsedHtml::ParseRobotSendRead(std::string url)
 }
 
 
-bool parsedHtml::ParseHostSend( std::string wholeLink )
+bool parsedHtml::ReconnectHostSend( void )
 {
-   
-    this->generateRequesttoSend("GET");
-    bool socketCheck = this->webSocket->Send(this->total, this->host, this->port);
+    cout << '\t' << " * Connecting on page... ";
+    bool connection = this->webSocket->Connect(this->port);
+    if (connection != true)
+    {
+        cout << " reconnection failed in reconnectHOSTSEND parsed HTML.CPP \n";
+        return false;
+    }
+    this->generateGETrequestToSend();
+
+
+    bool socketCheck = this->webSocket->Send(this->total, this->host);
 
     if (socketCheck)
     {
@@ -433,6 +413,8 @@ bool parsedHtml::ParseHostSend( std::string wholeLink )
             // HERE && strlen(webSocket->printBuf().c_str()) < MAX_REQUEST_LEN ???
             this->webSocket->closeSocket(); // maybe move this into read? 
             // so now the html should return the buffer soo
+            WSACleanup();
+
             const char* result = this->webSocket->printBuf();
             // cout << " print the result and junk \n " << webSocket->printBuf() << std::endl;
             // cout << " the result  is " << this->printBuf() << std::endl;
@@ -441,9 +423,11 @@ bool parsedHtml::ParseHostSend( std::string wholeLink )
             cout << "\t   Verifying header... ";
             string stringResult(result);
             // parse header now
+            cout << "status code " << statusCode << std::endl;
+
+
             if (statusCode > 199 && statusCode < 300)
             {
-                cout << "status code " << statusCode << std::endl;
                 clock_t start = clock();
                 clock_t finish = clock();
                 cout << "\t + Parsing page... ";
@@ -466,7 +450,8 @@ bool parsedHtml::ParseHostSend( std::string wholeLink )
                 finish = clock();
                 double timer = (double)(finish - start) / CLOCKS_PER_SEC;
                 printf("done in %.1f ms with %d links\n", timer * 1000, nLinks);
-                printf("=======================================================\n");
+                return true;
+               // printf("=======================================================\n");
 
                 // int httpPointer = webSocket->printBuf().find("HTTP/");
             }
@@ -501,7 +486,7 @@ bool parsedHtml::urlCheck(std::string link, string pathQueryFragment)
 
 
 
-                cout << '\t   ' << "Checking host uniqueness... " << std::endl;
+                cout << "\t   Checking host uniqueness... ";
                 set<string> seenHosts;
                 auto resultHostCheck = seenHosts.insert(host.c_str());
                 if (resultHostCheck.second != true)
@@ -510,16 +495,25 @@ bool parsedHtml::urlCheck(std::string link, string pathQueryFragment)
                     cout << "failed" << '\n';
                     return false;
                 }
-
+                cout << "passed \n";
                 // Socket* webSocket = new Socket();
+                cout << '\t' << "   Doing DNS... ";
                 bool DNSpass = this->webSocket->DNSCheck(host.c_str());
+
                 if (DNSpass != true)
                 {
-                    cout << " parsed HTML DNS FAILED IN  URL CHECK 515 REMOVE LATER \n";
+                    // cout << "failed \n";
+                     // cout << " parsed HTML DNS FAILED IN  URL CHECK 515 REMOVE LATER \n";
                     return false;
                 }
 
 
+
+
+
+
+
+                cout << "\t   Checking IP uniqueness... ";
 
                 set<DWORD> seenIPs;
                 auto resultIpCheck = seenIPs.insert(stod(inet_ntoa(this->webSocket->getServer().sin_addr)));
@@ -530,7 +524,10 @@ bool parsedHtml::urlCheck(std::string link, string pathQueryFragment)
                     cout << "failed" << '\n';
                     return false;
                 }
-                cout << "passed NO UNIUQE IDS FOUND IN FIRST CHECK  URL CHECK, REMOVE ME LATER \n";
                 
+                cout << "passed \n";
+                // cout << "passed NO UNIUQE IDS FOUND IN FIRST CHECK  URL CHECK, REMOVE ME LATER \n";
+
+ 
                 return true;
             }

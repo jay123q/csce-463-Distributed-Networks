@@ -26,17 +26,22 @@ class parsedHtml
 		string total;
 		string httpStatus;
 		Socket* webSocket;
+		struct sockaddr_in serverParserTemp;
 		char* readFileBuf;
 		int intFileSize;
-
-		void parseString(const char* link);
-		void generateRequesttoSend( string request );
-		void generateRobots(void);
+		void resetParser(void);
+		void parseString(const char* link); // parses the url
+		void generateGETrequestToSend(void);
+		void generateHEADrequestToSend(void);
 		std::vector <std::string> parseTXTFile(std::string filename);
 
-		bool ParseRobotSendRead(string url);
-		bool ParseHostSend(std::string wholeLink);
+		bool RobotSendRead(void);
+		bool ReconnectHostSend(void);
 		bool urlCheck(std::string link, string pathQueryFragment);
+		void transferSetServer(struct sockaddr_in webSocketServer)
+		{
+			this->serverParserTemp = webSocketServer;
+		}
 		string printHost()
 		{
 			return "http://" + this->host;

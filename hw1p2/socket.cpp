@@ -59,7 +59,7 @@ bool Socket::DNSCheck(std::string host)
 	if (IP == INADDR_NONE)
 	{
 		// if not a valid IP, then do a DNS lookup
-		cout << " find invalid memoery  hceck " << this->remote << std::endl;
+		// cout << " find invalid memoery  hceck " << this->remote << std::endl;
 		if ((this->remote = gethostbyname(host.c_str())) == NULL)
 		{
 			printf("Connection error: %d\n", WSAGetLastError());
@@ -80,7 +80,7 @@ bool Socket::DNSCheck(std::string host)
 		this->server.sin_addr.S_un.S_addr = IP;
 	}
 
-	cout << '\t' << "   Doing DNS... ";
+	
 	clock_t start = clock();
 	clock_t finish = clock(); // compiler wont shut up about this
 
@@ -88,11 +88,32 @@ bool Socket::DNSCheck(std::string host)
 	finish = clock();
 	double timepassed = double(finish - start) / (double)CLOCKS_PER_SEC;
 
+
 	cout << "done in " << timepassed * 1000 << " ms, found " << inet_ntoa(this->server.sin_addr) << std::endl;
+
+	return true;
 }
 
+bool Socket::Connect(int port)
+{
+	clock_t start = clock();
+	this->server.sin_family = AF_INET; // IPv4
+	this->server.sin_port = htons(port); // port #
 
-bool Socket::Send(string sendRequest , string host, int port)
+
+	if (connect(this->sock, (struct sockaddr*)&(this->server), sizeof(struct sockaddr_in)) == SOCKET_ERROR)
+	{
+		printf("Connection error: %d\n", WSAGetLastError());
+		return false;
+	}
+	double timepassed = double(clock() - start) / (double)CLOCKS_PER_SEC;
+	cout << "done in " << timepassed * 1000 << " ms " << std::endl;
+
+	// print
+	return true;
+}
+
+bool Socket::Send(string sendRequest , string host)
 {
 	if (strlen(buf) > 32000)
 	{
@@ -103,26 +124,14 @@ bool Socket::Send(string sendRequest , string host, int port)
 	// 
 	// 
 	// task 2
+	// cout << " server connction S_addr" << this->server.sin_addr.S_un.S_addr << std::endl;
+	// cout << " server connction sin family " << this->server.sin_family << std::endl;
+	// cout << " server connction sin_port " << this->server.sin_port << std::endl;
 	
 	// task 3
 	// https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-connect
 	// yoinked from here ^
-	cout << '\t' << " * Connecting on page... ";
-	clock_t start = clock();
-	this->server.sin_family = AF_INET; // IPv4
-	this->server.sin_port = htons(port); // port #
-
-		if (connect( this->sock, ( struct sockaddr* ) &(this->server), sizeof( struct sockaddr_in ) ) == SOCKET_ERROR)
-		{
-			printf("Connection error: %d\n", WSAGetLastError());
-			return false;
-		}
-
-
-	// print
-	clock_t finish = clock();
-	double timepassed = double(finish - start) / (double)CLOCKS_PER_SEC;
-	cout << "done in " << timepassed * 1000 << " ms " << std::endl;
+	// cout << '\t' << " * Connecting on page... ";
 
 	//https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-send
 	// add a +1 for nnull terminator

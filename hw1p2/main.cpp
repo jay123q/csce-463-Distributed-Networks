@@ -20,24 +20,37 @@ int contiuneRunning(parsedHtml* parser, const char * urlLink )
 {
 	parser->parseString(urlLink);
 	bool urlPass = parser->urlCheck(parser->wholeLink, parser->printPathQueryFragment());
+	parser->webSocket->robots = true;
+	// parser->webSocket->printDNStiming = true;
+	// 
 	if (urlPass != true)
 	{
 		cout << " moving on to next url move this laster \n main.cpp \n";
 		return -2;
 	}
-	bool robotPass = parser->ParseRobotSendRead(parser->wholeLink);
+
+	// taking a copy of the server
+	parser->transferSetServer(parser->webSocket->getServer());
+
+
+	bool robotPass = parser->RobotSendRead();
 	if (robotPass != true)
 	{
-		cout << " sending to robots failed in main \n, moving on to next \n";
+		cout << " sending to robots failed in main, moving on to next \n";
 		return -2;
 	}
-	bool sendPass = parser->ParseHostSend(parser->wholeLink);
+
+	// parser->webSocket->printDNStiming = false;
+	parser->webSocket = new Socket();
+	parser->webSocket->setServer(parser->serverParserTemp);
+	bool sendPass = parser->ReconnectHostSend();
 	if (sendPass != true)
 	{
 		cout << " sending the request has failed in main, could not be a issue, moving to next remove me \n";
 		return -2;
 	}
-
+	cout << " finished the  main function contiune running 42 \n";
+	return 0;
 }
 
 
@@ -50,8 +63,8 @@ int main(int argc, char* argv[])
 	int numberThreads = 0;
 	bool runVector = false;
 	parsedHtml parser;
-
-	std::string url = "http://s2.irl.cs.tamu.edu/IRL8";
+	parser.resetParser();
+	std::string url = "http://irl.cs.tamu.edu/";
 	return contiuneRunning(&parser, url.c_str());
 	/*
 	if (argc == 2)
