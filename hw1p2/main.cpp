@@ -51,7 +51,8 @@ int main(int argc, char* argv[])
 	bool runVector = false;
 	parsedHtml parser;
 
-	// std::string url = "http://s2.irl.cs.tamu.edu/IRL8";
+	std::string url = "http://s2.irl.cs.tamu.edu/IRL8";
+	return contiuneRunning(&parser, url.c_str());
 	/*
 	if (argc == 2)
 	{
@@ -79,7 +80,7 @@ int main(int argc, char* argv[])
 
 	*/
 	
-	std::vector<string> urlList = parser.parseTXTFile("100url.txt");
+	// std::vector<string> urlList = parser.parseTXTFile("100url.txt");
 
 
 	// this was used for all testing locally

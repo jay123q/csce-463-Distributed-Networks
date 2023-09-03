@@ -397,6 +397,8 @@ bool parsedHtml::ParseRobotSendRead(std::string url)
 
 
                 // int httpPointer = webSocket->printBuf().find("HTTP/");
+                cout << " parsing HTML ROBOT CHECK PASSED REMOVE ME LATER \n";
+                return true; // go back to the main parsing url
 
             }
             else if (statusCode < 400 && statusCode >= 200)
@@ -528,7 +530,7 @@ bool parsedHtml::urlCheck(std::string link, string pathQueryFragment)
                     cout << "failed" << '\n';
                     return false;
                 }
-                cout << "passed \n";
-
+                cout << "passed NO UNIUQE IDS FOUND IN FIRST CHECK  URL CHECK, REMOVE ME LATER \n";
+                
                 return true;
             }

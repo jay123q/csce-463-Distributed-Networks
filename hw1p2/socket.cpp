@@ -27,6 +27,8 @@ Socket::Socket()
 		this->curPos = 0;
 		this->buf = new char [INITIAL_BUF_SIZE];
 		this->robots = true;
+		this->remote = nullptr;
+		//this->server = nullptr;
 		// ripping from winsock
 		this->sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 		if (sock == INVALID_SOCKET)
@@ -57,6 +59,7 @@ bool Socket::DNSCheck(std::string host)
 	if (IP == INADDR_NONE)
 	{
 		// if not a valid IP, then do a DNS lookup
+		cout << " find invalid memoery  hceck " << this->remote << std::endl;
 		if ((this->remote = gethostbyname(host.c_str())) == NULL)
 		{
 			printf("Connection error: %d\n", WSAGetLastError());
