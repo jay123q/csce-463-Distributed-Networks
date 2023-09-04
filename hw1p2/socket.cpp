@@ -52,7 +52,7 @@ void Socket::closeSocket()
 	}
 	// delete buf;
 	// closesocket(sock);
-	cout << " close the socket plox " << sock << std::endl;
+	// cout << " close the socket plox " << sock << std::endl;
 	this->sock = INVALID_SOCKET;
 	
 

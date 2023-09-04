@@ -32,7 +32,7 @@ class parsedHtml
 		char* readFileBuf;
 		int intFileSize;
 		void resetParser(void);
-		void parseString(const char* link); // parses the url
+		bool parseString(string link); // parses the url
 		void generateGETrequestToSend(void);
 		void generateHEADrequestToSend(void);
 		vector <string> parseTXTFile(std::string filename);

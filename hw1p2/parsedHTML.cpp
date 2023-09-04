@@ -23,228 +23,85 @@ void parsedHtml::resetParser(void)
     
 }
 
-void parsedHtml::parseString(const char  * link) {
+bool parsedHtml::parseString(string link) {
 
-    this->wholeLink = link;
-    std::vector<std::string> parsedValue;
 
-    const char* hostStart = link + 7; // Skip "://"
-  //  cout << "found path is " << pathStart << endl;
 
- 
-    const char* fragmentStart = strchr (link, '#');
-    if (fragmentStart != nullptr) {
-        std::string fragment(fragmentStart + 1); // Skip the '#'
-        this->fragment = fragment;
-        //std::string newLink(hostStart, fragmentStart);
-        //const char * link = newLink.c_str();
-       // cout << " removed fragment " << fragment << std::endl;
-    }
-    else
+    this->wholeLink = link.c_str();
+    if (link.substr(0, 7) != "http://")
     {
-        this->fragment = '\0';
+
+        cout << "failed with invalid scheme " << std::endl;
+        return false;
     }
 
-
-    const char* queryStart = strchr(link, '?');
-    if (queryStart !=  nullptr ) {
-        const char* queryEnd = strchr(queryStart, '#');
-        if (!queryEnd) {
-            queryEnd = link + strlen(link);
-        }
-        std::string query(queryStart + 1, queryEnd - queryStart - 1); // Exclude '?' and '#'
-        this->query = query;
-      //  cout << " removed query " << query << std::endl;
-    }
-    else
+    string hostStart = link.substr(7, strlen(link.c_str()));
+    int fragmentIndex = hostStart.find_first_of('#');
+    if (fragmentIndex != -1)
     {
-      //  parsedValue.push_back("no query");
-        this->query = '\0';
+        this->fragment = hostStart.substr(fragmentIndex, strlen(hostStart.c_str()) - 1);
+        hostStart = hostStart.substr(0, fragmentIndex);
+
     }
 
-    // const char* host = strchr(link, '/');
-    const char* pathStart = strchr(hostStart, '/');
-    if (pathStart != nullptr ) 
-    {
-        // this logic has taken me so long to do
-        // if I have to do this ever again, i will be penduluminng myself off the highest bbuilding
-        const char* pathEndQuery = strchr(hostStart, '?'); // check query
-        const char* pathEndFragment = strchr(hostStart, '#'); // check fragent
+    hostStart = hostStart.substr(0, hostStart.find_first_of('#'));
 
-        if (pathEndQuery != nullptr)
-        {
-            std::string path(pathStart + 1, pathEndQuery - pathStart - 1);
-            // parsedValue.push_back(path);
-            this->path = path;
-        }
-        else if (pathEndFragment != nullptr) //check fragment
-        {
-            std::string path(pathStart + 1, pathEndFragment - pathStart - 1); // +1 removes forwrd, -1 removes backward
-            // parsedValue.push_back(path);
-            this->path = path;
-        }
-        else if (pathStart + 1 != nullptr)
-        {
-            this->path = pathStart;
-        }
-        else
-        {
-            //  parsedValue.push_back("single /");
-            this->path = '/';
-        }
-    }
-    else
+    int queryCheck = hostStart.find_first_of('?');
+    if (queryCheck != -1)
     {
-      //  parsedValue.push_back("single /");
-        this->path = '/';
-    }
-   // cout << " new path " << parsedValue.at(parsedValue.size()-1) << endl;
-    // this is because the link can have a : in the middle of the ppath
+        this->query = hostStart.substr(queryCheck , strlen(hostStart.c_str() )-1);
+       // cout << " query check " << query << std::endl;
+        hostStart = hostStart.substr(0, queryCheck );
+    }    
     
-    const char* portStart = strchr(hostStart, ':');
-    if (portStart != nullptr )
+    int pathCheck = hostStart.find_first_of('/');
+    if (pathCheck != -1)
     {
-        // check for malformed port
-        const char* portMalFormed = strstr(hostStart, ":-");
-        //std::str
-       // int portCheck = hostStart.find_first_of(":");
-        
-        if (portMalFormed != nullptr)
-        {
-           // cout << " port is malformed parsedHtml.cpp " << std::endl;
-            std::string portString("- negative port");
-            parsedValue.push_back("- negative port");
-        }
-
-        try
-        {
-
-        }
-        catch (const std::exception&)
-        {
-
-        }
-        const char* portEndBackSlash = strchr(hostStart, '/');
-        const char* portEndQuery = strchr(hostStart, '?');
-        const char* portEndFragment = strchr(hostStart, '#');
-        if (portEndBackSlash != nullptr)
-        {
-           // cout << "1" << std::endl;
-            std::string port(portStart + 1, pathStart - portStart - 1); // remove  :, and /
-            parsedValue.push_back(port);
-        }
-        else if (portEndQuery != nullptr)
-        {
-           // cout << "2" << std::endl;
-
-            std::string port(portStart + 1, portEndQuery - portStart - 1); // remove  :, and ?
-            parsedValue.push_back(port);
-        }
-        else if (portEndFragment != nullptr)
-        {
-         //   cout << "3" << std::endl;
-
-   //         std::string port(portStart + 1, portEndFragment - portStart - 1); // remove  :, and #
-            std::string port(portStart + 1, portEndFragment - portStart - 1); // remove  :, and #
-            parsedValue.push_back(port);
-        }
-        //cout << " new port " << parsedValue.at(parsedValue.size() - 1) << endl;
-
-    }
-    else // empty port
+        this->path = hostStart.substr (pathCheck, strlen(hostStart.c_str()) - 1);
+       // cout << " path check " << path << std::endl;
+        hostStart = hostStart.substr(0, pathCheck );
+    } 
+    else
     {
-        //cout << "4" << std::endl;
-
-        std::string port("80");
-        parsedValue.push_back(port);
-       // cout << " port is empty if this is spewing gargage " << port << " line 99  to fix " << std::endl;
+        this->path = "/";
     }
+    
+    // string stringPort = hostStart.substr(0, hostStart.find_first_of(':'));
+    int portIndex = hostStart.find_first_of(':');
+    // cout << " port check is " << portIndex << " ost start " << strlen(hostStart.c_str()) -1 << std::endl;
+    if (portIndex != -1)
+    {
+        if (portIndex == strlen(hostStart.c_str())-1)
+        {
+            // port doest exist
+            this->port = 80;
+            
+        }
+        else
+        {
 
         
-    if (portStart != nullptr)
-    {
-        //cout << " port check host " << std::endl;
-        std::string host(hostStart, portStart - hostStart);
-        //cout << " parsed Value " << parsedValue.size();
 
-
-      //  cout << " port path check " << host << std::endl;
-        this->host = host;
-    }
-    else if (pathStart != nullptr)
-    {
-        std::string host(hostStart, pathStart - hostStart);
-
-       // parsedValue.push_back(host);
-        this->host = host;
-       // cout << " host path check " << host << std::endl;
-    }
-    else if (queryStart != nullptr)
-    {
-       // cout << " port check query " << std::endl;
-
-        std::string host(hostStart, queryStart - hostStart);
-       // parsedValue.push_back(host);
-        this->host = host;
-     //   cout << " query path check " << host << std::endl;
-
-    }
-    else if (fragmentStart != nullptr)
-    {
-        //cout << " port check fragment " << std::endl;
-
-        std::string host(hostStart, fragmentStart - hostStart);
-       // parsedValue.push_back(host);
-        this->host = host;
-     //   cout << " fragment path check " << host << std::endl;
+        this->port = atoi(hostStart.substr(portIndex +1, (int) strlen(hostStart.c_str()) -1).c_str());
+            if (port <= 0)
+            {
+                cout << " failed with invalid port";
+                return false;
+            }
+        }
+        this->host = hostStart.substr(0, hostStart.find_first_of(':'));
 
     }
     else
     {
-        std::string host(hostStart);
-      //  parsedValue.push_back(host);
-        this->host = host;
-        // cout << " host print " << host << std::endl;
+        
+        this->port = 80;
+        this->host = hostStart;
     }
 
 
 
-
-//    cout << " 174 check " << std::endl;
-
-
-
-    try
-    {
-        // if there is a -, or if the port is nullptr
-        if ( strchr(parsedValue.at(0).c_str(), '-') !=  nullptr )
-        {
-            // if we found a negative port 
-          //  cout << "negtaive port spotted parsed html 162 " << std::endl;
-            this->port = 65536; // one above port range if its invalid or dne
-
-        }
-        else
-        {
-           // cout << " checking waht parsed value got " << parsedValue.at(0) << std::endl;
-            this->port = stoi(parsedValue.at(0));
-            if (this->port == 0)
-            {
-                this->port = 65536;
-            }
-
-        }
-
-    }
-    catch (...)
-    {
-        //cout << "setting port to 80, parsedhtml.cpp 173 " << port << std::endl;
-        // else there is no port so it becomes 80
-        this->port = 80; // one above port range if its invalid or dne
-    }
-
-
-
+    return true;
 }
 
 void parsedHtml::generateGETrequestToSend( void )
@@ -329,13 +186,13 @@ char * parsedHtml::parseTXTFileBROKEN( std::string filename )
     int newIndex = urlString.find_first_of('\n');
     // std::string url = urlString.substr(0, newIndex);
    // std::string url = "";
-    cout << " the first is " << newIndex << std::endl;
+  //  cout << " the first is " << newIndex << std::endl;
     while (newIndex != std::string::npos)
     {
         // create vector
 
         std::string url = urlString.substr(0, newIndex + 1);
-        cout << " the link is |" << url << "|  blank space " << std::endl;
+       // cout << " the link is |" << url << "|  blank space " << std::endl;
         //continueRunning(&parser, url.c_str());
         // update string
        // cout << " the return link is " << urlString.substr(0, newIndex) << std::endl;
@@ -492,23 +349,12 @@ bool parsedHtml::ReconnectHostSend(void)
 
 bool parsedHtml::urlCheck(std::string link, string pathQueryFragment)
             {
-
-                cout << "URL: " << link << std::endl;
-                cout << "\t   Parsing URL... ";
-                const char* httpLinkCheck = strstr(link.c_str(), "://");
-
-                if (httpLinkCheck == nullptr)
+                bool parseCheck = parseString(link);
+                if(parseCheck == false )
                 {
-                    //cout << " linkcheck HTTPS " << httpLinkCheck << std::endl;
-                    cout << "failed with invalid scheme " << std::endl;
-
                     return false;
                 }
-                if (port == 65536)
-                {
-                    cout << " failed with invalid port " << std::endl;
-                    return false;
-                }
+
                 cout << "host " << host << ", port " << port << ", request " << pathQueryFragment << std::endl;
 
                 // chhecking host uniqueness

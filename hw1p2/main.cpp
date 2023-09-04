@@ -19,6 +19,8 @@ void winsock_test(void);
 void continueRunning(parsedHtml* parser, const char * urlLink )
 {
 	// cout << " size of  main  parser " << sizeof(parser) << std::endl;
+	cout << "URL: " << urlLink << std::endl;
+	cout << "\t   Parsing URL... ";
 	parser->parseString(urlLink);
 	bool urlPass = parser->urlCheck(parser->wholeLink, parser->printPathQueryFragment());
 	parser->webSocket->robots = true;
@@ -26,7 +28,7 @@ void continueRunning(parsedHtml* parser, const char * urlLink )
 	// 
 	if (urlPass != true)
 	{
-		cout << " URL FAILED moving on to next url move this main.cpp \n";
+		// cout << " URL FAILED moving on to next url move this main.cpp \n";
 		return;
 	}
 
@@ -38,7 +40,7 @@ void continueRunning(parsedHtml* parser, const char * urlLink )
 	bool robotPass = parser->RobotSendRead();
 	if (robotPass != true)
 	{
-		cout << "ROBOT FAILED  sending to robots failed in main, moving on to next \n";
+	//	cout << "ROBOT FAILED  sending to robots failed in main, moving on to next \n";
 		return;
 	}
 
@@ -48,7 +50,7 @@ void continueRunning(parsedHtml* parser, const char * urlLink )
 	bool sendPass = parser->ReconnectHostSend();
 	if (sendPass != true)
 	{
-		cout << "RECONNECT HOST FAILED sending the request has failed in main, could not be a issue, moving to next remove me \n";
+	//	cout << "RECONNECT HOST FAILED sending the request has failed in main, could not be a issue, moving to next remove me \n";
 		return;
 	}
 	// cout << " finished the  main function contiune running 42 \n";
@@ -70,7 +72,6 @@ int main(int argc, char* argv[])
 	parsedHtml parser;
 	// parser.resetParser();
 	parser.webSocket = new Socket();
-	/* 
 	if (argc == 2)
 	{
 		// std::string filename = "http://allafrica.com/stories/201501021178.html";
@@ -79,7 +80,7 @@ int main(int argc, char* argv[])
 	}
 	else if (argc == 3)
 	{
-		numberThreads = 1;
+		numberThreads = stoi(argv[1]);
 		std::string filename = argv[2];
 		vector<string> totalVector =  parser.parseTXTFile(filename);
 
@@ -98,7 +99,7 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 	
-	*/
+	/* 
 	numberThreads = 1;
 	std::string filename = "100url.txt";
 	vector<string> totalVector =  parser.parseTXTFile(filename);
@@ -110,9 +111,10 @@ int main(int argc, char* argv[])
 		parser.webSocket = new Socket();
 	}
 
-	/*
-	std::string filename = "http://www.symantec.com/verisign/ssl-certificates";
+	std::string filename = "http://www.weatherline.net/";
 		continueRunning(&parser,filename.c_str());
+	*/
+	/*
 	// parsedHtml parser2;
 	filename = "http://amti.csis.org/category/taiwan/";
 	parser.resetParser();
