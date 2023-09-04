@@ -15,9 +15,12 @@ void parsedHtml::resetParser(void)
     this->wholeLink = '\0';
     this->total = '\0';
     this->httpStatus='\0';
-    this->webSocket=new Socket();
+    // this->webSocket->~Socket();
+    // this->webSocket=new Socket();
     // this->readFileBuf[0] = '\0';
+    this->webSocket->~Socket();
     this->intFileSize=0;
+    
 }
 
 void parsedHtml::parseString(const char  * link) {
@@ -99,15 +102,27 @@ void parsedHtml::parseString(const char  * link) {
     // this is because the link can have a : in the middle of the ppath
     
     const char* portStart = strchr(hostStart, ':');
-    if (portStart != nullptr)
+    if (portStart != nullptr )
     {
         // check for malformed port
         const char* portMalFormed = strstr(hostStart, ":-");
+        //std::str
+       // int portCheck = hostStart.find_first_of(":");
+        
         if (portMalFormed != nullptr)
         {
            // cout << " port is malformed parsedHtml.cpp " << std::endl;
             std::string portString("- negative port");
             parsedValue.push_back("- negative port");
+        }
+
+        try
+        {
+
+        }
+        catch (const std::exception&)
+        {
+
         }
         const char* portEndBackSlash = strchr(hostStart, '/');
         const char* portEndQuery = strchr(hostStart, '?');
@@ -254,9 +269,21 @@ void parsedHtml::generateHEADrequestToSend(void)
 {
 this->total = "HEAD /robots.txt HTTP/1.1\r\nUser-agent: JoshTamuCrawler/1.2\r\nHost: " + this->host + "\r\nConnection: close\r\n\r\n"; 
 }
+vector<string> parsedHtml::parseTXTFile(std::string filename)
+{
+    ifstream file(filename, ios::binary | ios::in);
+    std::string line;
+    std::vector <std::string> vectorTotal;
+    while (!file.eof())
+    {
+        getline(file, line);
+        // cout << " the line is " << line << std::endl;
+        vectorTotal.push_back(line);
+    }
+    return vectorTotal;
+}
 
-
-std::vector<std::string> parsedHtml::parseTXTFile( std::string filename )
+char * parsedHtml::parseTXTFileBROKEN( std::string filename )
 {
 
     HANDLE hFile = CreateFile(filename.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
@@ -295,42 +322,44 @@ std::vector<std::string> parsedHtml::parseTXTFile( std::string filename )
     // done with the file
     CloseHandle(hFile);
 
-    std::vector<std::string> returnLink;
+    int delay = 0;
+
     // cout << " file  buff " << fileBuf << std::endl;
     std::string urlString(fileBuf);
     int newIndex = urlString.find_first_of('\n');
-    std::string url = urlString.substr(0, newIndex);
+    // std::string url = urlString.substr(0, newIndex);
+   // std::string url = "";
+    cout << " the first is " << newIndex << std::endl;
     while (newIndex != std::string::npos)
     {
         // create vector
-        returnLink.push_back(urlString.substr(0, newIndex));
+
+        std::string url = urlString.substr(0, newIndex + 1);
+        cout << " the link is |" << url << "|  blank space " << std::endl;
+        //continueRunning(&parser, url.c_str());
         // update string
        // cout << " the return link is " << urlString.substr(0, newIndex) << std::endl;
-        urlString = urlString.substr(newIndex+1, strlen(fileBuf));
+        //urlString[newIndex] = '\0';
+        urlString = urlString.substr(newIndex + 1, strlen(fileBuf));
+        // cout << " url string buffer " << urlString << std::endl;
         // find new index
        // cout << " modified string is " << urlString << std::endl;
-        int newIndex = urlString.find_first_of('\n');
+        int newIndex = urlString.find_first_of("\n");
         if (newIndex == std::string::npos)
         {
             break;
         }
 
+    }
+
+    return fileBuf;
 
     }
 
 
-   /*
-    for ( int i = 0;  i < returnLink.size() ;   i++)
-    {
-        cout << returnLink.at(i) << std::endl;
-    }
-   */
 
-   // kill this later likely
-
-    return returnLink;
     
- }
+ 
 
 bool parsedHtml::RobotSendRead(void)
 {
@@ -348,13 +377,13 @@ bool parsedHtml::RobotSendRead(void)
     if (socketCheck)
     {
         // now try to read
-        if (webSocket->Read()) // after read hit a null terminaotr! to speed up buffer, add one like at curpos?
+        if (this->webSocket->Read()) // after read hit a null terminaotr! to speed up buffer, add one like at curpos?
         {
-            webSocket->closeSocket(); // maybe move this into read? 
+            this->webSocket->closeSocket(); // maybe move this into read? 
             // so now the html should return the buffer soo
-           // WSACleanup();
+            WSACleanup();
             
-            string status(webSocket->printBuf());
+            string status(this->webSocket->printBuf());
             const unsigned int statusCode = stoi(status.substr(9.3).c_str());
             cout << "\t   Verifying header... ";
 
@@ -364,7 +393,6 @@ bool parsedHtml::RobotSendRead(void)
                 // parse header now
 
                 cout << "status code " << statusCode << std::endl;
-
 
                 // int httpPointer = webSocket->printBuf().find("HTTP/");
                // cout << " parsing HTML ROBOT CHECK PASSED REMOVE ME LATER \n";
@@ -391,7 +419,7 @@ bool parsedHtml::RobotSendRead(void)
 }
 
 
-bool parsedHtml::ReconnectHostSend( void )
+bool parsedHtml::ReconnectHostSend(void)
 {
     cout << '\t' << " * Connecting on page... ";
     bool connection = this->webSocket->Connect(this->port);
@@ -413,12 +441,13 @@ bool parsedHtml::ReconnectHostSend( void )
             // HERE && strlen(webSocket->printBuf().c_str()) < MAX_REQUEST_LEN ???
             this->webSocket->closeSocket(); // maybe move this into read? 
             // so now the html should return the buffer soo
+           // cout << " web socket in send GET " << this->webSocket->sock << std::endl;
             WSACleanup();
 
             const char* result = this->webSocket->printBuf();
             // cout << " print the result and junk \n " << webSocket->printBuf() << std::endl;
             // cout << " the result  is " << this->printBuf() << std::endl;
-            string status(webSocket->printBuf());
+            string status(this->webSocket->printBuf());
             const unsigned int statusCode = stoi(status.substr(9.3).c_str());
             cout << "\t   Verifying header... ";
             string stringResult(result);
@@ -434,7 +463,7 @@ bool parsedHtml::ReconnectHostSend( void )
 
                 const char* pastHeaderPtr = strchr(result, '\r\n\r\n');
 
-                int bytes_recieved = webSocket->getCurPos();
+                int bytes_recieved = this->webSocket->getCurPos();
                 int bytes_header = pastHeaderPtr - result; // header bytes
                 int bytes_file = bytes_recieved - bytes_header;
 
@@ -487,8 +516,8 @@ bool parsedHtml::urlCheck(std::string link, string pathQueryFragment)
 
 
                 cout << "\t   Checking host uniqueness... ";
-                set<string> seenHosts;
-                auto resultHostCheck = seenHosts.insert(host.c_str());
+                
+                auto resultHostCheck = this->seenHosts.insert(host.c_str());
                 if (resultHostCheck.second != true)
                 { // duplicate host
 
@@ -507,18 +536,16 @@ bool parsedHtml::urlCheck(std::string link, string pathQueryFragment)
                     return false;
                 }
 
+               cout << "\t   Checking IP uniqueness... ";
+               //  cout << " ip is " << inet_addr((inet_ntoa(this->webSocket->getServer().sin_addr))) << std::endl;
+                 int insertCheckIps = seenIPs.size();
 
+                 // below caused a error if INET_ADDR isnt there odd
 
+                 this->seenIPs.insert(inet_addr(inet_ntoa(this->webSocket->getServer().sin_addr)));
 
-
-
-
-                cout << "\t   Checking IP uniqueness... ";
-
-                set<DWORD> seenIPs;
-                auto resultIpCheck = seenIPs.insert(stod(inet_ntoa(this->webSocket->getServer().sin_addr)));
                 // if a valid IP, directly drop its binary version into sin_addr
-                if (resultIpCheck.second != true)
+                if (insertCheckIps == seenIPs.size())
                 { // duplicate host
 
                     cout << "failed" << '\n';

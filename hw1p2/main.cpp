@@ -16,8 +16,9 @@ using namespace std;
 
 void winsock_test(void);
 
-int contiuneRunning(parsedHtml* parser, const char * urlLink )
+void continueRunning(parsedHtml* parser, const char * urlLink )
 {
+	// cout << " size of  main  parser " << sizeof(parser) << std::endl;
 	parser->parseString(urlLink);
 	bool urlPass = parser->urlCheck(parser->wholeLink, parser->printPathQueryFragment());
 	parser->webSocket->robots = true;
@@ -25,19 +26,20 @@ int contiuneRunning(parsedHtml* parser, const char * urlLink )
 	// 
 	if (urlPass != true)
 	{
-		cout << " moving on to next url move this laster \n main.cpp \n";
-		return -2;
+		cout << " URL FAILED moving on to next url move this main.cpp \n";
+		return;
 	}
 
 	// taking a copy of the server
 	parser->transferSetServer(parser->webSocket->getServer());
+	// cout << " the socket is " << parser->webSocket->sock << std::endl;
 
 
 	bool robotPass = parser->RobotSendRead();
 	if (robotPass != true)
 	{
-		cout << " sending to robots failed in main, moving on to next \n";
-		return -2;
+		cout << "ROBOT FAILED  sending to robots failed in main, moving on to next \n";
+		return;
 	}
 
 	// parser->webSocket->printDNStiming = false;
@@ -46,11 +48,14 @@ int contiuneRunning(parsedHtml* parser, const char * urlLink )
 	bool sendPass = parser->ReconnectHostSend();
 	if (sendPass != true)
 	{
-		cout << " sending the request has failed in main, could not be a issue, moving to next remove me \n";
-		return -2;
+		cout << "RECONNECT HOST FAILED sending the request has failed in main, could not be a issue, moving to next remove me \n";
+		return;
 	}
-	cout << " finished the  main function contiune running 42 \n";
-	return 0;
+	// cout << " finished the  main function contiune running 42 \n";
+	// parser->webSocket->~Socket();
+	
+
+	
 }
 
 
@@ -63,22 +68,26 @@ int main(int argc, char* argv[])
 	int numberThreads = 0;
 	bool runVector = false;
 	parsedHtml parser;
-	parser.resetParser();
-	std::string url = "http://irl.cs.tamu.edu/";
-	return contiuneRunning(&parser, url.c_str());
-	/*
+	// parser.resetParser();
+	parser.webSocket = new Socket();
+	/* 
 	if (argc == 2)
 	{
+		// std::string filename = "http://allafrica.com/stories/201501021178.html";
 		std::string filename = argv[1];
+		continueRunning(&parser, filename.c_str());
 	}
 	else if (argc == 3)
 	{
 		numberThreads = stoi(argv[1]);
 		std::string filename = argv[2];
 		std::vector<std::string> totalVector = parser.parseTXTFile(filename);
+		int delay = 0;
 		for (int i = 0; i < totalVector.size() ; i++)
 		{
-
+			continueRunning(&parser, totalVector.at(i).c_str());
+			cout << " slow down to read input \n";
+			//cin >> delay;
 		}
 
 	}
@@ -89,13 +98,29 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 	
+	*/
+	numberThreads = 1;
+	std::string filename = "100url.txt";
+	vector<string> totalVector =  parser.parseTXTFile(filename);
 
+	for (int i = 0; i < totalVector.size() ; i++)
+	{
+		continueRunning(&parser,totalVector.at(i).c_str());
+		parser.resetParser();
+		parser.webSocket = new Socket();
+	}
+
+	/*
+	std::string filename = "http://www.symantec.com/verisign/ssl-certificates";
+		continueRunning(&parser,filename.c_str());
+	// parsedHtml parser2;
+	filename = "http://amti.csis.org/category/taiwan/";
+	parser.resetParser();
+	parser.webSocket = new Socket();
+	// parser.webSocket->sock += 1;
+		continueRunning(&parser,filename.c_str());
 
 	*/
-	
-	// std::vector<string> urlList = parser.parseTXTFile("100url.txt");
-
-
 	// this was used for all testing locally
 
 

@@ -8,7 +8,6 @@ const int INITIAL_BUF_SIZE = 8192;
 
 class Socket {
 private:
-	SOCKET sock; // socket handle
 	char* buf; // current buffer
 	int allocatedSize; // bytes allocated for buf
 	int curPos; // current position in buffer
@@ -16,9 +15,17 @@ private:
 	struct sockaddr_in server;
 public:
 	// extra stuff as needed
+	SOCKET sock; // socket handle
 	bool robots;
+	// DWORD IP;
 	// bool printDNStiming;
 	Socket();
+	~Socket() 
+	{
+		// closeSocket();
+		// delete server;
+
+	}
 	bool Read(void);
 	bool Send(std::string sendRequest, std::string host);
 	bool DNSCheck(std::string host);
@@ -45,5 +52,6 @@ public:
 	{
 		this->server = parserServerToSet;
 	}
+	
 	// void CreateSocket(void);
 };

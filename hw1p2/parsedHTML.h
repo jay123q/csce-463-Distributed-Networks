@@ -17,6 +17,8 @@ class parsedHtml
 {
 
 	public:
+		set<string> seenHosts;
+		set<DWORD> seenIPs;
 		int port;
 		string host;
 		string fragment;
@@ -33,7 +35,8 @@ class parsedHtml
 		void parseString(const char* link); // parses the url
 		void generateGETrequestToSend(void);
 		void generateHEADrequestToSend(void);
-		std::vector <std::string> parseTXTFile(std::string filename);
+		vector <string> parseTXTFile(std::string filename);
+		char * parseTXTFileBROKEN(std::string filename);
 
 		bool RobotSendRead(void);
 		bool ReconnectHostSend(void);

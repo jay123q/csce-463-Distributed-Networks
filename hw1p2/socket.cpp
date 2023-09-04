@@ -7,8 +7,8 @@ using namespace std;
 #pragma once
 #include "socket.h"
 
-double PAGE_MAX = pow(2, 21); // 2mb
-double ROBOT_MAX = pow(2,14); // 16 KB
+int PAGE_MAX = 2097152; // 2mb
+int ROBOT_MAX = 16384; // 16 KB
 
 
 Socket::Socket()
@@ -50,10 +50,18 @@ void Socket::closeSocket()
 		printf("closesocket() generate error: %d", WSAGetLastError());
 		return;
 	}
+	// delete buf;
+	// closesocket(sock);
+	cout << " close the socket plox " << sock << std::endl;
+	this->sock = INVALID_SOCKET;
+	
+
+
 }
 
 bool Socket::DNSCheck(std::string host)
 {
+
 	DWORD IP = inet_addr(host.c_str());
 
 	if (IP == INADDR_NONE)
@@ -90,12 +98,13 @@ bool Socket::DNSCheck(std::string host)
 
 
 	cout << "done in " << timepassed * 1000 << " ms, found " << inet_ntoa(this->server.sin_addr) << std::endl;
-
+	// this->IP = inet_ntoa(this->server.sin_addr);
 	return true;
 }
 
 bool Socket::Connect(int port)
 {
+	// cout << " socket is " << sock << std::endl;
 	clock_t start = clock();
 	this->server.sin_family = AF_INET; // IPv4
 	this->server.sin_port = htons(port); // port #
@@ -184,7 +193,7 @@ bool Socket::Read(void)
 		// wait to see if socket has any data (see MSDN)
 		// https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-select
 		timeout.tv_sec -= long(clock() - start) / CLOCKS_PER_SEC;
-		int ret = select(0, &readFds, NULL , NULL , &timeout);
+		int ret = select(1 ,  &readFds, 0 ,0 , &timeout);
 		// cout << " loop  counter " << counter << std::endl;
 		counter++;
 		// cout << " return from select " << ret << std::endl;
@@ -218,11 +227,12 @@ bool Socket::Read(void)
 				// if robots is not true, ie not the first time
 				// cout << " allocated size and cur pos " << allocatedSize - curPos << std::endl;
 				//resize
-				char* tmp = new char[this->allocatedSize * 2];
+				char * tmp = new char[this->allocatedSize * 2];
 				memcpy(tmp, buf, this->allocatedSize);
 				this->allocatedSize *= 2;
 				delete buf;
 				this->buf = tmp;
+				// delete[] tmp;
 
 				// resize buffer; you can use realloc(), HeapReAlloc(), or
 			   // memcpy the buffer into a bigger array
@@ -260,6 +270,7 @@ bool Socket::Read(void)
 			break;
 		}
 	}
+	
 	return false;
 }
 
