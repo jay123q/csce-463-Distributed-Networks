@@ -1,7 +1,7 @@
-/*
-Joshua Clapp
-Csce 463-500
-*/
+// Joshua Clapp
+// csce 463 500
+// Dr Loguinov
+// fall 2023
 #include "pch.h"
 #include <string>
 #include "socket.h"
@@ -19,10 +19,9 @@ void winsock_test(void);
 void continueRunning(parsedHtml* parser, const char * urlLink )
 {
 	// cout << " size of  main  parser " << sizeof(parser) << std::endl;
-	cout << "URL: " << urlLink << std::endl;
-	cout << "\t   Parsing URL... ";
-	parser->parseString(urlLink);
-	bool urlPass = parser->urlCheck(parser->wholeLink, parser->printPathQueryFragment());
+
+	// parser->parseString(urlLink);
+	bool urlPass = parser->urlCheck( urlLink , parser->printPathQueryFragment());
 	parser->webSocket->robots = true;
 	// parser->webSocket->printDNStiming = true;
 	// 
@@ -83,12 +82,14 @@ int main(int argc, char* argv[])
 		numberThreads = stoi(argv[1]);
 		std::string filename = argv[2];
 		vector<string> totalVector =  parser.parseTXTFile(filename);
-
+		// int stall = 0;
+		cout << "Opened " << filename << " with size " << parser.intFileSize << std::endl;
 		for (int i = 0; i < totalVector.size() ; i++)
 		{
 			continueRunning(&parser,totalVector.at(i).c_str());
 			parser.resetParser();
 			parser.webSocket = new Socket();
+			// cin >> stall;
 		}
 
 	}
@@ -114,9 +115,9 @@ int main(int argc, char* argv[])
 	std::string filename = "http://www.weatherline.net/";
 		continueRunning(&parser,filename.c_str());
 	*/
-	/*
 	// parsedHtml parser2;
-	filename = "http://amti.csis.org/category/taiwan/";
+	/*
+	std::string filename = "abchttp://";
 	parser.resetParser();
 	parser.webSocket = new Socket();
 	// parser.webSocket->sock += 1;

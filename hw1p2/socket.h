@@ -1,3 +1,8 @@
+// Joshua Clapp
+// csce 463 500
+// Dr Loguinov
+// fall 2023
+
 #pragma once
 #include <string>
 #include <iostream>

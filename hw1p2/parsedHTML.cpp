@@ -1,3 +1,7 @@
+// Joshua Clapp
+// csce 463 500
+// Dr Loguinov
+// fall 2023
 #include "pch.h"
 #pragma comment(lib, "ws2_32.lib")
 #include <iostream>
@@ -25,7 +29,8 @@ void parsedHtml::resetParser(void)
 
 bool parsedHtml::parseString(string link) {
 
-
+    cout << "URL: " << link << std::endl;
+    cout << "\t   Parsing URL... ";
 
     this->wholeLink = link.c_str();
     if (link.substr(0, 7) != "http://")
@@ -69,12 +74,16 @@ bool parsedHtml::parseString(string link) {
     // string stringPort = hostStart.substr(0, hostStart.find_first_of(':'));
     int portIndex = hostStart.find_first_of(':');
     // cout << " port check is " << portIndex << " ost start " << strlen(hostStart.c_str()) -1 << std::endl;
+    // cout << " the port Index is " << portIndex << std::endl;
     if (portIndex != -1)
     {
         if (portIndex == strlen(hostStart.c_str())-1)
         {
+           //  cout << " strlen host " << strlen(hostStart.c_str()) - 1 << std::endl;
             // port doest exist
-            this->port = 80;
+            cout << " failed with invalid port";
+            return false;
+            // this->port = 80;
             
         }
         else
@@ -83,6 +92,7 @@ bool parsedHtml::parseString(string link) {
         
 
         this->port = atoi(hostStart.substr(portIndex +1, (int) strlen(hostStart.c_str()) -1).c_str());
+        cout << " the port is " << this->port << std::endl;
             if (port <= 0)
             {
                 cout << " failed with invalid port";
@@ -117,7 +127,7 @@ void parsedHtml::generateGETrequestToSend( void )
   //  cout << " get request |" << getRequest << "| \n";
   //  cout << " path " << printPathQueryFragment() << std::endl;
    // this->total =  "GET / HTTP/1.1\r\nUser-agent: JoshTamuCrawler/1.1\r\nHost: tamu.edu\r\nConnection: close\r\n\r\n"; // CORRECT
-    this->total = "GET " + printPathQueryFragment() + " HTTP/1.1\r\nUser-agent: JoshTamuCrawler/1.1\r\nHost: " + this->host + "\r\nConnection: close\r\n\r\n"; 
+    this->total = "GET " + printPathQueryFragment() + " HTTP/1.1\r\nUser-agent: JoshTamuCrawler/1.2\r\nHost: " + this->host + "\r\nConnection: close\r\n\r\n"; 
   //  cout << " total \n" << this->total << std::endl;
    // this->total = "GET /IRL7 HTTP/1.0\r\nUser-agent: JoshTamuCrawler/1.1\r\nHost: s2.irl.cs.tamu.edu\r\nConnection: close\r\n\r\n";
 }
@@ -131,9 +141,11 @@ vector<string> parsedHtml::parseTXTFile(std::string filename)
     ifstream file(filename, ios::binary | ios::in);
     std::string line;
     std::vector <std::string> vectorTotal;
+    this->intFileSize = 0;
     while (!file.eof())
     {
         getline(file, line);
+        this->intFileSize += strlen(line.c_str());
         // cout << " the line is " << line << std::endl;
         vectorTotal.push_back(line);
     }
@@ -240,7 +252,14 @@ bool parsedHtml::RobotSendRead(void)
             // so now the html should return the buffer soo
             WSACleanup();
             
+            // bytes must be > 200
+
+
+
+
+
             string status(this->webSocket->printBuf());
+
             const unsigned int statusCode = stoi(status.substr(9.3).c_str());
             cout << "\t   Verifying header... ";
 
@@ -355,7 +374,7 @@ bool parsedHtml::urlCheck(std::string link, string pathQueryFragment)
                     return false;
                 }
 
-                cout << "host " << host << ", port " << port << ", request " << pathQueryFragment << std::endl;
+                cout << "host " << host << ", port " << port << std::endl;
 
                 // chhecking host uniqueness
 

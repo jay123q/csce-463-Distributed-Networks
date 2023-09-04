@@ -1,3 +1,7 @@
+// Joshua Clapp
+// csce 463 500
+// Dr Loguinov
+// fall 2023
 #pragma once
 #include "pch.h"
 #include <string>
@@ -78,10 +82,7 @@ class parsedHtml
 			{
 				total += '?' + this->query;
 			}
-			if ( this->fragment[0] != '\0')
-			{
-				total += '#' + this->fragment;
-			}
+
 
 			return total;
 		}

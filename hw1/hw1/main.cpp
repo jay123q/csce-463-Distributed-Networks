@@ -39,7 +39,7 @@ int main(int argc, char* argv[])
 
 
 	// this was used for all testing locally
-	std::string url = "http://s2.irl.cs.tamu.edu/IRL8";
+	std::string url = "http://s2.irl.cs.tamu.edu/IRL7";
 
 	
 	parsedHtml parser;

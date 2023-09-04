@@ -1,3 +1,8 @@
+// Joshua Clapp
+// csce 463 500
+// Dr Loguinov
+// fall 2023
+
 #include "pch.h"
 #pragma comment(lib, "ws2_32.lib")
 #include <iostream>
@@ -124,7 +129,7 @@ bool Socket::Connect(int port)
 
 bool Socket::Send(string sendRequest , string host)
 {
-	if (strlen(buf) > 32000)
+	if (strlen(buf) > 32768)
 	{
 		// delete buffer and reallocate
 		delete[] buf;
@@ -174,35 +179,36 @@ bool Socket::Read(void)
 
 	// check this
 	timeval timeout;
+	clock_t start = clock(); /// suspect
 	timeout.tv_sec = 10;
 	timeout.tv_usec = 0;
 	// check this
 	this->curPos = 0;
-	clock_t start = clock(); /// suspect
 	clock_t finish = clock(); // shut up compiler
 
 	int counter = 0;
 	while (true)
 	{
+		timeout.tv_sec -= (double) (clock() - start) / CLOCKS_PER_SEC;
 		FD_ZERO(&readFds); // this sets the file descriptor 
 		// I learend a good lesson here, it dont work if you dont got a file descriiptor
 		// https://learn.microsoft.com/en-us/windows/win32/api/winsock/ns-winsock-fd_set
 		FD_SET(sock, &readFds); // assign a socket to a descriptor
-
+		start = clock();
 
 		// wait to see if socket has any data (see MSDN)
 		// https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-select
-		timeout.tv_sec -= long(clock() - start) / CLOCKS_PER_SEC;
-		int ret = select(1 ,  &readFds, 0 ,0 , &timeout);
+		int ret = select(1 ,  &readFds, NULL , NULL , &timeout);
 		// cout << " loop  counter " << counter << std::endl;
 		counter++;
 		// cout << " return from select " << ret << std::endl;
+		// cout << " timer check " << (double)timeout.tv_sec << std::endl;
 		if (ret > 0)
 		{
 			// cout << " select has passed! " << '\n';
 			// new data available; now read the next segment
 			int bytes = recv(sock, this->buf + curPos, allocatedSize - curPos, 0);
-
+			// cout << " bytes from recv " << bytes << std::endl;
 			if (bytes < 0)
 			{
 				printf("Failed with %d\n", WSAGetLastError());
@@ -210,23 +216,37 @@ bool Socket::Read(void)
 			}
 			if (bytes == 0)
 			{
-				// cout << " bytes done " << std::endl;
+				if (this->curPos < 50)
+				{
+					cout << "failed with non-HTTP header (does not begin with HTTP/) \n";
+					return false;
+				}
 				this->buf[curPos] = '\0'; // 3rd notes said +1 was wrong
 				// NULL-terminate buffer
 				finish = clock();
 				double duration = (double)(finish - start) / CLOCKS_PER_SEC;
 				printf("done in %.1f ms with %d bytes \n", duration * 1000, curPos);
-				curPos += bytes; // adjust where the next recv goes
 				return true; // normal completion
 			}
 
 			curPos += bytes; // update cursor
 			// take 512 bites beofre resizing
-			if (this->allocatedSize - curPos < this->allocatedSize/5)
+			if (this->allocatedSize - curPos < this->allocatedSize/4 )
 			{
-				// if robots is not true, ie not the first time
-				// cout << " allocated size and cur pos " << allocatedSize - curPos << std::endl;
-				//resize
+				// cout << " the allocated size is " << this->allocatedSize << std::endl;
+				
+				 if (this->robots && this->allocatedSize  == ROBOT_MAX)
+				{
+					cout << "failed exceeding max \n";
+					break;
+				}
+				else if (!this->robots && this->allocatedSize ==  PAGE_MAX)
+				{
+					cout << "failed exceeding max \n";
+					break;
+
+				}
+				
 				char * tmp = new char[this->allocatedSize * 2];
 				memcpy(tmp, buf, this->allocatedSize);
 				this->allocatedSize *= 2;
@@ -237,17 +257,7 @@ bool Socket::Read(void)
 				// resize buffer; you can use realloc(), HeapReAlloc(), or
 			   // memcpy the buffer into a bigger array
 			}
-			else if (this->robots && this->allocatedSize == ROBOT_MAX)
-			{
-				cout << "failed exceeding max \n";
-				break;
-			}
-			else if (!this->robots && this->allocatedSize == PAGE_MAX)
-			{
-				cout << "failed exceeding max \n";
-				break;
 
-			}
 
 			// cout << this->allocatedSize - curPos << " bytes from the buffer " << std::endl;
 

@@ -207,10 +207,10 @@ bool Socket::Read(void)
 				finish = clock();
 				double duration = (double)(finish - start) / CLOCKS_PER_SEC;
 				printf("done in %.1f ms with %d bytes \n", duration * 1000, curPos);
-				curPos += bytes; // adjust where the next recv goes
 				return true; // normal completion
 			}
-
+			cout << " bytes buffer check " << allocatedSize << std::endl;
+			curPos += bytes; // adjust where the next recv goes
 			// take 512 bites beofre resizing
 			if (this->allocatedSize - curPos < 1024)
 			{
