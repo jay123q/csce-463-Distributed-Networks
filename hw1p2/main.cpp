@@ -79,15 +79,15 @@ int main(int argc, char* argv[])
 	}
 	else if (argc == 3)
 	{
-		numberThreads = stoi(argv[1]);
+		numberThreads = 1;
 		std::string filename = argv[2];
-		std::vector<std::string> totalVector = parser.parseTXTFile(filename);
-		int delay = 0;
+		vector<string> totalVector =  parser.parseTXTFile(filename);
+
 		for (int i = 0; i < totalVector.size() ; i++)
 		{
-			continueRunning(&parser, totalVector.at(i).c_str());
-			cout << " slow down to read input \n";
-			//cin >> delay;
+			continueRunning(&parser,totalVector.at(i).c_str());
+			parser.resetParser();
+			parser.webSocket = new Socket();
 		}
 
 	}
