@@ -96,7 +96,7 @@ int main(int argc, char* argv[])
 	else
 	{
 		cout << " invalid form! " << std::endl;
-		cout << " should be ./main name.hmtl " << std::endl;
+		cout << " should be ./main name.txt " << std::endl;
 		return 0;
 	}
 	

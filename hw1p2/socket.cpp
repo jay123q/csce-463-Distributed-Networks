@@ -189,16 +189,16 @@ bool Socket::Read(void)
 	int counter = 0;
 	while (true)
 	{
-		timeout.tv_sec -= (double) (clock() - start) / CLOCKS_PER_SEC;
+		// timeout.tv_sec -= (double) (clock() - start) / CLOCKS_PER_SEC;
 		FD_ZERO(&readFds); // this sets the file descriptor 
 		// I learend a good lesson here, it dont work if you dont got a file descriiptor
 		// https://learn.microsoft.com/en-us/windows/win32/api/winsock/ns-winsock-fd_set
 		FD_SET(sock, &readFds); // assign a socket to a descriptor
-		start = clock();
+	//	start = clock();
 
 		// wait to see if socket has any data (see MSDN)
 		// https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-select
-		int ret = select(1 ,  &readFds, NULL , NULL , &timeout);
+		int ret = select(0 ,  &readFds, NULL , NULL , &timeout);
 		// cout << " loop  counter " << counter << std::endl;
 		counter++;
 		// cout << " return from select " << ret << std::endl;
@@ -234,13 +234,13 @@ bool Socket::Read(void)
 			if (this->allocatedSize - curPos < this->allocatedSize/4 )
 			{
 				// cout << " the allocated size is " << this->allocatedSize << std::endl;
-				
-				 if (this->robots && this->allocatedSize  == ROBOT_MAX)
+				// before reallocating
+				if (!this->robots && this->allocatedSize ==  PAGE_MAX)
 				{
 					cout << "failed exceeding max \n";
 					break;
 				}
-				else if (!this->robots && this->allocatedSize ==  PAGE_MAX)
+				else if (this->robots && this->allocatedSize  == ROBOT_MAX)
 				{
 					cout << "failed exceeding max \n";
 					break;

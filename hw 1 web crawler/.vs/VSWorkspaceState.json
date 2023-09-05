@@ -1,8 +1,9 @@
 {
   "ExpandedNodes": [
     "",
-    "\\463-sample"
+    "\\463-sample",
+    "\\463-sample\\463-sample"
   ],
-  "SelectedNode": "\\463-sample\\463-sample",
+  "SelectedNode": "\\463-sample\\463-sample\\socket.cpp",
   "PreviewInSolutionExplorer": false
 }

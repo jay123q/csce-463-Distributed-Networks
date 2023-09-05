@@ -33,85 +33,64 @@ bool parsedHtml::parseString(string link) {
     cout << "\t   Parsing URL... ";
 
     this->wholeLink = link.c_str();
-    if (link.substr(0, 7) != "http://")
-    {
-
+    if (link.substr(0, 7) != "http://") {
         cout << "failed with invalid scheme " << std::endl;
         return false;
     }
 
-    string hostStart = link.substr(7, strlen(link.c_str()));
-    int fragmentIndex = hostStart.find_first_of('#');
-    if (fragmentIndex != -1)
-    {
-        this->fragment = hostStart.substr(fragmentIndex, strlen(hostStart.c_str()) - 1);
-        hostStart = hostStart.substr(0, fragmentIndex);
+    string hostStart = link.substr(7);
 
+    size_t fragmentIndex = hostStart.find_first_of('#');
+    if (fragmentIndex != string::npos) {
+        this->fragment = hostStart.substr(fragmentIndex + 1);
+        hostStart = hostStart.substr(0, fragmentIndex);
     }
 
-    hostStart = hostStart.substr(0, hostStart.find_first_of('#'));
+    size_t queryIndex = hostStart.find_first_of('?');
+    if (queryIndex != string::npos) {
+        this->query = hostStart.substr(queryIndex + 1);
+        hostStart = hostStart.substr(0, queryIndex);
+    }
 
-    int queryCheck = hostStart.find_first_of('?');
-    if (queryCheck != -1)
-    {
-        this->query = hostStart.substr(queryCheck , strlen(hostStart.c_str() )-1);
-       // cout << " query check " << query << std::endl;
-        hostStart = hostStart.substr(0, queryCheck );
-    }    
-    
-    int pathCheck = hostStart.find_first_of('/');
-    if (pathCheck != -1)
-    {
-        this->path = hostStart.substr (pathCheck, strlen(hostStart.c_str()) - 1);
-       // cout << " path check " << path << std::endl;
-        hostStart = hostStart.substr(0, pathCheck );
-    } 
-    else
-    {
+    size_t pathIndex = hostStart.find_first_of('/');
+    if (pathIndex != string::npos) {
+        this->path = hostStart.substr(pathIndex+1);
+        hostStart = hostStart.substr(0, pathIndex);
+    }
+    else {
         this->path = "/";
     }
-    
-    // string stringPort = hostStart.substr(0, hostStart.find_first_of(':'));
-    int portIndex = hostStart.find_first_of(':');
-    // cout << " port check is " << portIndex << " ost start " << strlen(hostStart.c_str()) -1 << std::endl;
-    // cout << " the port Index is " << portIndex << std::endl;
-    if (portIndex != -1)
-    {
-        if (portIndex == strlen(hostStart.c_str())-1)
-        {
-           //  cout << " strlen host " << strlen(hostStart.c_str()) - 1 << std::endl;
-            // port doest exist
-            cout << " failed with invalid port";
-            return false;
-            // this->port = 80;
-            
+
+    size_t portIndex = hostStart.find_first_of(':');
+    if (portIndex != string::npos) {
+      //  cout << " do i exist here " << portIndex << " host length " << strlen(hostStart.c_str()) - 1 << std::endl;
+
+        if (portIndex == strlen(hostStart.c_str()) - 1) {
+            this->port = 80;
+             // cout << "failed with invalid port" << std::endl;
+            // return false;
         }
         else
         {
 
-        
-
-        this->port = atoi(hostStart.substr(portIndex +1, (int) strlen(hostStart.c_str()) -1).c_str());
-        cout << " the port is " << this->port << std::endl;
-            if (port <= 0)
-            {
-                cout << " failed with invalid port";
+            this->port = atoi(hostStart.substr(portIndex + 1).c_str());
+            if (port <= 0) {
+                cout << "failed with invalid port" << std::endl;
                 return false;
             }
         }
-        this->host = hostStart.substr(0, hostStart.find_first_of(':'));
-
+            this->host = hostStart.substr(0, portIndex);
+          //  cout << " host " << this->host << std::endl;
     }
-    else
-    {
-        
+    else {
         this->port = 80;
         this->host = hostStart;
     }
 
-
-
+   // cout <<" host " << this->host << " the port is " << this->port << " path is " << this->path << " query is " << this->query << " fragment is  " << this->fragment << std::endl;
+    //this->host = hostStart;
     return true;
+
 }
 
 void parsedHtml::generateGETrequestToSend( void )
@@ -253,11 +232,6 @@ bool parsedHtml::RobotSendRead(void)
             WSACleanup();
             
             // bytes must be > 200
-
-
-
-
-
             string status(this->webSocket->printBuf());
 
             const unsigned int statusCode = stoi(status.substr(9.3).c_str());
