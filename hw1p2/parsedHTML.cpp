@@ -8,7 +8,6 @@
 #include "parsedHTML.h"
 using namespace std;
 
-
 void parsedHtml::resetParser(void)
 {
     this->port = 80;
@@ -18,13 +17,13 @@ void parsedHtml::resetParser(void)
     this->path = '\0';
     this->wholeLink = '\0';
     this->total = '\0';
-    this->httpStatus='\0';
+    this->httpStatus = '\0';
     // this->webSocket->~Socket();
     // this->webSocket=new Socket();
     // this->readFileBuf[0] = '\0';
     this->webSocket->~Socket();
-    this->intFileSize=0;
-    
+    this->intFileSize = 0;
+
 }
 
 bool parsedHtml::parseString(string link) {
@@ -54,7 +53,7 @@ bool parsedHtml::parseString(string link) {
 
     size_t pathIndex = hostStart.find_first_of('/');
     if (pathIndex != string::npos) {
-        this->path = hostStart.substr(pathIndex+1);
+        this->path = hostStart.substr(pathIndex);
         hostStart = hostStart.substr(0, pathIndex);
     }
     else {
@@ -63,12 +62,12 @@ bool parsedHtml::parseString(string link) {
 
     size_t portIndex = hostStart.find_first_of(':');
     if (portIndex != string::npos) {
-      //  cout << " do i exist here " << portIndex << " host length " << strlen(hostStart.c_str()) - 1 << std::endl;
+        //  cout << " do i exist here " << portIndex << " host length " << strlen(hostStart.c_str()) - 1 << std::endl;
 
         if (portIndex == strlen(hostStart.c_str()) - 1) {
             this->port = 80;
-             // cout << "failed with invalid port" << std::endl;
-            // return false;
+            // cout << "failed with invalid port" << std::endl;
+           // return false;
         }
         else
         {
@@ -79,16 +78,16 @@ bool parsedHtml::parseString(string link) {
                 return false;
             }
         }
-            this->host = hostStart.substr(0, portIndex);
-          //  cout << " host " << this->host << std::endl;
+        this->host = hostStart.substr(0, portIndex);
+        //  cout << " host " << this->host << std::endl;
     }
     else {
         this->port = 80;
         this->host = hostStart;
     }
 
-   // cout <<" host " << this->host << " the port is " << this->port << " path is " << this->path << " query is " << this->query << " fragment is  " << this->fragment << std::endl;
-    //this->host = hostStart;
+    // cout <<" host " << this->host << " the port is " << this->port << " path is " << this->path << " query is " << this->query << " fragment is  " << this->fragment << std::endl;
+     //this->host = hostStart;
     return true;
 
 }
@@ -280,7 +279,7 @@ bool parsedHtml::ReconnectHostSend(void)
     }
     this->generateGETrequestToSend();
 
-
+   // cout << "request path |" << this->total << "| \n";
     bool socketCheck = this->webSocket->Send(this->total, this->host);
 
     if (socketCheck)
@@ -296,7 +295,7 @@ bool parsedHtml::ReconnectHostSend(void)
 
             const char* result = this->webSocket->printBuf();
             // cout << " print the result and junk \n " << webSocket->printBuf() << std::endl;
-            // cout << " the result  is " << this->printBuf() << std::endl;
+            cout << " the result  is " << this->webSocket->printBuf() << std::endl;
             string status(this->webSocket->printBuf());
             const unsigned int statusCode = stoi(status.substr(9.3).c_str());
             cout << "\t   Verifying header... ";

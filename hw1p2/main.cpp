@@ -71,6 +71,7 @@ int main(int argc, char* argv[])
 	parsedHtml parser;
 	// parser.resetParser();
 	parser.webSocket = new Socket();
+	/* 
 	if (argc == 2)
 	{
 		// std::string filename = "http://allafrica.com/stories/201501021178.html";
@@ -100,7 +101,6 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 	
-	/* 
 	numberThreads = 1;
 	std::string filename = "100url.txt";
 	vector<string> totalVector =  parser.parseTXTFile(filename);
@@ -112,9 +112,9 @@ int main(int argc, char* argv[])
 		parser.webSocket = new Socket();
 	}
 
-	std::string filename = "http://www.weatherline.net/";
-		continueRunning(&parser,filename.c_str());
 	*/
+	std::string filename = "http://www.tamu.edu/";
+		continueRunning(&parser,filename.c_str());
 	// parsedHtml parser2;
 	/*
 	std::string filename = "abchttp://";
