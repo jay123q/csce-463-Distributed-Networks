@@ -179,22 +179,27 @@ bool Socket::Read(void)
 
 	// check this
 	timeval timeout;
+	timeval futureTime;
+	// futureTime.tv_sec = clock() + 10;
+
+	// if hanging your error is in how you handle the path
+
+
 	clock_t start = clock(); /// suspect
 	timeout.tv_sec = 10;
 	timeout.tv_usec = 0;
 	// check this
 	this->curPos = 0;
-	clock_t finish = clock(); // shut up compiler
 
 	int counter = 0;
 	while (true)
 	{
-		// timeout.tv_sec -= (double) (clock() - start) / CLOCKS_PER_SEC;
+		timeout.tv_sec -= (double) (clock() - start) / CLOCKS_PER_SEC;
 		FD_ZERO(&readFds); // this sets the file descriptor 
 		// I learend a good lesson here, it dont work if you dont got a file descriiptor
 		// https://learn.microsoft.com/en-us/windows/win32/api/winsock/ns-winsock-fd_set
 		FD_SET(sock, &readFds); // assign a socket to a descriptor
-	//	start = clock();
+		start = clock();
 
 		// wait to see if socket has any data (see MSDN)
 		// https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-select
@@ -223,7 +228,7 @@ bool Socket::Read(void)
 				}
 				this->buf[curPos] = '\0'; // 3rd notes said +1 was wrong
 				// NULL-terminate buffer
-				finish = clock();
+				clock_t finish = clock(); // shut up compiler
 				double duration = (double)(finish - start) / CLOCKS_PER_SEC;
 				printf("done in %.1f ms with %d bytes \n", duration * 1000, curPos);
 				return true; // normal completion
@@ -235,6 +240,8 @@ bool Socket::Read(void)
 			{
 				// cout << " the allocated size is " << this->allocatedSize << std::endl;
 				// before reallocating
+				/**/
+
 				if (!this->robots && this->allocatedSize ==  PAGE_MAX)
 				{
 					cout << "failed exceeding max \n";
