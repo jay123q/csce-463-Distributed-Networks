@@ -11,17 +11,26 @@ public:
 
 
 	int numberSizePendingQueue;
-	int numberExtractedURL;
 	double bytesDownloadedInBatch;
 	double pagesDownloadedInBatch;
 	double startTimer;
 	double totalBytes;
 	double totalPages;
-
+	HANDLE* crawlersThread;
+	HANDLE* statsThread;
 	parsedHtml * parserHelper;
 
-	void runParsingRobotsSendingStatus(const char* urlLink);
-	void twoSecondPrint();
+	// mux parameters
+	CRITICAL_SECTION extractedQueueLock;
+	//CRITICAL_SECTION statusCheckLock;
+	HANDLE statusEvent;
+	Crawler();
+
+
+
+	void createThreads(int threadNumbers );
+	void WINAPI runParsingRobotsSendingStatus(const char* urlLink);
+	void WINAPI twoSecondPrint();
 	void finalPrint();
 
 };

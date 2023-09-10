@@ -26,6 +26,69 @@ void parsedHtml::resetParser(void)
 
 }
 
+
+void parsedHtml::runOnce(const char* urlLink)
+{
+    // cout << " size of  main  parser " << sizeof(parser) << std::endl;
+    // parser.resetParser();
+    this->webSocket = new Socket();
+    // parser->parseString(urlLink);
+    bool urlPass = this->urlCheck(urlLink, this->printPathQueryFragment());
+    this->webSocket->robots = true;
+    // parser->webSocket->printDNStiming = true;
+    // 
+    if (urlPass != true)
+    {
+        // cout << " URL FAILED moving on to next url move this main.cpp \n";
+        this->resetParser();
+        return;
+    }
+
+    // taking a copy of the server
+    this->transferSetServer(this->webSocket->getServer());
+    // cout << " the socket is " << parser->webSocket->sock << std::endl;
+
+    // lock here??
+
+    bool robotPass = this->RobotSendRead();
+    if (robotPass != true)
+    {
+        //	cout << "ROBOT FAILED  sending to robots failed in main, moving on to next \n";
+        this->resetParser();
+        return;
+    }
+
+    // unlock here ??
+
+    // parser->webSocket->printDNStiming = false;
+
+    // lock here
+
+
+    this->webSocket = new Socket();
+    this->webSocket->setServer(this->serverParserTemp);
+    bool sendPass = this->ReconnectHostSend();
+    if (sendPass != true)
+    {
+        //	cout << "RECONNECT HOST FAILED sending the request has failed in main, could not be a issue, moving to next remove me \n";
+        this->resetParser();
+        return;
+    }
+
+    // unlock here
+    // 
+    // 
+    // cout << " finished the  main function contiune running 42 \n";
+    // parser->webSocket->~Socket();
+    this->resetParser();
+
+
+
+}
+
+
+
+
 bool parsedHtml::parseString(string link) {
 
     cout << "URL: " << link << std::endl;
@@ -125,83 +188,16 @@ queue<string> parsedHtml::parseTXTFile(std::string filename)
         getline(file, line);
         this->intFileSize += strlen(line.c_str());
         // cout << " the line is " << line << std::endl;
+       //  cout << " push the file " << line << std::endl;
         queueTotal.push(line);
     }
+    
+
+    this->numberExtractedURL = q.size();
+
+
     return queueTotal;
 }
-
-char * parsedHtml::parseTXTFileBROKEN( std::string filename )
-{
-
-    HANDLE hFile = CreateFile(filename.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
-        FILE_ATTRIBUTE_NORMAL, NULL);
-    // process errors
-    if (hFile == INVALID_HANDLE_VALUE)
-    {
-        printf("CreateFile failed with %d\n", GetLastError());
-        
-    }
-
-    // get file size
-    LARGE_INTEGER li;
-    BOOL bRet = GetFileSizeEx(hFile, &li);
-    // process errors
-    if (bRet == 0)
-    {
-        printf("GetFileSizeEx error %d\n", GetLastError());
-        
-    }
-
-    // read file into a buffer
-    int fileSize = (DWORD)li.QuadPart;			// assumes file size is below 2GB; otherwise, an __int64 is needed
-    DWORD bytesRead;
-    // allocate buffer
-    char* fileBuf = new char[fileSize];
-    // read into the buffer
-    bRet = ReadFile(hFile, fileBuf, fileSize, &bytesRead, NULL);
-    // process errors
-    if (bRet == 0 || bytesRead != fileSize)
-    {
-        printf("ReadFile failed with %d\n", GetLastError());
-    
-    }
-
-    // done with the file
-    CloseHandle(hFile);
-
-    int delay = 0;
-
-    // cout << " file  buff " << fileBuf << std::endl;
-    std::string urlString(fileBuf);
-    int newIndex = urlString.find_first_of('\n');
-    // std::string url = urlString.substr(0, newIndex);
-   // std::string url = "";
-  //  cout << " the first is " << newIndex << std::endl;
-    while (newIndex != std::string::npos)
-    {
-        // create vector
-
-        std::string url = urlString.substr(0, newIndex + 1);
-       // cout << " the link is |" << url << "|  blank space " << std::endl;
-        //continueRunning(&parser, url.c_str());
-        // update string
-       // cout << " the return link is " << urlString.substr(0, newIndex) << std::endl;
-        //urlString[newIndex] = '\0';
-        urlString = urlString.substr(newIndex + 1, strlen(fileBuf));
-        // cout << " url string buffer " << urlString << std::endl;
-        // find new index
-       // cout << " modified string is " << urlString << std::endl;
-        int newIndex = urlString.find_first_of("\n");
-        if (newIndex == std::string::npos)
-        {
-            break;
-        }
-
-    }
-
-    return fileBuf;
-
-    }
 
 
 
@@ -402,10 +398,8 @@ bool parsedHtml::urlCheck(std::string link, string pathQueryFragment)
                     return false;
                 }
 
-               // cout << "host " << host << ", port " << port << std::endl;
 
-                // chhecking host uniqueness
-
+                this->numberExtractedURL--; // remove a url from the link
 
 
               //  cout << "\t   Checking host uniqueness... ";
@@ -453,6 +447,9 @@ bool parsedHtml::urlCheck(std::string link, string pathQueryFragment)
 
         //        cout << "passed \n";
                 // cout << "passed NO UNIUQE IDS FOUND IN FIRST CHECK  URL CHECK, REMOVE ME LATER \n";
+
+
+
 
  
                 return true;

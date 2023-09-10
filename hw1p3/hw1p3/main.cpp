@@ -35,13 +35,13 @@ int main(int argc, char* argv[])
 	{
 		// std::string filename = "http://allafrica.com/stories/201501021178.html";
 		std::string filename = argv[1];
-		continueRunning(&parser, filename.c_str());
+		runOnce( filename.c_str() );
 	}
 	else if (argc == 3)
 	{
 		numberThreads = stoi(argv[1]);
 		std::string filename = argv[2];
-		vector<string> totalVector =  parser.parseTXTFile(filename);
+		queue<string> totalVector =  parser.parseTXTFile(filename);
 		// int stall = 0;
 		cout << "Opened " << filename << " with size " << parser.intFileSize << std::endl;
 		for (int i = 0; i < totalVector.size() ; i++)
@@ -72,14 +72,24 @@ int main(int argc, char* argv[])
 	}
 
 	*/
-	queue<string> q = parser.parseTXTFile("100url.txt");
-	//std::string filename = "http://www.tamu.edu/";
-	while (q.empty() != true)
+	// numberThreads = stoi(argv[1]);
+	// std::string filename = argv[2];
+	std::string filename("100url.txt");
+	queue<string> q = parser.parseTXTFile(filename);
+	// int stall = 0;
+	cout << "Opened " << filename << " with size " << parser.intFileSize << std::endl;
+
+
+	// crawler start
+
+
+	while(q.empty() != true )
 	{
-		cout << " q.front " << q.front() << std::endl;
-		crawler.runParsingRobotsSendingStatus(q.front().c_str());
-		cout << " queue size " << q.size() << std::endl;
+		// crawler.runParsingRobotsSendingStatus( q.front().c_str() );
+		parser.resetParser();
 		q.pop();
+		// parser.webSocket = new Socket();
+		// cin >> stall;
 	}
 	// parsedHtml parser2;
 	/*

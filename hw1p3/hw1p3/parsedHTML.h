@@ -24,6 +24,7 @@ class parsedHtml
 		int newNumberBytesInBatch;
 		int newNumberPagesInBatch;
 
+		int numberExtractedURL; // inside file read
 		int numberUniqueHost; // inside the first check
 		int numberDnsLookup; // inside the first check
 		int numberIpUnique; // insidde the first check 
@@ -35,6 +36,14 @@ class parsedHtml
 		int http400;
 		int http500;
 		int httpXXX;
+
+		CRITICAL_SECTION urlCheckLock;
+		CRITICAL_SECTION dnsCheckLock;
+		CRITICAL_SECTION ipCheckLock;
+		CRITICAL_SECTION statusCheckMux;
+		CRITICAL_SECTION robotCheckLock;
+		CRITICAL_SECTION hostCheckUnique;
+		CRITICAL_SECTION linkCkeckLock;
 
 
 		set<string> seenHosts;
@@ -52,6 +61,7 @@ class parsedHtml
 		char* readFileBuf;
 		int intFileSize;
 		void resetParser(void);
+		void runOnce(const char * urlLink);
 		bool parseString(string link); // parses the url
 		void generateGETrequestToSend(void);
 		void generateHEADrequestToSend(void);
