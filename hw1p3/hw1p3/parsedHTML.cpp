@@ -117,12 +117,12 @@ void parsedHtml::runOnce(const char* urlLink)
 
 bool parsedHtml::parseString(string link) {
 
-    cout << "URL: " << link << std::endl;
-    cout << "\t   Parsing URL... ";
+   // cout << "URL: " << link << std::endl;
+   // cout << "\t   Parsing URL... ";
 
     this->wholeLink = link.c_str();
     if (link.substr(0, 7) != "http://") {
-        cout << "failed with invalid scheme " << std::endl;
+    //    cout << "failed with invalid scheme " << std::endl;
         return false;
     }
 
@@ -205,7 +205,7 @@ this->total = "HEAD /robots.txt HTTP/1.1\r\nUser-agent: JoshTamuCrawler/1.2\r\nH
 }
 queue<string> parsedHtml::parseTXTFile(std::string filename)
 {
-    cout << " in parser \n";
+   // cout << " in parser \n";
     ifstream file(filename, ios::binary | ios::in);
     std::string line;
     std::queue <std::string> queueTotal;
@@ -219,8 +219,9 @@ queue<string> parsedHtml::parseTXTFile(std::string filename)
         queueTotal.push(line);
     }
     
-
+    // EnterCriticalSection(&(this->extractUrlLock));
     this->numberExtractedURL = queueTotal.size();
+    // LeaveCriticalSection(&(this->extractUrlLock));
 
 
     return queueTotal;
@@ -233,7 +234,7 @@ queue<string> parsedHtml::parseTXTFile(std::string filename)
 
 bool parsedHtml::RobotSendRead(void)
 {
-    cout << "\t   Connecting on robots... ";
+   // cout << "\t   Connecting on robots... ";
 
     bool connect = this->webSocket->Connect(this->port);
     if (connect != true)
@@ -256,9 +257,10 @@ bool parsedHtml::RobotSendRead(void)
             // bytes must be > 200
 
 
-
+            EnterCriticalSection(&(this->bitHandlingCheckLock));
             this->newNumberBytesInBatch += strlen(this->webSocket->printBuf()); // number of bytes recieved
             this->newNumberPagesInBatch++; // increment the number of pages recieved
+            LeaveCriticalSection(&(this->bitHandlingCheckLock));
 
 
 
@@ -266,21 +268,22 @@ bool parsedHtml::RobotSendRead(void)
             string status(this->webSocket->printBuf());
 
             const unsigned int statusCode = stoi(status.substr(9.3).c_str());
-            cout << "\t   Verifying header... ";
+         //   cout << "\t   Verifying header... ";
 
             if (statusCode >= 400)
             {
                 // robots allowed
                 // parse header now
 
-                cout << "status code " << statusCode << std::endl;
+             //   cout << "status code " << statusCode << std::endl;
 
                 // int httpPointer = webSocket->printBuf().find("HTTP/");
                // cout << " parsing HTML ROBOT CHECK PASSED REMOVE ME LATER \n";
 
 
-
+                EnterCriticalSection(&(this->robotCheckLock));
                 this->numberRobotPass++; // increment robots
+                LeaveCriticalSection(&(this->robotCheckLock));
 
 
 
@@ -309,11 +312,11 @@ bool parsedHtml::RobotSendRead(void)
 
 bool parsedHtml::ReconnectHostSend(void)
 {
-    cout << '\t' << " * Connecting on page... ";
+   // cout << '\t' << " * Connecting on page... ";
     bool connection = this->webSocket->Connect(this->port);
     if (connection != true)
     {
-        cout << " reconnection failed in reconnectHOSTSEND parsed HTML.CPP \n";
+     //   cout << " reconnection failed in reconnectHOSTSEND parsed HTML.CPP \n";
         return false;
     }
     this->generateGETrequestToSend();
@@ -334,24 +337,30 @@ bool parsedHtml::ReconnectHostSend(void)
 
             const char* result = this->webSocket->printBuf();
             // cout << " print the result and junk \n " << webSocket->printBuf() << std::endl;
-            cout << " the result  is " << this->webSocket->printBuf() << std::endl;
+         //   cout << " the result  is " << this->webSocket->printBuf() << std::endl;
             string status(this->webSocket->printBuf());
             const unsigned int statusCode = stoi(status.substr(9.3).c_str());
-            cout << "\t   Verifying header... ";
+           // cout << "\t   Verifying header... ";
             string stringResult(result);
             // parse header now
-            cout << "status code " << statusCode << std::endl;
-
+           // cout << "status code " << statusCode << std::endl;
 
             if (statusCode > 199 && statusCode < 300)
             {
+                EnterCriticalSection(&(this->statusCheckMux));
                 this->http200++; // incrememnt http
+                LeaveCriticalSection(&(this->statusCheckMux));
+
+
+                EnterCriticalSection(&(this->urlCheckLock));
                 this->numberSuccessfullyCrawled++; // full htpp obtained
+                LeaveCriticalSection(&(this->urlCheckLock));
+
 
 
                 clock_t start = clock();
                 clock_t finish = clock();
-               cout << "\t + Parsing page... ";
+            //   cout << "\t + Parsing page... ";
                 
                 const char* pastHeaderPtr = strchr(result, '\r\n\r\n');
 
@@ -359,16 +368,20 @@ bool parsedHtml::ReconnectHostSend(void)
 
 
 
+                EnterCriticalSection(&(this->bitHandlingCheckLock));
                 this->newNumberBytesInBatch += bytes_recieved; // number of bytes recieved
                 this->newNumberPagesInBatch++; // increment the number of pages recieved
+                 LeaveCriticalSection(&(this->bitHandlingCheckLock));
 
-
+                 EnterCriticalSection(&(this->bitHandlingCheckLock));
                 int bytes_header = pastHeaderPtr - result; // header bytes
                 int bytes_file = bytes_recieved - bytes_header;
+                EnterCriticalSection(&(this->bitHandlingCheckLock));
 
 
                 // int numberBytesToParse = htmlPointer - webSocket->getCurPos();
                 //asdf
+                 EnterCriticalSection(&(this->linkCkeckLock));
                 int nLinks = 0;
                 HTMLParserBase htmlLinkRipper;
                 char* linkCounter = htmlLinkRipper.Parse((char*)stringResult.c_str(), bytes_file,
@@ -378,6 +391,8 @@ bool parsedHtml::ReconnectHostSend(void)
 
 
                 this->numberTotalLinks += nLinks; // nlinks for the stats page
+                LeaveCriticalSection(&(this->linkCkeckLock));
+
 
 
              //   finish = clock();
@@ -390,24 +405,32 @@ bool parsedHtml::ReconnectHostSend(void)
             }
             else if (statusCode > 299 && statusCode < 400)
             {
+                EnterCriticalSection(&(this->statusCheckMux));
                 this->http300++;
+                LeaveCriticalSection(&(this->statusCheckMux));
                  return false;
             }
             else if (statusCode > 399 && statusCode < 500)
             {
+                EnterCriticalSection(&(this->statusCheckMux));
                 this->http400++;
                  return false;
+                 LeaveCriticalSection(&(this->statusCheckMux));
 
             }            
             else if (statusCode > 499 && statusCode < 600)
             {
+                EnterCriticalSection(&(this->statusCheckMux));
                 this->http500++;
+                LeaveCriticalSection(&(this->statusCheckMux));
                  return false;
 
             }
             else
             {
+                EnterCriticalSection(&(this->statusCheckMux));
                 this->httpXXX++;
+                LeaveCriticalSection(&(this->statusCheckMux));
                  return false;
 
             }
@@ -425,8 +448,9 @@ bool parsedHtml::urlCheck(std::string link, string pathQueryFragment)
                     return false;
                 }
 
-
+                EnterCriticalSection(&(this->extractUrlLock));
                 this->numberExtractedURL--; // remove a url from the link
+                LeaveCriticalSection(&(this->extractUrlLock));
 
 
               //  cout << "\t   Checking host uniqueness... ";
@@ -438,12 +462,22 @@ bool parsedHtml::urlCheck(std::string link, string pathQueryFragment)
                //     cout << "failed" << '\n';
                     return false;
                 }
+
+
+                EnterCriticalSection(&(this->hostCheckUnique));
+                this->numberUniqueHost++;
+                LeaveCriticalSection(&(this->hostCheckUnique));
+
+
+
+
               //  cout << "passed \n";
                 // Socket* webSocket = new Socket();
               //  cout << '\t' << "   Doing DNS... ";
-                bool DNSpass = this->webSocket->DNSCheck(host.c_str());
 
-                if (DNSpass != true)
+           //     bool DNSpass = this->webSocket->DNSCheck(host.c_str());
+
+                if (this->webSocket->DNSCheck(host.c_str()) != true)
                 {
                     // cout << "failed \n";
                      // cout << " parsed HTML DNS FAILED IN  URL CHECK 515 REMOVE LATER \n";
@@ -451,7 +485,9 @@ bool parsedHtml::urlCheck(std::string link, string pathQueryFragment)
                 }
 
 
+                EnterCriticalSection(&(this->dnsCheckLock));
                 this->numberDnsLookup++; // increment dns checkk
+                LeaveCriticalSection(&(this->dnsCheckLock));
 
 
           //    cout << "\t   Checking IP uniqueness... ";
@@ -470,7 +506,9 @@ bool parsedHtml::urlCheck(std::string link, string pathQueryFragment)
                     return false;
                 }
                 
+                EnterCriticalSection(&(this->ipCheckLock));
                 this->numberIpUnique++; // increment IP unique
+                LeaveCriticalSection(&(this->ipCheckLock));
 
         //        cout << "passed \n";
                 // cout << "passed NO UNIUQE IDS FOUND IN FIRST CHECK  URL CHECK, REMOVE ME LATER \n";

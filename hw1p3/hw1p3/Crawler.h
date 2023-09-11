@@ -33,7 +33,7 @@ public:
 	~Crawler();
 
 
-	void handleThreads(int threadNumbers );
+	// void handleThreads(int threadNumbers );
 	DWORD runParsingRobotsSendingStatus();
 	DWORD twoSecondPrint();
 	void finalPrint();

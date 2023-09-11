@@ -13,7 +13,7 @@ const int INITIAL_BUF_SIZE = 8192;
 
 class Socket {
 private:
-	char* buf; // current buffer
+	char* buf; // current buffer // kill this
 	int allocatedSize; // bytes allocated for buf
 	int curPos; // current position in buffer
 	struct hostent* remote;

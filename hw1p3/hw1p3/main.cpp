@@ -18,12 +18,17 @@ using namespace std;
 */
 DWORD WINAPI crawler_thread_starter(LPVOID that)
 {
-	return ((Crawler*)that)->runParsingRobotsSendingStatus();
+	// cout << " afddsafs " << ((Crawler*)that)->q.front() << std::endl;
+	Crawler* thatNew = (Crawler*)that;
+	// cout << " front is " << thatNew->q.front() << std::endl;
+	// Crawler* passCrawler = static_cast<Crawler*>(that);
+	return thatNew->runParsingRobotsSendingStatus();
 }
 
 DWORD WINAPI status_thread_starter(LPVOID that)
 {
-	return ((Crawler*)that)->twoSecondPrint();
+	Crawler* thatNew = (Crawler*)that;
+	return  thatNew->twoSecondPrint();
 }
 
 void handleThreads(Crawler * crawler, int numberThread)
@@ -31,12 +36,12 @@ void handleThreads(Crawler * crawler, int numberThread)
 	cout << "Opened " << crawler->crawlerFileName << " with size " << crawler->parserHelper->intFileSize << std::endl;
 	crawler->crawlersThread = new HANDLE[numberThread];
 	crawler->statsThread = new HANDLE[0];
-
-	crawler->statsThread[0] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)status_thread_starter, NULL, 0, NULL);
+	// cout << " crawl check front " << crawler->q.front() << std::endl;
+	crawler->statsThread[0] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)status_thread_starter, crawler, 0, NULL);
 
 	for (int i = 0; i < numberThread ; i++)
 	{
-		crawler->crawlersThread[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)crawler_thread_starter, NULL, 0, NULL);
+		crawler->crawlersThread[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)crawler_thread_starter, crawler, 0, NULL);
 
 		EnterCriticalSection(&(crawler->threadQueueLock));
 		// cout << " thread amount " << i << std::endl;
@@ -55,8 +60,12 @@ void handleThreads(Crawler * crawler, int numberThread)
 
 
 
-	SetEvent(crawler->statusEvent);
+	bool checkMe = SetEvent(crawler->statusEvent);
+	if (checkMe != true)
+	{
 
+	}
+	WaitForSingleObject(crawler->statsThread[0], INFINITE);
 	CloseHandle(crawler->statsThread[0]);
 
 	crawler->finalPrint();
@@ -142,7 +151,7 @@ int main(int argc, char* argv[])
 	std::string filename("100url.txt");
 	crawler->crawlerFileName = filename;
 	crawler->q = crawler->parserHelper->parseTXTFile(filename);
-	cout << "asdfasdf " << crawler->q.front() << std::endl;
+	// cout << "asdfasdf " << crawler->q.front() << std::endl;
 	handleThreads(&(*crawler), numberThread);
 
 	return 0;

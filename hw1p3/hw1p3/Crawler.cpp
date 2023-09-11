@@ -31,12 +31,14 @@ Crawler::Crawler()
 	// cout << " check 2 crawler.cpp 1 \n";
 
 
+	InitializeCriticalSection(&(this->parserHelper->bitHandlingCheckLock));
 	InitializeCriticalSection(&(this->parserHelper->urlCheckLock)); 
 	InitializeCriticalSection(&(this->parserHelper->dnsCheckLock));  
 	InitializeCriticalSection(&(this->parserHelper->ipCheckLock));   
 	InitializeCriticalSection(&(this->parserHelper->statusCheckMux));
 	InitializeCriticalSection(&(this->parserHelper->robotCheckLock));
 	InitializeCriticalSection(&(this->parserHelper->hostCheckUnique));
+	InitializeCriticalSection(&(this->parserHelper->extractUrlLock));
 	InitializeCriticalSection(&(this->parserHelper->linkCkeckLock));
 	// EnterCriticalSection(&CriticalSection);
 
@@ -58,20 +60,18 @@ Crawler::~Crawler()
 	// DeleteCriticalSection(&statusCheckLock);
 
 	DeleteCriticalSection(&(this->parserHelper->urlCheckLock));
+	DeleteCriticalSection(&(this->parserHelper->extractUrlLock));
 	DeleteCriticalSection(&(this->parserHelper->dnsCheckLock));
 	DeleteCriticalSection(&(this->parserHelper->ipCheckLock));
 	DeleteCriticalSection(&(this->parserHelper->statusCheckMux));
 	DeleteCriticalSection(&(this->parserHelper->robotCheckLock));
 	DeleteCriticalSection(&(this->parserHelper->hostCheckUnique));
 	DeleteCriticalSection(&(this->parserHelper->linkCkeckLock));
+	DeleteCriticalSection(&(this->parserHelper->bitHandlingCheckLock));
 	
 }
 
-void Crawler::handleThreads(int threadNumber)
-{
 
-
-}
 
 
 
@@ -79,14 +79,21 @@ void Crawler::handleThreads(int threadNumber)
 
 DWORD Crawler::runParsingRobotsSendingStatus()
 {
-	if (this->q.empty() != true)
+
+	// potentially have a var to set true when fasle 
+	// cout << " front is " << this->q.front() << std::endl;
+	EnterCriticalSection(&(this->editQueueLink));
+	bool isEmpty = this->q.empty();
+	if (isEmpty != true)
 	{
-		EnterCriticalSection(&(this->editQueueLink));
-		const char* urlLink = this->q.front().c_str();
+		//const char* urlLink = this->q.front().c_str();
+
+		// error here
+
+		std::string urlLink(q.front().c_str());
 		// const char* urlLink = q.front().c_str();
 		q.pop();
 		this->numberThread--;
-		LeaveCriticalSection(&(this->editQueueLink));
 
 
 
@@ -94,7 +101,13 @@ DWORD Crawler::runParsingRobotsSendingStatus()
 		// parser.resetParser();
 		this->parserHelper->webSocket = new Socket();
 		// parser->parseString(urlLink);
-		bool urlPass = parserHelper->urlCheck(urlLink, parserHelper->printPathQueryFragment());
+		LeaveCriticalSection(&(this->editQueueLink));
+
+
+
+		// new mutex egage
+
+		bool urlPass = parserHelper->urlCheck(urlLink.c_str(), parserHelper->printPathQueryFragment());
 
 
 		parserHelper->webSocket->robots = true;
@@ -102,13 +115,14 @@ DWORD Crawler::runParsingRobotsSendingStatus()
 		// 
 		if (urlPass != true)
 		{
+			LeaveCriticalSection(&(this->editQueueLink));
 			// cout << " URL FAILED moving on to next url move this main.cpp \n";
 			parserHelper->resetParser();
 			return 0;
 		}
 
-
-		this->parserHelper->numberExtractedURL++;
+		// EnterCriticalSection(&(this->))
+		// this->parserHelper->numberExtractedURL++;
 
 
 		// taking a copy of the server

@@ -16,6 +16,8 @@ int PAGE_MAX = 2097152; // 2mb
 int ROBOT_MAX = 16384; // 16 KB
 
 
+int maxBuffer = 512; // check me p1
+
 Socket::Socket()
 {
 	WSADATA wsaData;
@@ -38,7 +40,7 @@ Socket::Socket()
 		this->sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 		if (sock == INVALID_SOCKET)
 		{
-			printf("socket() generated error %d\n", WSAGetLastError());
+		// 	printf("socket() generated error %d\n", WSAGetLastError());
 			WSACleanup();
 			return;
 		}
@@ -52,7 +54,7 @@ void Socket::closeSocket()
 	// yoinked from  ^^^^ 
 	if (closesocket(sock) == SOCKET_ERROR)
 	{
-		printf("closesocket() generate error: %d", WSAGetLastError());
+		// printf("closesocket() generate error: %d", WSAGetLastError());
 		return;
 	}
 	// delete buf;
@@ -75,7 +77,7 @@ bool Socket::DNSCheck(std::string host)
 		// cout << " find invalid memoery  hceck " << this->remote << std::endl;
 		if ((this->remote = gethostbyname(host.c_str())) == NULL)
 		{
-			printf("Connection error: %d\n", WSAGetLastError());
+			// printf("Connection error: %d\n", WSAGetLastError());
 			return false;
 		}
 		else // take the first IP address and copy into sin_addr
@@ -93,7 +95,7 @@ bool Socket::DNSCheck(std::string host)
 		this->server.sin_addr.S_un.S_addr = IP;
 	}
 
-	
+	/*
 	clock_t start = clock();
 	clock_t finish = clock(); // compiler wont shut up about this
 
@@ -103,6 +105,7 @@ bool Socket::DNSCheck(std::string host)
 
 
 	cout << "done in " << timepassed * 1000 << " ms, found " << inet_ntoa(this->server.sin_addr) << std::endl;
+	*/
 	// this->IP = inet_ntoa(this->server.sin_addr);
 	return true;
 }
@@ -110,18 +113,19 @@ bool Socket::DNSCheck(std::string host)
 bool Socket::Connect(int port)
 {
 	// cout << " socket is " << sock << std::endl;
-	clock_t start = clock();
+	// clock_t start = clock();
 	this->server.sin_family = AF_INET; // IPv4
 	this->server.sin_port = htons(port); // port #
 
 
 	if (connect(this->sock, (struct sockaddr*)&(this->server), sizeof(struct sockaddr_in)) == SOCKET_ERROR)
 	{
-		printf("Connection error: %d\n", WSAGetLastError());
+		// printf("Connection error: %d\n", WSAGetLastError());
 		return false;
 	}
-	double timepassed = double(clock() - start) / (double)CLOCKS_PER_SEC;
-	cout << "done in " << timepassed * 1000 << " ms " << std::endl;
+
+	// double timepassed = double(clock() - start) / (double)CLOCKS_PER_SEC;
+	// cout << "done in " << timepassed * 1000 << " ms " << std::endl;
 
 	// print
 	return true;
@@ -158,7 +162,7 @@ bool Socket::Send(string sendRequest , string host)
 	if (send( this->sock, sendRequest.c_str() , strlen(sendRequest.c_str()), 0) == SOCKET_ERROR)
 	{
 
-		printf("Connection error: %d\n", WSAGetLastError());
+		// printf("Connection error: %d\n", WSAGetLastError());
 		return false;
 	}
 	// cout << " passed successfully connected " << std::endl;
@@ -168,7 +172,7 @@ bool Socket::Send(string sendRequest , string host)
 
 bool Socket::Read(void)
 {
-	cout << '\t' << "   Loading... ";
+	// cout << '\t' << "   Loading... ";
 	//https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-select
 	// 
 	// set timeout to 10 seconds
@@ -216,21 +220,21 @@ bool Socket::Read(void)
 			// cout << " bytes from recv " << bytes << std::endl;
 			if (bytes < 0)
 			{
-				printf("Failed with %d\n", WSAGetLastError());
+			//	printf("Failed with %d\n", WSAGetLastError());
 				break;
 			}
 			if (bytes == 0)
 			{
 				if (this->curPos < 50)
 				{
-					cout << "failed with non-HTTP header (does not begin with HTTP/) \n";
+				//	cout << "failed with non-HTTP header (does not begin with HTTP/) \n";
 					return false;
 				}
 				this->buf[curPos] = '\0'; // 3rd notes said +1 was wrong
 				// NULL-terminate buffer
-				clock_t finish = clock(); // shut up compiler
-				double duration = (double)(finish - start) / CLOCKS_PER_SEC;
-				printf("done in %.1f ms with %d bytes \n", duration * 1000, curPos);
+			//	clock_t finish = clock(); // shut up compiler
+			//	double duration = (double)(finish - start) / CLOCKS_PER_SEC;
+			//	printf("done in %.1f ms with %d bytes \n", duration * 1000, curPos);
 				return true; // normal completion
 			}
 
@@ -244,12 +248,12 @@ bool Socket::Read(void)
 
 				if (!this->robots && this->allocatedSize ==  PAGE_MAX)
 				{
-					cout << "failed exceeding max \n";
+				//	cout << "failed exceeding max \n";
 					break;
 				}
 				else if (this->robots && this->allocatedSize  == ROBOT_MAX)
 				{
-					cout << "failed exceeding max \n";
+				//	cout << "failed exceeding max \n";
 					break;
 
 				}
@@ -276,13 +280,13 @@ bool Socket::Read(void)
 		{
 			// ret returned a 0 which means no sockkets opened
 			// report timeout
-			cout << " failed with timeout" << std::endl;
+			// cout << " failed with timeout" << std::endl;
 			break;
 		}
 		else
 			// print WSAGetLastError()
 		{
-			printf("Connection error: %d\n", WSAGetLastError());
+			// printf("Connection error: %d\n", WSAGetLastError());
 
 			break;
 		}

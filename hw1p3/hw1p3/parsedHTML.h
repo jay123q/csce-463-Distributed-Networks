@@ -36,15 +36,16 @@ class parsedHtml
 		int http400;
 		int http500;
 		int httpXXX;
+		CRITICAL_SECTION extractUrlLock;
+		CRITICAL_SECTION urlCheckLock; // this increments when the url returns a status 200 found in parser, reconnect and run 
+		CRITICAL_SECTION dnsCheckLock; // url check dns increment
+		CRITICAL_SECTION ipCheckLock; // rl ccheck ip increment
+		CRITICAL_SECTION robotCheckLock; // handles counting the  robots
+		CRITICAL_SECTION bitHandlingCheckLock; // handles pages and curpos bytes
+		CRITICAL_SECTION hostCheckUnique; // host check in url parser
+		CRITICAL_SECTION linkCkeckLock; // links found in parser, reconnect and run 
 
-		CRITICAL_SECTION urlCheckLock;
-		CRITICAL_SECTION dnsCheckLock;
-		CRITICAL_SECTION ipCheckLock;
-		CRITICAL_SECTION statusCheckMux;
-		CRITICAL_SECTION robotCheckLock;
-		CRITICAL_SECTION hostCheckUnique;
-		CRITICAL_SECTION linkCkeckLock;
-
+		CRITICAL_SECTION statusCheckMux;// this is for the html status found in parser, reconnect and run 
 
 		set<string> seenHosts;
 		set<DWORD> seenIPs;
