@@ -7,8 +7,28 @@
 Crawler::Crawler()
 {
 
-	InitializeCriticalSection(&extractedQueueLock);
+	//std::string filename("Debug/100url.txt");
+	// cout << " in consutruct check \n";
+	// this->q = parserHelper->parseTXTFile(this->crawlerFileName);
+	// int stall = 0;
+	
+	int numberThread = 0;
+
+	this->bytesDownloadedInBatch = 0.0;
+	this->pagesDownloadedInBatch = 0.0;
+	this->startTimer = 0.0;
+	this->totalBytes = 0.0;
+	this->totalPages = 0.0;
+	this->parserHelper = new parsedHtml();
+	this->parserHelper->resetParser();
+	this->parserHelper->setNumbersForCrawling();
+	// cout << " check 1 crawler.cpp 1 \n";
+
+	InitializeCriticalSection(&(this->threadQueueLock));
+	InitializeCriticalSection(&(this->editQueueLink));
 	// InitializeCriticalSection(&statusCheckLock);
+
+	// cout << " check 2 crawler.cpp 1 \n";
 
 
 	InitializeCriticalSection(&(this->parserHelper->urlCheckLock)); 
@@ -20,17 +40,21 @@ Crawler::Crawler()
 	InitializeCriticalSection(&(this->parserHelper->linkCkeckLock));
 	// EnterCriticalSection(&CriticalSection);
 
+	// cout << " check 3 crawler.cpp 1 \n";
 
 	// LeaveCriticalSection(&CriticalSection);
 	this->statusEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	// cout << " check 3 crawler.cpp 1 \n";
 
 
 }
+
 Crawler::~Crawler()
 {
 	// DeleteCriticalSection(&CriticalSection);
 
-	DeleteCriticalSection(&extractedQueueLock);
+	DeleteCriticalSection(&threadQueueLock);
+	DeleteCriticalSection(&editQueueLink);
 	// DeleteCriticalSection(&statusCheckLock);
 
 	DeleteCriticalSection(&(this->parserHelper->urlCheckLock));
@@ -40,98 +64,108 @@ Crawler::~Crawler()
 	DeleteCriticalSection(&(this->parserHelper->robotCheckLock));
 	DeleteCriticalSection(&(this->parserHelper->hostCheckUnique));
 	DeleteCriticalSection(&(this->parserHelper->linkCkeckLock));
+	
 }
 
-void Crawler::createThreads(int threadNumber)
+void Crawler::handleThreads(int threadNumber)
 {
 
-	this->crawlersThread = new HANDLE[threadNumber];
 
-	this->statsThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) &twoSecondPrint, NULL, 0, NULL);
-
-	for (int i = 0; i < threadNumber; i++) {
-		crawlersThread[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&runParsingRobotsSendingStatus, NULL, 0, NULL);
-
-		WaitForSingleObject(params.paramMutex, INFINITE);
-		params.numThreadsRunning++;
-		ReleaseMutex(params.paramMutex);
-	}
-
-	WaitForSingleObject(fileLinks, INFINITE);
-
-	for (int i = 0; i < numThreads; i++) {
-		WaitForSingleObject(crawlers[i], INFINITE);
-		CloseHandle(crawlers[i]);
-	}
-	//
-
-
-
-	SetEvent(statusEvent);
 }
 
 
 
-void WINAPI Crawler::runParsingRobotsSendingStatus(const char* urlLink)
+
+
+DWORD Crawler::runParsingRobotsSendingStatus()
 {
-	// cout << " size of  main  parser " << sizeof(parser) << std::endl;
-	// parser.resetParser();
-	this->parserHelper->webSocket = new Socket();
-	// parser->parseString(urlLink);
-	bool urlPass = parserHelper->urlCheck(urlLink, parserHelper->printPathQueryFragment());
-	parserHelper->webSocket->robots = true;
-	// parser->webSocket->printDNStiming = true;
-	// 
-	if (urlPass != true)
+	if (this->q.empty() != true)
 	{
-		// cout << " URL FAILED moving on to next url move this main.cpp \n";
+		EnterCriticalSection(&(this->editQueueLink));
+		const char* urlLink = this->q.front().c_str();
+		// const char* urlLink = q.front().c_str();
+		q.pop();
+		this->numberThread--;
+		LeaveCriticalSection(&(this->editQueueLink));
+
+
+
+		// cout << " size of  main  parser " << sizeof(parser) << std::endl;
+		// parser.resetParser();
+		this->parserHelper->webSocket = new Socket();
+		// parser->parseString(urlLink);
+		bool urlPass = parserHelper->urlCheck(urlLink, parserHelper->printPathQueryFragment());
+
+
+		parserHelper->webSocket->robots = true;
+		// parser->webSocket->printDNStiming = true;
+		// 
+		if (urlPass != true)
+		{
+			// cout << " URL FAILED moving on to next url move this main.cpp \n";
+			parserHelper->resetParser();
+			return 0;
+		}
+
+
+		this->parserHelper->numberExtractedURL++;
+
+
+		// taking a copy of the server
+		parserHelper->transferSetServer(parserHelper->webSocket->getServer());
+		// cout << " the socket is " << parser->webSocket->sock << std::endl;
+
+		// lock here??
+
+		bool robotPass = parserHelper->RobotSendRead();
+		if (robotPass != true)
+		{
+			//	cout << "ROBOT FAILED  sending to robots failed in main, moving on to next \n";
+			parserHelper->resetParser();
+			return 0;
+		}
+
+		parserHelper->webSocket = new Socket();
+		parserHelper->webSocket->setServer(parserHelper->serverParserTemp);
+		bool sendPass = parserHelper->ReconnectHostSend();
+		if (sendPass != true)
+		{
+			//	cout << "RECONNECT HOST FAILED sending the request has failed in main, could not be a issue, moving to next remove me \n";
+			parserHelper->resetParser();
+			return 0;
+		}
+
+		// unlock here
+		// 
+		// 
+		// cout << " finished the  main function contiune running 42 \n";
+		// parser->webSocket->~Socket();
 		parserHelper->resetParser();
-		return;
+
+
+
+		return 0;
+
+
 	}
-
-	// taking a copy of the server
-	parserHelper->transferSetServer(parserHelper->webSocket->getServer());
-	// cout << " the socket is " << parser->webSocket->sock << std::endl;
-
-	// lock here??
-
-	bool robotPass = parserHelper->RobotSendRead();
-	if (robotPass != true)
+	else
 	{
-		//	cout << "ROBOT FAILED  sending to robots failed in main, moving on to next \n";
-		parserHelper->resetParser();
-		return;
+		// queue is empty
+		return 0;
 	}
-
-	parserHelper->webSocket = new Socket();
-	parserHelper->webSocket->setServer(parserHelper->serverParserTemp);
-	bool sendPass = parserHelper->ReconnectHostSend();
-	if (sendPass != true)
-	{
-		//	cout << "RECONNECT HOST FAILED sending the request has failed in main, could not be a issue, moving to next remove me \n";
-		parserHelper->resetParser();
-		return;
-	}
-
-	// unlock here
-	// 
-	// 
-	// cout << " finished the  main function contiune running 42 \n";
-	// parser->webSocket->~Socket();
-		parserHelper->resetParser();
-
 
 
 }
 
 
-void WINAPI Crawler::twoSecondPrint()
+DWORD Crawler::twoSecondPrint()
 {
 	while (WaitForSingleObject(this->statusEvent, 2000) == true)
 	{
 		printf("[%3d] %4d Q %6d E %7d H %6d D %6d I %5d R %5d C %5d L %4dK\n",
 			(double)(clock() - this->startTimer) / CLOCKS_PER_SEC,
-			this->numberSizePendingQueue,
+			this->numberThread,
+			(int) this->q.size(),
 			this->parserHelper->numberExtractedURL,
 			this->parserHelper->numberUniqueHost,
 			this->parserHelper->numberDnsLookup,
@@ -152,6 +186,7 @@ void WINAPI Crawler::twoSecondPrint()
 
 		// pass the status on to the next person
 		ResetEvent(statusEvent);
+		return 0;
 	}
 }
 void Crawler::finalPrint()

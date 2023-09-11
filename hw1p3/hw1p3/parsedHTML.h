@@ -21,9 +21,9 @@ class parsedHtml
 {
 
 	public:
+
 		int newNumberBytesInBatch;
 		int newNumberPagesInBatch;
-
 		int numberExtractedURL; // inside file read
 		int numberUniqueHost; // inside the first check
 		int numberDnsLookup; // inside the first check
@@ -60,6 +60,10 @@ class parsedHtml
 		struct sockaddr_in serverParserTemp;
 		char* readFileBuf;
 		int intFileSize;
+		
+
+		parsedHtml();
+		void setNumbersForCrawling();
 		void resetParser(void);
 		void runOnce(const char * urlLink);
 		bool parseString(string link); // parses the url

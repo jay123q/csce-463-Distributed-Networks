@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <queue>
 #include <iostream>
 #include "parsedHTML.h"
 
@@ -10,7 +11,8 @@ class Crawler
 public:
 
 
-	int numberSizePendingQueue;
+	int numberThread;
+
 	double bytesDownloadedInBatch;
 	double pagesDownloadedInBatch;
 	double startTimer;
@@ -19,18 +21,21 @@ public:
 	HANDLE* crawlersThread;
 	HANDLE* statsThread;
 	parsedHtml * parserHelper;
+	string crawlerFileName;
+	queue < std::string > q;
 
 	// mux parameters
-	CRITICAL_SECTION extractedQueueLock;
+	CRITICAL_SECTION threadQueueLock;
+	CRITICAL_SECTION editQueueLink;
 	//CRITICAL_SECTION statusCheckLock;
 	HANDLE statusEvent;
 	Crawler();
+	~Crawler();
 
 
-
-	void createThreads(int threadNumbers );
-	void WINAPI runParsingRobotsSendingStatus(const char* urlLink);
-	void WINAPI twoSecondPrint();
+	void handleThreads(int threadNumbers );
+	DWORD runParsingRobotsSendingStatus();
+	DWORD twoSecondPrint();
 	void finalPrint();
 
 };

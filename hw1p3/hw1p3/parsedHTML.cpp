@@ -8,6 +8,12 @@
 #include "parsedHTML.h"
 using namespace std;
 
+parsedHtml::parsedHtml()
+{
+    this->resetParser();
+    this->setNumbersForCrawling();
+}
+
 void parsedHtml::resetParser(void)
 {
     this->port = 80;
@@ -23,6 +29,26 @@ void parsedHtml::resetParser(void)
     // this->readFileBuf[0] = '\0';
     this->webSocket->~Socket();
     this->intFileSize = 0;
+
+}
+
+void parsedHtml::setNumbersForCrawling()
+{
+
+    this->newNumberBytesInBatch =0;
+    this->newNumberPagesInBatch =0;
+    this->numberExtractedURL =0; // inside file read
+    this->numberUniqueHost =0; // inside the first check
+    this->numberDnsLookup =0; // inside the first check
+    this->numberIpUnique =0; // insidde the first check 
+    this->numberRobotPass =0; // inside the robots function, passed robots 
+    this->numberSuccessfullyCrawled =0; //  full http inside of the reconnect and resent function
+    this->numberTotalLinks =0; // inside of reconnecct and send parser
+    this->http200 = 0;
+    this->http300 = 0;
+    this->http400 = 0;
+    this->http500 = 0;
+    this->httpXXX = 0;
 
 }
 
@@ -179,6 +205,7 @@ this->total = "HEAD /robots.txt HTTP/1.1\r\nUser-agent: JoshTamuCrawler/1.2\r\nH
 }
 queue<string> parsedHtml::parseTXTFile(std::string filename)
 {
+    cout << " in parser \n";
     ifstream file(filename, ios::binary | ios::in);
     std::string line;
     std::queue <std::string> queueTotal;
@@ -188,12 +215,12 @@ queue<string> parsedHtml::parseTXTFile(std::string filename)
         getline(file, line);
         this->intFileSize += strlen(line.c_str());
         // cout << " the line is " << line << std::endl;
-       //  cout << " push the file " << line << std::endl;
+       // cout << " push the file " << line << std::endl;
         queueTotal.push(line);
     }
     
 
-    this->numberExtractedURL = q.size();
+    this->numberExtractedURL = queueTotal.size();
 
 
     return queueTotal;

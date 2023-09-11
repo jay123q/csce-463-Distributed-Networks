@@ -10,14 +10,57 @@
 #include <iostream>
 #include <vector>
 #include "Crawler.h"
+#pragma warning(disable:4996)
+#pragma warning(disable:4099)
 using namespace std;
 /*
 
 */
+DWORD WINAPI crawler_thread_starter(LPVOID that)
+{
+	return ((Crawler*)that)->runParsingRobotsSendingStatus();
+}
 
-void winsock_test(void);
+DWORD WINAPI status_thread_starter(LPVOID that)
+{
+	return ((Crawler*)that)->twoSecondPrint();
+}
+
+void handleThreads(Crawler * crawler, int numberThread)
+{
+	cout << "Opened " << crawler->crawlerFileName << " with size " << crawler->parserHelper->intFileSize << std::endl;
+	crawler->crawlersThread = new HANDLE[numberThread];
+	crawler->statsThread = new HANDLE[0];
+
+	crawler->statsThread[0] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)status_thread_starter, NULL, 0, NULL);
+
+	for (int i = 0; i < numberThread ; i++)
+	{
+		crawler->crawlersThread[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)crawler_thread_starter, NULL, 0, NULL);
+
+		EnterCriticalSection(&(crawler->threadQueueLock));
+		// cout << " thread amount " << i << std::endl;
+		crawler->numberThread++;
+		LeaveCriticalSection(&(crawler->threadQueueLock));
+
+	}
+
+	// WaitForSingleObject(fileLinks, INFINITE);
+
+	for (int i = 0; i < numberThread; i++) {
+		WaitForSingleObject(crawler->crawlersThread[i], INFINITE);
+		CloseHandle(crawler->crawlersThread[i]);
+	}
+	//
 
 
+
+	SetEvent(crawler->statusEvent);
+
+	CloseHandle(crawler->statsThread[0]);
+
+	crawler->finalPrint();
+}
 
 
 
@@ -29,7 +72,11 @@ int main(int argc, char* argv[])
 	int numberThreads = 0;
 	bool runVector = false;
 	parsedHtml parser;
-	Crawler crawler;
+
+	Crawler * crawler = new Crawler();
+
+
+
 	/* 
 	if (argc == 2)
 	{
@@ -71,7 +118,6 @@ int main(int argc, char* argv[])
 		parser.webSocket = new Socket();
 	}
 
-	*/
 	// numberThreads = stoi(argv[1]);
 	// std::string filename = argv[2];
 	std::string filename("100url.txt");
@@ -91,22 +137,13 @@ int main(int argc, char* argv[])
 		// parser.webSocket = new Socket();
 		// cin >> stall;
 	}
-	// parsedHtml parser2;
-	/*
-	std::string filename = "abchttp://";
-	parser.resetParser();
-	parser.webSocket = new Socket();
-	// parser.webSocket->sock += 1;
-		continueRunning(&parser,filename.c_str());
-
 	*/
-	// this was used for all testing locally
-
-
-	
-	//parser.parseTXTFile(url.argv[1]);
-
-	//}
+	int numberThread = 10;
+	std::string filename("100url.txt");
+	crawler->crawlerFileName = filename;
+	crawler->q = crawler->parserHelper->parseTXTFile(filename);
+	cout << "asdfasdf " << crawler->q.front() << std::endl;
+	handleThreads(&(*crawler), numberThread);
 
 	return 0;
 }
