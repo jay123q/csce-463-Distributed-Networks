@@ -23,7 +23,7 @@ public:
 	parsedHtml * parserHelper;
 	string crawlerFileName;
 	queue < std::string > q;
-
+	CRITICAL_SECTION genericSyntaxLock;
 	// mux parameters
 	CRITICAL_SECTION threadQueueLock;
 	CRITICAL_SECTION editQueueLink;

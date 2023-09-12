@@ -34,7 +34,7 @@ void parsedHtml::resetParser(void)
 
 void parsedHtml::setNumbersForCrawling()
 {
-
+    this->totalExtractedNoSub = 0;
     this->newNumberBytesInBatch =0;
     this->newNumberPagesInBatch =0;
     this->numberExtractedURL =0; // inside file read
@@ -221,6 +221,7 @@ queue<string> parsedHtml::parseTXTFile(std::string filename)
     
     // EnterCriticalSection(&(this->extractUrlLock));
     this->numberExtractedURL = queueTotal.size();
+    this->totalExtractedNoSub = queueTotal.size();
     // LeaveCriticalSection(&(this->extractUrlLock));
 
 
@@ -235,7 +236,7 @@ queue<string> parsedHtml::parseTXTFile(std::string filename)
 bool parsedHtml::RobotSendRead(void)
 {
    // cout << "\t   Connecting on robots... ";
-
+    EnterCriticalSection(&(this->genericSyntaxLock));
     bool connect = this->webSocket->Connect(this->port);
     if (connect != true)
     {
@@ -244,6 +245,7 @@ bool parsedHtml::RobotSendRead(void)
     }
     this->generateHEADrequestToSend();
     bool socketCheck = this->webSocket->Send(this->total, this->host);
+    LeaveCriticalSection(&(this->genericSyntaxLock));
 
     if (socketCheck)
     {
@@ -292,7 +294,7 @@ bool parsedHtml::RobotSendRead(void)
             }
             else if (statusCode < 400 && statusCode >= 200)
             {
-                cout << "status code " << statusCode << std::endl;
+               // cout << "status code " << statusCode << std::endl;
                 this->webSocket->robots = false;
                 return false;
             }
@@ -336,15 +338,9 @@ bool parsedHtml::ReconnectHostSend(void)
             WSACleanup();
 
             const char* result = this->webSocket->printBuf();
-            // cout << " print the result and junk \n " << webSocket->printBuf() << std::endl;
-         //   cout << " the result  is " << this->webSocket->printBuf() << std::endl;
             string status(this->webSocket->printBuf());
             const unsigned int statusCode = stoi(status.substr(9.3).c_str());
-           // cout << "\t   Verifying header... ";
             string stringResult(result);
-            // parse header now
-           // cout << "status code " << statusCode << std::endl;
-
             if (statusCode > 199 && statusCode < 300)
             {
                 EnterCriticalSection(&(this->statusCheckMux));
@@ -362,21 +358,21 @@ bool parsedHtml::ReconnectHostSend(void)
                 clock_t finish = clock();
             //   cout << "\t + Parsing page... ";
                 
+                EnterCriticalSection(&(this->bitHandlingCheckLock));
                 const char* pastHeaderPtr = strchr(result, '\r\n\r\n');
 
                 int bytes_recieved = this->webSocket->getCurPos();
 
 
 
-                EnterCriticalSection(&(this->bitHandlingCheckLock));
                 this->newNumberBytesInBatch += bytes_recieved; // number of bytes recieved
                 this->newNumberPagesInBatch++; // increment the number of pages recieved
                  LeaveCriticalSection(&(this->bitHandlingCheckLock));
 
-                 EnterCriticalSection(&(this->bitHandlingCheckLock));
+               //  EnterCriticalSection(&(this->bitHandlingCheckLock));
                 int bytes_header = pastHeaderPtr - result; // header bytes
                 int bytes_file = bytes_recieved - bytes_header;
-                EnterCriticalSection(&(this->bitHandlingCheckLock));
+             //  EnterCriticalSection(&(this->bitHandlingCheckLock));
 
 
                 // int numberBytesToParse = htmlPointer - webSocket->getCurPos();
@@ -442,29 +438,31 @@ bool parsedHtml::ReconnectHostSend(void)
 
 bool parsedHtml::urlCheck(std::string link, string pathQueryFragment)
             {
+                EnterCriticalSection(&(this->extractUrlLock));
                 bool parseCheck = parseString(link);
                 if(parseCheck == false )
                 {
+                    LeaveCriticalSection(&(this->extractUrlLock));
                     return false;
                 }
 
-                EnterCriticalSection(&(this->extractUrlLock));
                 this->numberExtractedURL--; // remove a url from the link
                 LeaveCriticalSection(&(this->extractUrlLock));
 
 
               //  cout << "\t   Checking host uniqueness... ";
                 
+                EnterCriticalSection(&(this->hostCheckUnique));
                 auto resultHostCheck = this->seenHosts.insert(host.c_str());
                 if (resultHostCheck.second != true)
                 { // duplicate host
+                      LeaveCriticalSection(&(this->hostCheckUnique));
 
                //     cout << "failed" << '\n';
                     return false;
                 }
 
 
-                EnterCriticalSection(&(this->hostCheckUnique));
                 this->numberUniqueHost++;
                 LeaveCriticalSection(&(this->hostCheckUnique));
 
@@ -477,21 +475,23 @@ bool parsedHtml::urlCheck(std::string link, string pathQueryFragment)
 
            //     bool DNSpass = this->webSocket->DNSCheck(host.c_str());
 
+                EnterCriticalSection(&(this->dnsCheckLock));
                 if (this->webSocket->DNSCheck(host.c_str()) != true)
                 {
                     // cout << "failed \n";
                      // cout << " parsed HTML DNS FAILED IN  URL CHECK 515 REMOVE LATER \n";
+                    LeaveCriticalSection(&(this->dnsCheckLock));
                     return false;
                 }
 
 
-                EnterCriticalSection(&(this->dnsCheckLock));
                 this->numberDnsLookup++; // increment dns checkk
                 LeaveCriticalSection(&(this->dnsCheckLock));
 
 
           //    cout << "\t   Checking IP uniqueness... ";
                //  cout << " ip is " << inet_addr((inet_ntoa(this->webSocket->getServer().sin_addr))) << std::endl;
+                EnterCriticalSection(&(this->ipCheckLock));
                  int insertCheckIps = seenIPs.size();
 
                  // below caused a error if INET_ADDR isnt there odd
@@ -501,12 +501,12 @@ bool parsedHtml::urlCheck(std::string link, string pathQueryFragment)
                 // if a valid IP, directly drop its binary version into sin_addr
                 if (insertCheckIps == seenIPs.size())
                 { // duplicate host
+                   LeaveCriticalSection(&(this->ipCheckLock));
 
          ////           cout << "failed" << '\n';
                     return false;
                 }
                 
-                EnterCriticalSection(&(this->ipCheckLock));
                 this->numberIpUnique++; // increment IP unique
                 LeaveCriticalSection(&(this->ipCheckLock));
 

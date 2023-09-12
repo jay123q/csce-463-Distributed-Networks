@@ -21,7 +21,7 @@ class parsedHtml
 {
 
 	public:
-
+		int totalExtractedNoSub;
 		int newNumberBytesInBatch;
 		int newNumberPagesInBatch;
 		int numberExtractedURL; // inside file read
@@ -37,6 +37,7 @@ class parsedHtml
 		int http500;
 		int httpXXX;
 		CRITICAL_SECTION extractUrlLock;
+		CRITICAL_SECTION genericSyntaxLock;
 		CRITICAL_SECTION urlCheckLock; // this increments when the url returns a status 200 found in parser, reconnect and run 
 		CRITICAL_SECTION dnsCheckLock; // url check dns increment
 		CRITICAL_SECTION ipCheckLock; // rl ccheck ip increment
