@@ -120,7 +120,7 @@ bool Socket::Connect(int port)
 
 	if (connect(this->sock, (struct sockaddr*)&(this->server), sizeof(struct sockaddr_in)) == SOCKET_ERROR)
 	{
-		printf("Connection error: %d\n", WSAGetLastError());
+		// printf("Connection error: %d\n", WSAGetLastError());
 		return false;
 	}
 

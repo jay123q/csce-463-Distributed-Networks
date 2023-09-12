@@ -163,7 +163,7 @@ bool parsedHtml::parseString(string link) {
 
             this->port = atoi(hostStart.substr(portIndex + 1).c_str());
             if (port <= 0) {
-                cout << "failed with invalid port" << std::endl;
+               //  cout << "failed with invalid port" << std::endl;
                 return false;
             }
         }
@@ -194,14 +194,14 @@ void parsedHtml::generateGETrequestToSend( void )
   //  cout << " get request |" << getRequest << "| \n";
   //  cout << " path " << printPathQueryFragment() << std::endl;
    // this->total =  "GET / HTTP/1.1\r\nUser-agent: JoshTamuCrawler/1.1\r\nHost: tamu.edu\r\nConnection: close\r\n\r\n"; // CORRECT
-    this->total = "GET " + printPathQueryFragment() + " HTTP/1.1\r\nUser-agent: JoshTamuCrawler/1.2\r\nHost: " + this->host + "\r\nConnection: close\r\n\r\n"; 
+    this->total = "GET " + printPathQueryFragment() + " HTTP/1.0\r\nUser-agent: JoshTamuCrawler/1.3\r\nHost: " + this->host + "\r\nConnection: close\r\n\r\n"; 
   //  cout << " total \n" << this->total << std::endl;
    // this->total = "GET /IRL7 HTTP/1.0\r\nUser-agent: JoshTamuCrawler/1.1\r\nHost: s2.irl.cs.tamu.edu\r\nConnection: close\r\n\r\n";
 }
 
 void parsedHtml::generateHEADrequestToSend(void)
 {
-this->total = "HEAD /robots.txt HTTP/1.1\r\nUser-agent: JoshTamuCrawler/1.2\r\nHost: " + this->host + "\r\nConnection: close\r\n\r\n"; 
+this->total = "HEAD /robots.txt HTTP/1.0\r\nUser-agent: JoshTamuCrawler/1.3\r\nHost: " + this->host + "\r\nConnection: close\r\n\r\n"; 
 }
 queue<string> parsedHtml::parseTXTFile(std::string filename)
 {
@@ -236,7 +236,7 @@ queue<string> parsedHtml::parseTXTFile(std::string filename)
 bool parsedHtml::RobotSendRead(void)
 {
    // cout << "\t   Connecting on robots... ";
-    EnterCriticalSection(&(this->genericSyntaxLock));
+   EnterCriticalSection(&(this->genericSyntaxLock));
     bool connect = this->webSocket->Connect(this->port);
     if (connect != true)
     {
@@ -244,6 +244,7 @@ bool parsedHtml::RobotSendRead(void)
         return false;
     }
     this->generateHEADrequestToSend();
+ //  cout << "request path | Robots " << this->total << "| \n";
     bool socketCheck = this->webSocket->Send(this->total, this->host);
     LeaveCriticalSection(&(this->genericSyntaxLock));
 
@@ -262,14 +263,16 @@ bool parsedHtml::RobotSendRead(void)
             EnterCriticalSection(&(this->bitHandlingCheckLock));
             this->newNumberBytesInBatch += strlen(this->webSocket->printBuf()); // number of bytes recieved
             this->newNumberPagesInBatch++; // increment the number of pages recieved
+
+
+            string status(this->webSocket->printBuf());
+            const unsigned int statusCode = stoi(status.substr(9.3).c_str());
             LeaveCriticalSection(&(this->bitHandlingCheckLock));
 
 
 
 
-            string status(this->webSocket->printBuf());
 
-            const unsigned int statusCode = stoi(status.substr(9.3).c_str());
          //   cout << "\t   Verifying header... ";
 
             if (statusCode >= 400)
@@ -294,8 +297,11 @@ bool parsedHtml::RobotSendRead(void)
             }
             else if (statusCode < 400 && statusCode >= 200)
             {
+                EnterCriticalSection(&(this->genericSyntaxLock));
+                cout << " file url of failed codes " << this->urlLink << std::endl;
                // cout << "status code " << statusCode << std::endl;
                 this->webSocket->robots = false;
+                LeaveCriticalSection(&(this->genericSyntaxLock));
                 return false;
             }
             //std::string resultButString(result);
@@ -315,15 +321,18 @@ bool parsedHtml::RobotSendRead(void)
 bool parsedHtml::ReconnectHostSend(void)
 {
    // cout << '\t' << " * Connecting on page... ";
+    EnterCriticalSection(&(this->genericSyntaxLock)); // could move this to after
     bool connection = this->webSocket->Connect(this->port);
     if (connection != true)
     {
      //   cout << " reconnection failed in reconnectHOSTSEND parsed HTML.CPP \n";
         return false;
     }
+
     this->generateGETrequestToSend();
 
-   // cout << "request path |" << this->total << "| \n";
+   // cout << "request path | Send " << this->total << "| \n";
+    LeaveCriticalSection(&(this->genericSyntaxLock));
     bool socketCheck = this->webSocket->Send(this->total, this->host);
 
     if (socketCheck)
@@ -336,11 +345,12 @@ bool parsedHtml::ReconnectHostSend(void)
             // so now the html should return the buffer soo
            // cout << " web socket in send GET " << this->webSocket->sock << std::endl;
             WSACleanup();
+            EnterCriticalSection(&(this->genericSyntaxLock));
 
-            const char* result = this->webSocket->printBuf();
             string status(this->webSocket->printBuf());
             const unsigned int statusCode = stoi(status.substr(9.3).c_str());
-            string stringResult(result);
+            LeaveCriticalSection(&(this->genericSyntaxLock));
+            
             if (statusCode > 199 && statusCode < 300)
             {
                 EnterCriticalSection(&(this->statusCheckMux));
@@ -359,6 +369,8 @@ bool parsedHtml::ReconnectHostSend(void)
             //   cout << "\t + Parsing page... ";
                 
                 EnterCriticalSection(&(this->bitHandlingCheckLock));
+                const char* result = this->webSocket->printBuf();
+                string stringResult(result);
                 const char* pastHeaderPtr = strchr(result, '\r\n\r\n');
 
                 int bytes_recieved = this->webSocket->getCurPos();
@@ -440,6 +452,7 @@ bool parsedHtml::urlCheck(std::string link, string pathQueryFragment)
             {
                 EnterCriticalSection(&(this->extractUrlLock));
                 bool parseCheck = parseString(link);
+                this->urlLink = link.c_str();
                 if(parseCheck == false )
                 {
                     LeaveCriticalSection(&(this->extractUrlLock));

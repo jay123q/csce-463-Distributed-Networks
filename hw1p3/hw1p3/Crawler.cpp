@@ -16,7 +16,7 @@ Crawler::Crawler()
 
 	this->bytesDownloadedInBatch = 0.0;
 	this->pagesDownloadedInBatch = 0.0;
-	this->startTimer = 0.0;
+	this->startTimer = clock();
 	this->totalBytes = 0.0;
 	this->totalPages = 0.0;
 	this->parserHelper = new parsedHtml();
@@ -33,8 +33,9 @@ Crawler::Crawler()
 	// cout << " check 2 crawler.cpp 1 \n";
 
 
-	InitializeCriticalSection(&(this->parserHelper->genericSyntaxLock));
+	InitializeCriticalSection(&(this->genericSyntaxLock));
 	InitializeCriticalSection(&(this->parserHelper->bitHandlingCheckLock));
+	InitializeCriticalSection(&(this->parserHelper->genericSyntaxLock));
 	InitializeCriticalSection(&(this->parserHelper->urlCheckLock)); 
 	InitializeCriticalSection(&(this->parserHelper->dnsCheckLock));  
 	InitializeCriticalSection(&(this->parserHelper->ipCheckLock));   
@@ -65,6 +66,7 @@ Crawler::~Crawler()
 
 	DeleteCriticalSection(&(this->parserHelper->urlCheckLock));
 	DeleteCriticalSection(&(this->parserHelper->genericSyntaxLock));
+	DeleteCriticalSection(&(this->genericSyntaxLock));
 	DeleteCriticalSection(&(this->parserHelper->extractUrlLock));
 	DeleteCriticalSection(&(this->parserHelper->dnsCheckLock));
 	DeleteCriticalSection(&(this->parserHelper->ipCheckLock));
@@ -84,15 +86,12 @@ Crawler::~Crawler()
 
 DWORD Crawler::runParsingRobotsSendingStatus()
 {
-	while (!q.empty() != true)
+		EnterCriticalSection(&(this->editQueueLink));
+	while (q.empty() != true)
 	{
-
-	// potentially have a var to set true when fasle 
-	// cout << " front is " << this->q.front() << std::endl;
-	EnterCriticalSection(&(this->editQueueLink));
-	bool isEmpty = this->q.empty();
-	if (isEmpty != true)
-	{
+		cout << " length " << q.size() << std::endl;
+		// potentially have a var to set true when fasle 
+		// cout << " front is " << this->q.front() << std::endl;
 		//const char* urlLink = this->q.front().c_str();
 
 		// error here
@@ -105,7 +104,7 @@ DWORD Crawler::runParsingRobotsSendingStatus()
 		// parser.resetParser();
 		this->parserHelper->webSocket = new Socket();
 		// parser->parseString(urlLink);
-		LeaveCriticalSection(&(this->editQueueLink));
+		// LeaveCriticalSection(&(this->editQueueLink));
 
 
 
@@ -117,37 +116,45 @@ DWORD Crawler::runParsingRobotsSendingStatus()
 		{
 			// cout << " URL FAILED moving on to next url move this main.cpp \n";
 			parserHelper->resetParser();
-			return 0;
+			continue;
+			// return 0;
 		}
 
 		// EnterCriticalSection(&(this->))
 		// this->parserHelper->numberExtractedURL++;
 
 
-		// EnterCriticalSection(&(this->genericSyntaxLock));
+		 EnterCriticalSection(&(this->genericSyntaxLock));
 		// taking a copy of the server
 		parserHelper->transferSetServer(parserHelper->webSocket->getServer());
 		// cout << " the socket is " << parser->webSocket->sock << std::endl;
 
 		// lock here??
-		// LeaveCriticalSection(&(this->genericSyntaxLock));
+		 LeaveCriticalSection(&(this->genericSyntaxLock));
 
 
 		if (parserHelper->RobotSendRead() != true)
 		{
 			//	cout << "ROBOT FAILED  sending to robots failed in main, moving on to next \n";
 			parserHelper->resetParser();
-			return 0;
+				continue;
+
+			// return 0;
 		}
 
+		 EnterCriticalSection(&(this->genericSyntaxLock));
 		parserHelper->webSocket = new Socket();
 		parserHelper->webSocket->setServer(parserHelper->serverParserTemp);
+		 LeaveCriticalSection(&(this->genericSyntaxLock));
+
+
 		bool sendPass = parserHelper->ReconnectHostSend();
 		if (sendPass != true)
 		{
 			//	cout << "RECONNECT HOST FAILED sending the request has failed in main, could not be a issue, moving to next remove me \n";
 			parserHelper->resetParser();
-			return 0;
+			continue;
+		//	return 0;
 		}
 
 		// unlock here
@@ -159,18 +166,16 @@ DWORD Crawler::runParsingRobotsSendingStatus()
 
 
 
-		return 0;
+		// return 0;
 
 
 	}
-	else
-	{
-		LeaveCriticalSection(&(this->editQueueLink));
 		// queue is empty
+		cout << " queue \n";
+		LeaveCriticalSection(&(this->editQueueLink));
 		return 0;
-	}
 
-	}
+	
 
 }
 
