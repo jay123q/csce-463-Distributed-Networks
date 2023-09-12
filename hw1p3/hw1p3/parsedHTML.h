@@ -57,6 +57,7 @@ class parsedHtml
 		string path;
 		string wholeLink;
 		string total;
+		string urlLink;
 		string httpStatus;
 		Socket* webSocket;
 		struct sockaddr_in serverParserTemp;
