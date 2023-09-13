@@ -30,20 +30,20 @@ Socket::Socket()
 		return;
 	}
 	// create this buffer once, then possibly reuse for multiple connections in Part 3
-		this->allocatedSize = INITIAL_BUF_SIZE;
-		this->curPos = 0;
-		this->buf = new char [INITIAL_BUF_SIZE];
-		this->robots = true;
-		this->remote = nullptr;
-		//this->server = nullptr;
-		// ripping from winsock
-		this->sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-		if (sock == INVALID_SOCKET)
-		{
+	this->allocatedSize = INITIAL_BUF_SIZE;
+	this->curPos = 0;
+	this->buf = new char[INITIAL_BUF_SIZE];
+	this->robots = true;
+	this->remote = nullptr;
+	//this->server = nullptr;
+	// ripping from winsock
+	this->sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (sock == INVALID_SOCKET)
+	{
 		// 	printf("socket() generated error %d\n", WSAGetLastError());
-			WSACleanup();
-			return;
-		}
+		WSACleanup();
+		return;
+	}
 
 
 }
@@ -61,7 +61,7 @@ void Socket::closeSocket()
 	// closesocket(sock);
 	// cout << " close the socket plox " << sock << std::endl;
 	this->sock = INVALID_SOCKET;
-	
+
 
 
 }
@@ -131,7 +131,7 @@ bool Socket::Connect(int port)
 	return true;
 }
 
-bool Socket::Send(string sendRequest , string host)
+bool Socket::Send(string sendRequest, string host)
 {
 	if (strlen(buf) > 32768)
 	{
@@ -145,7 +145,7 @@ bool Socket::Send(string sendRequest , string host)
 	// cout << " server connction S_addr" << this->server.sin_addr.S_un.S_addr << std::endl;
 	// cout << " server connction sin family " << this->server.sin_family << std::endl;
 	// cout << " server connction sin_port " << this->server.sin_port << std::endl;
-	
+
 	// task 3
 	// https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-connect
 	// yoinked from here ^
@@ -159,7 +159,7 @@ bool Socket::Send(string sendRequest , string host)
 //	printf(" send bytes:: ", sendRequest.length());
 	// string get_http = "GET / HTTP/1.1\r\nHost: http://tamu.edu\r\nConnection: close\r\n\r\n";
 	// const char* httpRequest = "GET / HTTP/1.1\r\nHost: google.com\r\nConnection: close\r\n\r\n";
-	if (send( this->sock, sendRequest.c_str() , strlen(sendRequest.c_str()), 0) == SOCKET_ERROR)
+	if (send(this->sock, sendRequest.c_str(), strlen(sendRequest.c_str()), 0) == SOCKET_ERROR)
 	{
 
 		// printf("Connection error: %d\n", WSAGetLastError());
@@ -198,7 +198,7 @@ bool Socket::Read(void)
 	int counter = 0;
 	while (true)
 	{
-		timeout.tv_sec -= (double) (clock() - start) / CLOCKS_PER_SEC;
+		timeout.tv_sec -= (double)(clock() - start) / CLOCKS_PER_SEC;
 		FD_ZERO(&readFds); // this sets the file descriptor 
 		// I learend a good lesson here, it dont work if you dont got a file descriiptor
 		// https://learn.microsoft.com/en-us/windows/win32/api/winsock/ns-winsock-fd_set
@@ -207,7 +207,7 @@ bool Socket::Read(void)
 
 		// wait to see if socket has any data (see MSDN)
 		// https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-select
-		int ret = select(0 ,  &readFds, NULL , NULL , &timeout);
+		int ret = select(0, &readFds, NULL, NULL, &timeout);
 		// cout << " loop  counter " << counter << std::endl;
 		counter++;
 		// cout << " return from select " << ret << std::endl;
@@ -220,14 +220,14 @@ bool Socket::Read(void)
 			// cout << " bytes from recv " << bytes << std::endl;
 			if (bytes < 0)
 			{
-			//	printf("Failed with %d\n", WSAGetLastError());
+				//	printf("Failed with %d\n", WSAGetLastError());
 				break;
 			}
 			if (bytes == 0)
 			{
 				if (this->curPos < 50)
 				{
-				//	cout << "failed with non-HTTP header (does not begin with HTTP/) \n";
+					//	cout << "failed with non-HTTP header (does not begin with HTTP/) \n";
 					return false;
 				}
 				this->buf[curPos] = '\0'; // 3rd notes said +1 was wrong
@@ -240,25 +240,25 @@ bool Socket::Read(void)
 
 			curPos += bytes; // update cursor
 			// take 512 bites beofre resizing
-			if (this->allocatedSize - curPos < this->allocatedSize/4 )
+			if (this->allocatedSize - curPos < this->allocatedSize / 4)
 			{
 				// cout << " the allocated size is " << this->allocatedSize << std::endl;
 				// before reallocating
 				/**/
 
-				if (!this->robots && this->allocatedSize ==  PAGE_MAX)
+				if (!this->robots && this->allocatedSize == PAGE_MAX)
 				{
-				//	cout << "failed exceeding max \n";
+					//	cout << "failed exceeding max \n";
 					break;
 				}
-				else if (this->robots && this->allocatedSize  == ROBOT_MAX)
+				else if (this->robots && this->allocatedSize == ROBOT_MAX)
 				{
-				//	cout << "failed exceeding max \n";
+					//	cout << "failed exceeding max \n";
 					break;
 
 				}
-				
-				char * tmp = new char[this->allocatedSize * 2];
+
+				char* tmp = new char[this->allocatedSize * 2];
 				memcpy(tmp, buf, this->allocatedSize);
 				this->allocatedSize *= 2;
 				delete buf;
@@ -272,7 +272,7 @@ bool Socket::Read(void)
 
 			// cout << this->allocatedSize - curPos << " bytes from the buffer " << std::endl;
 
-			
+
 
 
 		}
@@ -291,7 +291,7 @@ bool Socket::Read(void)
 			break;
 		}
 	}
-	
+
 	return false;
 }
 
@@ -308,7 +308,7 @@ void Socket::ReadSendCheckStatus(parsedHtml *parser)
 		// now try to read
 		if (Read())
 		{
-			closeSocket(); // maybe move this into read? 
+			closeSocket(); // maybe move this into read?
 			// so now the html should return the buffer soo
 			const char* result = this->printBuf().c_str();
 			// cout << " the result  is " << this->printBuf() << std::endl;
@@ -348,7 +348,3 @@ void Socket::ReadSendCheckStatus(parsedHtml *parser)
 	}
 }
 */
-
-
-
-

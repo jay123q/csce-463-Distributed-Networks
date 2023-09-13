@@ -50,7 +50,6 @@ void handleThreads(Crawler * crawler, int numberThread)
 
 	}
 
-	// WaitForSingleObject(fileLinks, INFINITE);
 
 	for (int i = 0; i < numberThread; i++) {
 		WaitForSingleObject(crawler->crawlersThread[i], INFINITE);
@@ -60,11 +59,13 @@ void handleThreads(Crawler * crawler, int numberThread)
 
 
 
-	bool checkMe = SetEvent(crawler->statusEvent);
+/*
 	if (checkMe != true)
 	{
 
 	}
+*/
+	bool checkMe = SetEvent(crawler->statusEvent);
 	WaitForSingleObject(crawler->statsThread[0], INFINITE);
 	CloseHandle(crawler->statsThread[0]);
 
@@ -150,6 +151,7 @@ int main(int argc, char* argv[])
 	int numberThread = 10;
 	std::string filename("100url.txt");
 	crawler->crawlerFileName = filename;
+	crawler->startTimer = clock();
 	crawler->q = crawler->parserHelper->parseTXTFile(filename);
 	// cout << "asdfasdf " << crawler->q.front() << std::endl;
 	handleThreads(&(*crawler), numberThread);
