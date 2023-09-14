@@ -156,8 +156,8 @@ int main(int argc, char* argv[])
 	*/
 	int tmpFlag = _CrtSetDbgFlag(_CRTDBG_REPORT_FLAG);
 	tmpFlag |= _CRTDBG_LEAK_CHECK_DF;
-	int numberThread = 1;
-	std::string filename("100url.txt");
+	int numberThread = 500;
+	std::string filename("URL-input-1M.txt");
 	crawler->crawlerFileName = filename;
 	// crawler->startTimer = clock();
 	crawler->q = crawler->parserStats->parseTXTFile(filename);

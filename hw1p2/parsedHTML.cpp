@@ -245,6 +245,7 @@ bool parsedHtml::RobotSendRead(void)
 
                 // int httpPointer = webSocket->printBuf().find("HTTP/");
                // cout << " parsing HTML ROBOT CHECK PASSED REMOVE ME LATER \n";
+                this->robotURls += this->wholeLink;
                 return true; // go back to the main parsing url
 
             }
@@ -328,6 +329,7 @@ bool parsedHtml::ReconnectHostSend(void)
                 finish = clock();
                 double timer = (double)(finish - start) / CLOCKS_PER_SEC;
                 printf("done in %.1f ms with %d links\n", timer * 1000, nLinks);
+                countAllowed++;
                 return true;
                // printf("=======================================================\n");
 

@@ -218,7 +218,7 @@ void parsedHtml::generateGETrequestToSend(void)
   //  cout << " get request |" << getRequest << "| \n";
   //  cout << " path " << printPathQueryFragment() << std::endl;
    // this->total =  "GET / HTTP/1.1\r\nUser-agent: JoshTamuCrawler/1.1\r\nHost: tamu.edu\r\nConnection: close\r\n\r\n"; // CORRECT
-    this->total = "GET " + printPathQueryFragment() + " HTTP/1.0\r\nUser-agent: JoshTamuCrawler/1.3\r\nHost: " + this->host + "\r\nConnection: close\r\n\r\n";
+  //  this->total = "GET " + printPathQueryFragment() + " HTTP/1.0\r\nUser-agent: JoshTamuCrawler/1.3\r\nHost: " + this->host + "\r\nConnection: close\r\n\r\n";
     //  cout << " total \n" << this->total << std::endl;
      // this->total = "GET /IRL7 HTTP/1.0\r\nUser-agent: JoshTamuCrawler/1.1\r\nHost: s2.irl.cs.tamu.edu\r\nConnection: close\r\n\r\n";
 }
@@ -238,7 +238,7 @@ queue<string> parsedHtml::parseTXTFile(std::string filename)
     {
         getline(file, line);
         this->intFileSize += strlen(line.c_str());
-        // cout << " the line is " << line << std::endl;
+     //   cout << " the line is " << line << std::endl;
        // cout << " push the file " << line << std::endl;
         queueTotal.push(line);
     }
@@ -286,7 +286,7 @@ bool parsedHtml::RobotSendRead(int portPassed)
 
             if (this->webSocket->getCurPos() == 0)
             {
-                LeaveCriticalSection(&(this->bitHandlingCheckLock));
+      
                 return false;
             }
             this->newNumberBytesInBatch += strlen(this->webSocket->printBuf()); // number of bytes recieved
@@ -299,7 +299,10 @@ bool parsedHtml::RobotSendRead(int portPassed)
           //      LeaveCriticalSection(&(this->bitHandlingCheckLock));
                 return false;
             }
-            const unsigned int statusCode = stoi(status.substr(9.3).c_str());
+            try
+            {
+
+             const unsigned int statusCode = stoi(status.substr(9.3).c_str());
          //   LeaveCriticalSection(&(this->bitHandlingCheckLock));
 
             /*
@@ -321,7 +324,7 @@ bool parsedHtml::RobotSendRead(int portPassed)
 
             //   cout << "\t   Verifying header... ";
 
-            if (statusCode >= 400)
+            if (statusCode < 500 && statusCode >= 400)
             {
                 // robots allowed
                 // parse header now
@@ -353,6 +356,11 @@ bool parsedHtml::RobotSendRead(int portPassed)
             //std::string resultButString(result);
             //int findHeader = resultButString.find("\r\n\r\n");
             //std::string header = resultButString.substr(0, findHeader);
+            }
+            catch (std::invalid_argument)
+            {
+                return false;
+            }
             //cout << header;
 
 
@@ -399,10 +407,11 @@ bool parsedHtml::ReconnectHostSend(int portPassed)
                 return false;
             }
             string status(this->webSocket->printBuf());
+            try
+            {
 
             const unsigned int statusCode = stoi(status.substr(9.3).c_str());
             // LeaveCriticalSection(&(this->genericSyntaxLock));
-
             if (statusCode > 199 && statusCode < 300)
             {
                 EnterCriticalSection(&(this->statusCheckMux));
@@ -466,13 +475,13 @@ bool parsedHtml::ReconnectHostSend(int portPassed)
                 EnterCriticalSection(&(this->statusCheckMux));
                 this->http300++;
                 LeaveCriticalSection(&(this->statusCheckMux));
-                return false;
+                return true;
             }
             else if (statusCode > 399 && statusCode < 500)
             {
                 EnterCriticalSection(&(this->statusCheckMux));
                 this->http400++;
-                return false;
+                return true;
                 LeaveCriticalSection(&(this->statusCheckMux));
 
             }
@@ -481,7 +490,7 @@ bool parsedHtml::ReconnectHostSend(int portPassed)
                 EnterCriticalSection(&(this->statusCheckMux));
                 this->http500++;
                 LeaveCriticalSection(&(this->statusCheckMux));
-                return false;
+                return true;
 
             }
             else
@@ -489,8 +498,13 @@ bool parsedHtml::ReconnectHostSend(int portPassed)
                 EnterCriticalSection(&(this->statusCheckMux));
                 this->httpXXX++;
                 LeaveCriticalSection(&(this->statusCheckMux));
-                return false;
+                return true;
 
+            }
+            }
+            catch (std::invalid_argument)
+            {
+                return false;
             }
         }
     }

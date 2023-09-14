@@ -119,6 +119,9 @@ int main(int argc, char* argv[])
 		continueRunning(&parser,filename.c_str());
 
 		cout << " parser is " << parser.countIp << std::endl;
+		cout << " robots is " << parser.countRobot << std::endl;
+		cout << " allowed is " << parser.countAllowed << std::endl;
+		cout << " robot spam \n " << parser.robotURls << std::endl;
 	// parsedHtml parser2;
 	/*
 	std::string filename = "abchttp://";

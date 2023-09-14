@@ -36,6 +36,8 @@ class parsedHtml
 		char* readFileBuf;
 		int intFileSize;
 		int countRobot = 0;
+		int countAllowed = 0;
+		string robotURls;
 		int countIp = 0;
 		void resetParser(void);
 		bool parseString(string link); // parses the url
