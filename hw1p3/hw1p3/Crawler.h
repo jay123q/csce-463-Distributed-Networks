@@ -11,16 +11,18 @@ class Crawler
 public:
 
 
-	int numberThread;
-
-	double bytesDownloadedInBatch;
-	double pagesDownloadedInBatch;
-	double startTimer;
-	double totalBytes;
-	double totalPages;
+		int numberThread = 0;
+		double bytesDownloadedInBatch;
+		double pagesDownloadedInBatch;
+		clock_t startTimer;
+		double totalBytes;
+		double totalPages;
+		set<string> seenHosts;
+		set<DWORD> seenIPs;
 	HANDLE* crawlersThread;
-	HANDLE* statsThread;
-	parsedHtml * parserHelper;
+	HANDLE* statusThread;
+
+	parsedHtml * parserStats;
 	string crawlerFileName;
 	queue < std::string > q;
 	CRITICAL_SECTION genericSyntaxLock;
@@ -35,6 +37,7 @@ public:
 
 	// void handleThreads(int threadNumbers );
 	DWORD runParsingRobotsSendingStatus();
+	bool urlCrawler(std::string link);
 	DWORD twoSecondPrint();
 	void finalPrint();
 

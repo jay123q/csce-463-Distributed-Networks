@@ -21,8 +21,7 @@ class parsedHtml
 {
 
 	public:
-		set<string> seenHosts;
-		set<DWORD> seenIPs;
+
 		int totalExtractedNoSub;
 		int newNumberBytesInBatch;
 		int newNumberPagesInBatch;
@@ -60,13 +59,16 @@ class parsedHtml
 		string total;
 		string urlLink;
 		string httpStatus;
+	// struct sockaddr_in server;
 		Socket* webSocket;
+
 		struct sockaddr_in serverParserTemp;
 		char* readFileBuf;
 		int intFileSize;
 		
 
 		parsedHtml();
+		~parsedHtml();
 		void setNumbersForCrawling();
 		void resetParser(void);
 		void runOnce(const char * urlLink);
@@ -76,12 +78,17 @@ class parsedHtml
 		queue <string> parseTXTFile(std::string filename);
 		char * parseTXTFileBROKEN(std::string filename);
 
-		bool RobotSendRead(void);
-		bool ReconnectHostSend(void);
-		bool urlCheck(std::string link, string pathQueryFragment);
+		bool RobotSendRead(int portPassed);
+		bool ReconnectHostSend(int portportPassed);
+		bool urlCheck(std::string link);
 		void transferSetServer(struct sockaddr_in webSocketServer)
 		{
-			this->serverParserTemp = webSocketServer;
+			memcpy(&serverParserTemp, &webSocketServer, sizeof(sockaddr_in));
+				/*
+			serverParserTemp.sin_addr = webSocketServer.sin_addr;
+			this->serverParserTemp.sin_family = webSocketServer.sin_family;
+			this->serverParserTemp.sin_port = webSocketServer.sin_port;
+				*/
 		}
 		string printHost()
 		{

@@ -4,6 +4,7 @@
 // fall 2023
 
 #pragma once
+#include "pch.h"
 #include <string>
 #include <iostream>
 #include "parsedHTML.h"
@@ -20,11 +21,14 @@ private:
 	int allocatedSize; // bytes allocated for buf
 	int curPos; // current position in buffer
 	struct hostent* remote;
+	struct sockaddr_in server;
+
+	DWORD IPAddressFromDns;
 public:
 	// extra stuff as needed
-	struct sockaddr_in server;
 	SOCKET sock; // socket handle
 	bool robots;
+	int ip;
 
 
 	// DWORD IP;
@@ -70,6 +74,9 @@ public:
 	{
 		this->server = parserServerToSet;
 	}
-	
+	DWORD getIp()
+	{
+		return this->IPAddressFromDns;
+	}
 	// void CreateSocket(void);
 };

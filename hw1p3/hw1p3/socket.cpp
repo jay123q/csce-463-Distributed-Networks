@@ -97,10 +97,15 @@ bool Socket::DNSCheck(std::string host)
 	{
 		this->server.sin_addr.S_un.S_addr = IP;
 	}
-
+	// this->ip = server.sin_addr;
+	this->IPAddressFromDns = inet_addr(inet_ntoa(server.sin_addr));
 	
 	// seenIPs.insert(server.sin_addr);
-
+	/*
+	this->serverParserTemp.sin_addr = this->server.sin_addr;
+	this->serverParserTemp.sin_family = server.sin_family;
+	this->serverParserTemp.sin_port = server.sin_port;
+	*/
 
 	return true;
 }
@@ -109,11 +114,11 @@ bool Socket::Connect(int port)
 {
 	// cout << " socket is " << sock << std::endl;
 	// clock_t start = clock();
-	this->server.sin_family = AF_INET; // IPv4
-	this->server.sin_port = htons(port); // port #
 
+	server.sin_family = AF_INET; // IPv4
+	server.sin_port = htons(port); // port #
 
-	if (connect(this->sock, (struct sockaddr*)&(this->server), sizeof(struct sockaddr_in)) == SOCKET_ERROR)
+	if (connect(this->sock, (struct sockaddr*)&(server), sizeof(struct sockaddr_in)) == SOCKET_ERROR)
 	{
 		// printf("Connection error: %d\n", WSAGetLastError());
 		return false;

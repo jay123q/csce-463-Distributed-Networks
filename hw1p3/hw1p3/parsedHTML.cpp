@@ -10,8 +10,32 @@ using namespace std;
 
 parsedHtml::parsedHtml()
 {
+    InitializeCriticalSection(&(this->bitHandlingCheckLock));
+    InitializeCriticalSection(&(this->genericSyntaxLock));
+    InitializeCriticalSection(&(this->urlCheckLock));
+    InitializeCriticalSection(&(this->dnsCheckLock));
+    InitializeCriticalSection(&(this->ipCheckLock));
+    InitializeCriticalSection(&(this->statusCheckMux));
+    InitializeCriticalSection(&(this->robotCheckLock));
+    InitializeCriticalSection(&(this->hostCheckUnique));
+    InitializeCriticalSection(&(this->extractUrlLock));
+    InitializeCriticalSection(&(this->linkCkeckLock));
     this->resetParser();
     this->setNumbersForCrawling();
+}
+parsedHtml::~parsedHtml()
+{
+
+    DeleteCriticalSection(&(this->urlCheckLock));
+    DeleteCriticalSection(&(this->genericSyntaxLock));
+    DeleteCriticalSection(&(this->extractUrlLock));
+    DeleteCriticalSection(&(this->dnsCheckLock));
+    DeleteCriticalSection(&(this->ipCheckLock));
+    DeleteCriticalSection(&(this->statusCheckMux));
+    DeleteCriticalSection(&(this->robotCheckLock));
+    DeleteCriticalSection(&(this->hostCheckUnique));
+    DeleteCriticalSection(&(this->linkCkeckLock));
+    DeleteCriticalSection(&(this->bitHandlingCheckLock));
 }
 
 void parsedHtml::resetParser(void)
@@ -25,7 +49,7 @@ void parsedHtml::resetParser(void)
     this->total = '\0';
     this->httpStatus = '\0';
     //this->webSocket->~Socket();
-    // this->webSocket=new Socket();
+    this->webSocket=new Socket();
     // this->readFileBuf[0] = '\0';
     this->webSocket->~Socket();
     this->intFileSize = 0;
@@ -59,7 +83,7 @@ void parsedHtml::runOnce(const char* urlLink)
     // parser.resetParser();
     this->webSocket = new Socket();
     // parser->parseString(urlLink);
-    bool urlPass = this->urlCheck(urlLink, this->printPathQueryFragment());
+    bool urlPass = this->urlCheck(urlLink);
     this->webSocket->robots = true;
     // parser->webSocket->printDNStiming = true;
     // 
@@ -76,7 +100,7 @@ void parsedHtml::runOnce(const char* urlLink)
 
     // lock here??
 
-    bool robotPass = this->RobotSendRead();
+    bool robotPass = this->RobotSendRead(this->port);
     if (robotPass != true)
     {
         //	cout << "ROBOT FAILED  sending to robots failed in main, moving on to next \n";
@@ -93,7 +117,7 @@ void parsedHtml::runOnce(const char* urlLink)
 
     this->webSocket = new Socket();
     this->webSocket->setServer(this->serverParserTemp);
-    bool sendPass = this->ReconnectHostSend();
+    bool sendPass = this->ReconnectHostSend(this->port);
     if (sendPass != true)
     {
         //	cout << "RECONNECT HOST FAILED sending the request has failed in main, could not be a issue, moving to next remove me \n";
@@ -233,21 +257,19 @@ queue<string> parsedHtml::parseTXTFile(std::string filename)
 
 
 
-bool parsedHtml::RobotSendRead(void)
+bool parsedHtml::RobotSendRead(int portPassed)
 {
     // cout << "\t   Connecting on robots... ";
-    EnterCriticalSection(&(this->genericSyntaxLock));
-    bool connect = this->webSocket->Connect(this->port);
+    bool connect = webSocket->Connect(portPassed);
     if (connect != true)
     {
 
-        LeaveCriticalSection(&(this->genericSyntaxLock));
         return false;
     }
     this->generateHEADrequestToSend();
     //  cout << "request path | Robots " << this->total << "| \n";
     bool socketCheck = this->webSocket->Send(this->total, this->host);
-    LeaveCriticalSection(&(this->genericSyntaxLock));
+
 
     if (socketCheck)
     {
@@ -259,7 +281,7 @@ bool parsedHtml::RobotSendRead(void)
             WSACleanup();
 
             // bytes must be > 200
-            EnterCriticalSection(&(this->bitHandlingCheckLock));
+          //  EnterCriticalSection(&(this->bitHandlingCheckLock));
 
 
             if (this->webSocket->getCurPos() == 0)
@@ -272,9 +294,13 @@ bool parsedHtml::RobotSendRead(void)
 
 
             string status(this->webSocket->printBuf());
-
+            if (this->webSocket->getCurPos() == 0)
+            {
+          //      LeaveCriticalSection(&(this->bitHandlingCheckLock));
+                return false;
+            }
             const unsigned int statusCode = stoi(status.substr(9.3).c_str());
-            LeaveCriticalSection(&(this->bitHandlingCheckLock));
+         //   LeaveCriticalSection(&(this->bitHandlingCheckLock));
 
             /*
             try
@@ -317,11 +343,11 @@ bool parsedHtml::RobotSendRead(void)
             }
             else if (statusCode < 400 && statusCode >= 200)
             {
-                EnterCriticalSection(&(this->genericSyntaxLock));
+            //    EnterCriticalSection(&(this->genericSyntaxLock));
                // cout << " file url of failed codes " << this->urlLink << std::endl;
                 // cout << "status code " << statusCode << std::endl;
                 this->webSocket->robots = false;
-                LeaveCriticalSection(&(this->genericSyntaxLock));
+                //LeaveCriticalSection(&(this->genericSyntaxLock));
                 return false;
             }
             //std::string resultButString(result);
@@ -338,15 +364,15 @@ bool parsedHtml::RobotSendRead(void)
 }
 
 
-bool parsedHtml::ReconnectHostSend(void)
+bool parsedHtml::ReconnectHostSend(int portPassed)
 {
     // cout << '\t' << " * Connecting on page... ";
-    EnterCriticalSection(&(this->genericSyntaxLock)); // could move this to after
-    bool connection = this->webSocket->Connect(this->port);
+   // EnterCriticalSection(&(this->genericSyntaxLock)); // could move this to after
+    bool connection = this->webSocket->Connect(portPassed);
     if (connection != true)
     {
         //   cout << " reconnection failed in reconnectHOSTSEND parsed HTML.CPP \n";
-        LeaveCriticalSection(&(this->genericSyntaxLock));
+    //    LeaveCriticalSection(&(this->genericSyntaxLock));
         return false;
     }
 
@@ -354,7 +380,7 @@ bool parsedHtml::ReconnectHostSend(void)
 
     // cout << "request path | Send " << this->total << "| \n";
     bool socketCheck = this->webSocket->Send(this->total, this->host);
-    LeaveCriticalSection(&(this->genericSyntaxLock));
+  //  LeaveCriticalSection(&(this->genericSyntaxLock));
 
     if (socketCheck)
     {
@@ -366,16 +392,16 @@ bool parsedHtml::ReconnectHostSend(void)
             // so now the html should return the buffer soo
            // cout << " web socket in send GET " << this->webSocket->sock << std::endl;
             WSACleanup();
-            EnterCriticalSection(&(this->genericSyntaxLock));
+         //   EnterCriticalSection(&(this->genericSyntaxLock));
             if (this->webSocket->getCurPos() == 0)
             {
-                LeaveCriticalSection(&(this->bitHandlingCheckLock));
+           //     LeaveCriticalSection(&(this->genericSyntaxLock));
                 return false;
             }
             string status(this->webSocket->printBuf());
 
             const unsigned int statusCode = stoi(status.substr(9.3).c_str());
-            LeaveCriticalSection(&(this->genericSyntaxLock));
+            // LeaveCriticalSection(&(this->genericSyntaxLock));
 
             if (statusCode > 199 && statusCode < 300)
             {
@@ -472,19 +498,20 @@ bool parsedHtml::ReconnectHostSend(void)
     return false;
 }
 
-bool parsedHtml::urlCheck(std::string link, string pathQueryFragment)
+bool parsedHtml::urlCheck(std::string link)
 {
-    EnterCriticalSection(&(this->extractUrlLock));
+    /*
+   // EnterCriticalSection(&(this->extractUrlLock));
     bool parseCheck = parseString(link);
     this->urlLink = link.c_str();
     if (parseCheck == false)
     {
-        LeaveCriticalSection(&(this->extractUrlLock));
+       // LeaveCriticalSection(&(this->extractUrlLock));
         return false;
     }
 
     this->numberExtractedURL--; // remove a url from the link
-        LeaveCriticalSection(&(this->extractUrlLock));
+      //  LeaveCriticalSection(&(this->extractUrlLock));
 
 
     //  cout << "\t   Checking host uniqueness... ";
@@ -506,26 +533,76 @@ bool parsedHtml::urlCheck(std::string link, string pathQueryFragment)
 ;
 
  //     bool DNSpass = this->webSocket->DNSCheck(host.c_str());
+
+
+     this->webSocket->DNSCheck(this->host);
+     // this->ip = server.sin_addr;
+
      EnterCriticalSection(&(this->dnsCheckLock));
-    
+    this->numberDnsLookup++; // increment dns checkk
+        LeaveCriticalSection(&(this->dnsCheckLock));
+
+    /* 
+    // cout << " size of seen ips " << seenIPs.size() << std::endl;
+        //cout << " ip print is f%" << x << std::endl;
+    printf("hex : %x host : %s \n", x, host.c_str());
+    if (x == 0xd76fea9)
+    {
+        int xa = 0;
+    }
+    */
+    /*
+    EnterCriticalSection(&(this->ipCheckLock));
+    int prevInsert = this->seenIPs.size();
+    DWORD x = *(DWORD*)this->webSocket->getRemote()->h_addr;
+    seenIPs.insert(x);
+    if (prevInsert != seenIPs.size())
+    { // duplicate host
+   /// DWORD x = inet_addr(inet_ntoa(server.sin_addr));
+        this->numberIpUnique++; // increment IP unique
+        LeaveCriticalSection(&(this->ipCheckLock));
+    }
+    else
+    {
+
+        LeaveCriticalSection(&(this->ipCheckLock));
+        return false;
+    }
+
+    // LeaveCriticalSection(&(this->dnsCheckLock));
+
     if (this->webSocket->DNSCheck(this->host.c_str()) != true)
     {
    //     delete webSocket;
-     LeaveCriticalSection(&(this->dnsCheckLock));
         return false;
     }
     this->numberDnsLookup++; // increment dns checkk
 
-     LeaveCriticalSection(&(this->dnsCheckLock));
+   DWORD Ip=  this->webSocket->getIp();
+
+   // EnterCriticalSection(&(this->ipCheckLock));
+    int prevInsert = this->seenIPs.size();
+    // cout << " size of seen ips " << seenIPs.size() << std::endl;
+    DWORD x = inet_addr(inet_ntoa(server.sin_addr));
+    seenIPs.insert(x);
+    if (prevInsert != seenIPs.size())
+    { // duplicate host
+        this->numberIpUnique++; // increment IP unique
+    }
+    else
+    {
+
+        // LeaveCriticalSection(&(this->ipCheckLock));
+        return false;
+    }
+
+        // LeaveCriticalSection(&(this->ipCheckLock));
+    */
 
 
-     
+     /*
    EnterCriticalSection(&(this->ipCheckLock));
     // below caused a error if INET_ADDR isnt there odd
-     int prevInsert = this->seenIPs.size();
-     // cout << " size of seen ips " << seenIPs.size() << std::endl;
-    DWORD x = inet_addr(inet_ntoa(webSocket->getServer().sin_addr));
-    seenIPs.insert(x);
   //  cout << " dword x " << inet_addr(inet_ntoa(this->webSocket->getServer().sin_addr)) << std::endl;
     // if a valid IP, directly drop its binary version into sin_addr
     if (prevInsert != seenIPs.size())
@@ -542,6 +619,7 @@ bool parsedHtml::urlCheck(std::string link, string pathQueryFragment)
     }
 
      
+     */
      
 
     //        cout << "passed \n";
@@ -551,6 +629,7 @@ bool parsedHtml::urlCheck(std::string link, string pathQueryFragment)
 
 
    // LeaveCriticalSection(&(this->extractUrlLock));
+    
 
     return true;
 }

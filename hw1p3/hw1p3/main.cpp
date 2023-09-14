@@ -37,7 +37,7 @@ DWORD WINAPI status_thread_starter(LPVOID that)
 
 void handleThreads(Crawler * crawler, int numberThread)
 {
-	cout << "Opened " << crawler->crawlerFileName << " with size " << crawler->parserHelper->intFileSize << std::endl;
+	cout << "Opened " << crawler->crawlerFileName << " with size " << crawler->parserStats->intFileSize << std::endl;
 	crawler->crawlersThread = new HANDLE[numberThread];
 	crawler->startTimer = clock();
 	crawler->statusThread = new HANDLE[0];
@@ -156,11 +156,11 @@ int main(int argc, char* argv[])
 	*/
 	int tmpFlag = _CrtSetDbgFlag(_CRTDBG_REPORT_FLAG);
 	tmpFlag |= _CRTDBG_LEAK_CHECK_DF;
-	int numberThread = 10;
+	int numberThread = 1;
 	std::string filename("100url.txt");
 	crawler->crawlerFileName = filename;
 	// crawler->startTimer = clock();
-	crawler->q = crawler->parserHelper->parseTXTFile(filename);
+	crawler->q = crawler->parserStats->parseTXTFile(filename);
 	// cout << "asdfasdf " << crawler->q.front() << std::endl;
 	handleThreads(&(*crawler), numberThread);
 

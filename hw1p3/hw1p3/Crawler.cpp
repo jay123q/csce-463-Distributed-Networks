@@ -4,6 +4,7 @@
 
 
 
+
 Crawler::Crawler()
 {
 
@@ -11,20 +12,15 @@ Crawler::Crawler()
 	// cout << " in consutruct check \n";
 	// this->q = parserHelper->parseTXTFile(this->crawlerFileName);
 	// int stall = 0;
-	
-	int numberThread = 0;
-
+	this->startTimer = clock();
+	this->numberThread = 0;
 	this->bytesDownloadedInBatch = 0.0;
 	this->pagesDownloadedInBatch = 0.0;
-	this->startTimer = clock();
 	this->totalBytes = 0.0;
 	this->totalPages = 0.0;
-	this->parserHelper = new parsedHtml();
-	this->parserHelper->resetParser();
-	this->parserHelper->webSocket = new Socket();
-	this->parserHelper->setNumbersForCrawling();
+	this->parserStats = new parsedHtml();
+	this->parserStats->setNumbersForCrawling();
 	// cout << " check 1 crawler.cpp 1 \n";
-	parserHelper->webSocket->robots = true;
 	InitializeCriticalSection(&(this->threadQueueLock));
 	InitializeCriticalSection(&(this->editQueueLink));
 	//InitializeCriticalSection(&(this->genericSyntaxLock));
@@ -34,22 +30,13 @@ Crawler::Crawler()
 
 
 	InitializeCriticalSection(&(this->genericSyntaxLock));
-	InitializeCriticalSection(&(this->parserHelper->bitHandlingCheckLock));
-	InitializeCriticalSection(&(this->parserHelper->genericSyntaxLock));
-	InitializeCriticalSection(&(this->parserHelper->urlCheckLock)); 
-	InitializeCriticalSection(&(this->parserHelper->dnsCheckLock));  
-	InitializeCriticalSection(&(this->parserHelper->ipCheckLock));   
-	InitializeCriticalSection(&(this->parserHelper->statusCheckMux));
-	InitializeCriticalSection(&(this->parserHelper->robotCheckLock));
-	InitializeCriticalSection(&(this->parserHelper->hostCheckUnique));
-	InitializeCriticalSection(&(this->parserHelper->extractUrlLock));
-	InitializeCriticalSection(&(this->parserHelper->linkCkeckLock));
+
 	// EnterCriticalSection(&CriticalSection);
 
 	// cout << " check 3 crawler.cpp 1 \n";
 
 	// LeaveCriticalSection(&CriticalSection);
-	this->statusEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	this->statusEvent = CreateEvent(NULL, true, false, NULL);
 	// cout << " check 3 crawler.cpp 1 \n";
 
 
@@ -64,18 +51,7 @@ Crawler::~Crawler()
 	DeleteCriticalSection(&(this->genericSyntaxLock));
 	// DeleteCriticalSection(&statusCheckLock);
 
-	DeleteCriticalSection(&(this->parserHelper->urlCheckLock));
-	DeleteCriticalSection(&(this->parserHelper->genericSyntaxLock));
-	DeleteCriticalSection(&(this->genericSyntaxLock));
-	DeleteCriticalSection(&(this->parserHelper->extractUrlLock));
-	DeleteCriticalSection(&(this->parserHelper->dnsCheckLock));
-	DeleteCriticalSection(&(this->parserHelper->ipCheckLock));
-	DeleteCriticalSection(&(this->parserHelper->statusCheckMux));
-	DeleteCriticalSection(&(this->parserHelper->robotCheckLock));
-	DeleteCriticalSection(&(this->parserHelper->hostCheckUnique));
-	DeleteCriticalSection(&(this->parserHelper->linkCkeckLock));
-	DeleteCriticalSection(&(this->parserHelper->bitHandlingCheckLock));
-	
+
 }
 
 
@@ -86,25 +62,43 @@ Crawler::~Crawler()
 
 DWORD Crawler::runParsingRobotsSendingStatus()
 {
-		EnterCriticalSection(&(this->editQueueLink));
-	while (q.empty() != true)
+	parsedHtml parserHelper;
+	parserHelper.resetParser();
+	parserHelper.webSocket->robots = true;
+
+	while (true)
 	{
-		cout << " length " << q.size() << std::endl;
+	
+		EnterCriticalSection(&(this->editQueueLink));
+		// cout << " length " << q.size() << std::endl;
 		// potentially have a var to set true when fasle 
 		// cout << " front is " << this->q.front() << std::endl;
 		//const char* urlLink = this->q.front().c_str();
 
 		// error here
-
+		if(q.size() == 0)
+		{
+			this->numberThread--;
+			LeaveCriticalSection(&(this->editQueueLink));
+			break;
+		}
 		std::string urlLink(q.front().c_str());
 		// const char* urlLink = q.front().c_str();
+		if (urlLink[0] == '\0')
+		{
+			LeaveCriticalSection(&(this->editQueueLink));
+			// url pop failed
+			continue;
+		}
 		q.pop();
-		this->numberThread--;
 		// cout << " size of  main  parser " << sizeof(parser) << std::endl;
 		// parser.resetParser();
-		this->parserHelper->webSocket = new Socket();
+		parserStats->numberExtractedURL--;
+		// parserHelper.webSocket = new Socket();
+		LeaveCriticalSection(&(this->editQueueLink));
 		// parser->parseString(urlLink);
 		// LeaveCriticalSection(&(this->editQueueLink));
+
 
 
 
@@ -112,49 +106,124 @@ DWORD Crawler::runParsingRobotsSendingStatus()
 
 		// parser->webSocket->printDNStiming = true;
 		// 
-		if (parserHelper->urlCheck(urlLink.c_str(), parserHelper->printPathQueryFragment()) != true)
+		bool parseCheck = parserHelper.parseString(urlLink);
+		parserHelper.urlLink = urlLink.c_str();
+		if (parseCheck == false)
 		{
-			// cout << " URL FAILED moving on to next url move this main.cpp \n";
-			parserHelper->resetParser();
+			// LeaveCriticalSection(&(this->extractUrlLock));
+			// return false;
 			continue;
-			// return 0;
 		}
+
+
+
+
+	  //  cout << "\t   Checking host uniqueness... ";
+
+		EnterCriticalSection(&(parserStats->hostCheckUnique));
+		auto resultHostCheck = this->seenHosts.insert(parserHelper.host.c_str());
+		if (resultHostCheck.second != true)
+		{ // duplicate host
+			LeaveCriticalSection(&(parserStats->hostCheckUnique));
+
+
+			//     cout << "failed" << '\n';
+			continue;
+			// return false;
+		}
+
+
+		parserStats->numberUniqueHost++;
+		LeaveCriticalSection(&(parserStats->hostCheckUnique));
+		;
+
+		//     bool DNSpass = this->webSocket->DNSCheck(host.c_str());
+
+
+		if (parserHelper.webSocket->DNSCheck(parserHelper.host) != true)
+		{
+			continue;
+			// return false;
+		}
+		// this->ip = server.sin_addr;
+
+		EnterCriticalSection(&(parserStats->dnsCheckLock));
+		parserStats->numberDnsLookup++; // increment dns checkk
+		LeaveCriticalSection(&(parserStats->dnsCheckLock));
+
+		/*
+		// cout << " size of seen ips " << seenIPs.size() << std::endl;
+			//cout << " ip print is f%" << x << std::endl;
+		printf("hex : %x host : %s \n", x, host.c_str());
+		if (x == 0xd76fea9)
+		{
+			int xa = 0;
+		}
+		*/
+		EnterCriticalSection(&(parserStats->ipCheckLock));
+		int prevInsert = this->seenIPs.size();
+	
+		// DWORD x = *(DWORD*)parserHelper.webSocket->getRemote()->h_addr;
+		seenIPs.insert(parserHelper.webSocket->getIp());
+		if (prevInsert != seenIPs.size())
+		{ // duplicate host
+	   /// DWORD x = inet_addr(inet_ntoa(server.sin_addr));
+			parserStats->numberIpUnique++; // increment IP unique
+			LeaveCriticalSection(&(parserStats->ipCheckLock));
+		}
+		else
+		{
+
+			LeaveCriticalSection(&(parserStats->ipCheckLock));
+			// return false;
+			continue;
+		}
+
+
+
+
+
 
 		// EnterCriticalSection(&(this->))
-		// this->parserHelper->numberExtractedURL++;
-
-
-		 EnterCriticalSection(&(this->genericSyntaxLock));
+		// EnterCriticalSection(&(this->genericSyntaxLock));
 		// taking a copy of the server
-		parserHelper->transferSetServer(parserHelper->webSocket->getServer());
+		parserHelper.transferSetServer(parserHelper.webSocket->getServer());
 		// cout << " the socket is " << parser->webSocket->sock << std::endl;
+		// cout << " count unique " << inet_addr(inet_ntoa(parserHelper->webSocket->getServer().sin_addr)) << " std " << std::endl;
 
 		// lock here??
-		 LeaveCriticalSection(&(this->genericSyntaxLock));
+		// LeaveCriticalSection(&(this->genericSyntaxLock));
 
 
-		if (parserHelper->RobotSendRead() != true)
+
+		if (parserHelper.RobotSendRead(parserHelper.port) != true)
 		{
 			//	cout << "ROBOT FAILED  sending to robots failed in main, moving on to next \n";
-			parserHelper->resetParser();
-				continue;
+			// I really ddont like this here if its shared memroy resetting the parser like this should break soething 
+		EnterCriticalSection(&(this->genericSyntaxLock));
+			parserHelper.resetParser();
+			delete parserHelper.webSocket;
+		LeaveCriticalSection(&(this->genericSyntaxLock));
+			continue;
 
 			// return 0;
 		}
 
-		 EnterCriticalSection(&(this->genericSyntaxLock));
-		parserHelper->webSocket = new Socket();
-		parserHelper->webSocket->setServer(parserHelper->serverParserTemp);
-		 LeaveCriticalSection(&(this->genericSyntaxLock));
+		EnterCriticalSection(&(this->genericSyntaxLock));
+		parserHelper.webSocket = new Socket();
+		parserHelper.webSocket->setServer(parserHelper.serverParserTemp);
+		LeaveCriticalSection(&(this->genericSyntaxLock));
 
 
-		bool sendPass = parserHelper->ReconnectHostSend();
+		bool sendPass = parserHelper.ReconnectHostSend(parserHelper.port);
 		if (sendPass != true)
 		{
 			//	cout << "RECONNECT HOST FAILED sending the request has failed in main, could not be a issue, moving to next remove me \n";
-			parserHelper->resetParser();
+		EnterCriticalSection(&(this->genericSyntaxLock));
+			parserHelper.resetParser();
+		LeaveCriticalSection(&(this->genericSyntaxLock));
 			continue;
-		//	return 0;
+			//	return 0;
 		}
 
 		// unlock here
@@ -162,7 +231,9 @@ DWORD Crawler::runParsingRobotsSendingStatus()
 		// 
 		// cout << " finished the  main function contiune running 42 \n";
 		// parser->webSocket->~Socket();
-		parserHelper->resetParser();
+		EnterCriticalSection(&(this->genericSyntaxLock));
+		parserHelper.resetParser();
+		LeaveCriticalSection(&(this->genericSyntaxLock));
 
 
 
@@ -170,44 +241,45 @@ DWORD Crawler::runParsingRobotsSendingStatus()
 
 
 	}
-		// queue is empty
-		cout << " queue \n";
-		LeaveCriticalSection(&(this->editQueueLink));
-		return 0;
+	// queue is empty
+	// cout << " queue \n";
+	return 0;
 
-	
+
 
 }
 
 
 DWORD Crawler::twoSecondPrint()
 {
-	while (WaitForSingleObject(this->statusEvent, 2000) == true)
+	bool printMe = false;
+	while ((WaitForSingleObject(this->statusEvent, 2000) == WAIT_TIMEOUT) || !printMe)
 	{
+		printMe = true;
 		printf("[%3d] %4d Q %6d E %7d H %6d D %6d I %5d R %5d C %5d L %4dK\n",
-			(double)(clock() - this->startTimer) / CLOCKS_PER_SEC,
+			(int)(double)(clock() - this->startTimer) / CLOCKS_PER_SEC,
 			this->numberThread,
-			(int) this->q.size(),
-			this->parserHelper->numberExtractedURL,
-			this->parserHelper->numberUniqueHost,
-			this->parserHelper->numberDnsLookup,
-			this->parserHelper->numberIpUnique,
-			this->parserHelper->numberRobotPass,
-			this->parserHelper->numberSuccessfullyCrawled, // this is non robbot pages
-			this->parserHelper->numberTotalLinks / 1000);
+			(int)this->q.size(),
+			this->parserStats->numberExtractedURL,
+			this->parserStats->numberUniqueHost,
+			this->parserStats->numberDnsLookup,
+			this->parserStats->numberIpUnique,
+			this->parserStats->numberRobotPass,
+			this->parserStats->numberSuccessfullyCrawled, // this is non robbot pages
+			this->parserStats->numberTotalLinks / 1000);
 
-		this->bytesDownloadedInBatch = (this->parserHelper->newNumberBytesInBatch - this->totalBytes) / (double)((clock() - this->startTimer) / CLOCKS_PER_SEC);
-		this->pagesDownloadedInBatch = (this->parserHelper->newNumberPagesInBatch - this->totalPages) / (double)((clock() - this->startTimer) / CLOCKS_PER_SEC);
+		this->bytesDownloadedInBatch = (this->parserStats->newNumberBytesInBatch - this->totalBytes) / (double)((clock() - this->startTimer) / CLOCKS_PER_SEC);
+		this->pagesDownloadedInBatch = (this->parserStats->newNumberPagesInBatch - this->totalPages) / (double)((clock() - this->startTimer) / CLOCKS_PER_SEC);
 
 		// Output crawling information
 		printf("\t*** crawling %.1f pps @ %.1f Mbps\n", this->pagesDownloadedInBatch, this->bytesDownloadedInBatch / double(125000));
-		this->totalBytes = this->parserHelper->newNumberBytesInBatch;
-		this->totalPages = this->parserHelper->newNumberPagesInBatch;
-		this->parserHelper->newNumberBytesInBatch = 0;
-		this->parserHelper->newNumberPagesInBatch = 0;
+		this->totalBytes = this->parserStats->newNumberBytesInBatch;
+		this->totalPages = this->parserStats->newNumberPagesInBatch;
+		this->parserStats->newNumberBytesInBatch = 0;
+		this->parserStats->newNumberPagesInBatch = 0;
 
 		// pass the status on to the next person
-		ResetEvent(statusEvent);
+		// ResetEvent(statusEvent);
 		return 0;
 	}
 }
@@ -217,13 +289,13 @@ void Crawler::finalPrint()
 	double totalTimeElapsed = (double)((double)clock() - this->startTimer) / (double)CLOCKS_PER_SEC;
 
 	// Output final stats
-	printf("Extracted %d URLs @ %d/s\n", this->parserHelper->totalExtractedNoSub, (int)( this->parserHelper->numberExtractedURL / totalTimeElapsed));
-	printf("Looked up %d DNS names @ %d/s\n", this->parserHelper->numberUniqueHost, (int)(this->parserHelper->numberDnsLookup / totalTimeElapsed));
-	printf("Attempted %d robots @ %d/s\n", this->parserHelper->numberIpUnique, (int)(this->parserHelper->numberRobotPass / totalTimeElapsed));
-	printf("Crawled %d pages @ %d/s (%.2f MB)\n", this->parserHelper->numberSuccessfullyCrawled, (int)(this->parserHelper->numberSuccessfullyCrawled / totalTimeElapsed), (double)(this->totalBytes / (double)1048576));
-	printf("Parsed %d links @ %d/s\n", this->parserHelper->numberTotalLinks, (int)(this->parserHelper->numberTotalLinks / totalTimeElapsed));
-	printf("HTTP codes: 2xx = %d, 3xx = %d, 4xx = %d, 5xx = %d, other = %d\n", this->parserHelper->http200, this->parserHelper->http300, this->parserHelper->http400, this->parserHelper->http500, this->parserHelper->httpXXX);
+	printf("Extracted %d URLs @ %d/s\n", this->parserStats->totalExtractedNoSub, (int)(this->parserStats->totalExtractedNoSub / totalTimeElapsed));
+	printf("Looked up %d DNS names @ %d/s\n", this->parserStats->numberUniqueHost, (int)(this->parserStats->numberDnsLookup / totalTimeElapsed));
+	printf("Attempted %d robots @ %d/s\n", this->parserStats->numberRobotPass, (int)(this->parserStats->numberRobotPass / totalTimeElapsed));
+	printf("Crawled %d pages @ %d/s (%.2f MB)\n", this->parserStats->numberSuccessfullyCrawled, (int)(this->parserStats->numberSuccessfullyCrawled / totalTimeElapsed), (double)(this->totalBytes / (double)1048576));
+	printf("Parsed %d links @ %d/s\n", this->parserStats->numberTotalLinks, (int)(this->parserStats->numberTotalLinks / totalTimeElapsed));
+	printf("HTTP codes: 2xx = %d, 3xx = %d, 4xx = %d, 5xx = %d, other = %d\n", this->parserStats->http200, this->parserStats->http300, this->parserStats->http400, this->parserStats->http500, this->parserStats->httpXXX);
 
-
+	printf(" DEBUGGING! number of ip addresses found %d \n", this->parserStats->numberIpUnique);
 
 }
