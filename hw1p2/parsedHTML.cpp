@@ -240,7 +240,7 @@ bool parsedHtml::RobotSendRead(void)
             {
                 // robots allowed
                 // parse header now
-
+                countRobot++;
                 cout << "status code " << statusCode << std::endl;
 
                 // int httpPointer = webSocket->printBuf().find("HTTP/");
@@ -389,7 +389,7 @@ bool parsedHtml::urlCheck(std::string link, string pathQueryFragment)
                     cout << "failed" << '\n';
                     return false;
                 }
-                
+                this->countIp++;
                 cout << "passed \n";
                 // cout << "passed NO UNIUQE IDS FOUND IN FIRST CHECK  URL CHECK, REMOVE ME LATER \n";
 

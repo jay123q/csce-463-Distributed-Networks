@@ -15,6 +15,8 @@ using namespace std;
 int PAGE_MAX = 2097152; // 2mb
 int ROBOT_MAX = 16384; // 16 KB
 
+// reset curpos back to 0
+
 
 int maxBuffer = 512; // check me p1
 
@@ -30,9 +32,10 @@ Socket::Socket()
 		return;
 	}
 	// create this buffer once, then possibly reuse for multiple connections in Part 3
+	this->buf = new char[INITIAL_BUF_SIZE];
 	this->allocatedSize = INITIAL_BUF_SIZE;
 	this->curPos = 0;
-	this->buf = new char[INITIAL_BUF_SIZE];
+
 	this->robots = true;
 	this->remote = nullptr;
 	//this->server = nullptr;
@@ -95,18 +98,10 @@ bool Socket::DNSCheck(std::string host)
 		this->server.sin_addr.S_un.S_addr = IP;
 	}
 
-	/*
-	clock_t start = clock();
-	clock_t finish = clock(); // compiler wont shut up about this
+	
+	// seenIPs.insert(server.sin_addr);
 
 
-	finish = clock();
-	double timepassed = double(finish - start) / (double)CLOCKS_PER_SEC;
-
-
-	cout << "done in " << timepassed * 1000 << " ms, found " << inet_ntoa(this->server.sin_addr) << std::endl;
-	*/
-	// this->IP = inet_ntoa(this->server.sin_addr);
 	return true;
 }
 

@@ -71,7 +71,6 @@ int main(int argc, char* argv[])
 	parsedHtml parser;
 	// parser.resetParser();
 	parser.webSocket = new Socket();
-	/* 
 	if (argc == 2)
 	{
 		// std::string filename = "http://allafrica.com/stories/201501021178.html";
@@ -80,6 +79,7 @@ int main(int argc, char* argv[])
 	}
 	else if (argc == 3)
 	{
+		parser.countRobot = 0;
 		numberThreads = stoi(argv[1]);
 		std::string filename = argv[2];
 		vector<string> totalVector =  parser.parseTXTFile(filename);
@@ -92,6 +92,7 @@ int main(int argc, char* argv[])
 			parser.webSocket = new Socket();
 			// cin >> stall;
 		}
+		cout << " count per unit " << parser.countRobot << std::endl;
 
 	}
 	else
@@ -101,6 +102,7 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 	
+	/* 
 	numberThreads = 1;
 	std::string filename = "100url.txt";
 	vector<string> totalVector =  parser.parseTXTFile(filename);
@@ -113,8 +115,10 @@ int main(int argc, char* argv[])
 	}
 
 	*/
-	std::string filename = "http://www.tamu.edu/";
+	std::string filename = "100url.txt";
 		continueRunning(&parser,filename.c_str());
+
+		cout << " parser is " << parser.countIp << std::endl;
 	// parsedHtml parser2;
 	/*
 	std::string filename = "abchttp://";

@@ -12,6 +12,8 @@
 #include "Crawler.h"
 #pragma warning(disable:4996)
 #pragma warning(disable:4099)
+// Get current flag
+
 using namespace std;
 /*
 
@@ -20,6 +22,7 @@ DWORD WINAPI crawler_thread_starter(LPVOID that)
 {
 	// cout << " afddsafs " << ((Crawler*)that)->q.front() << std::endl;
 	Crawler* thatNew = (Crawler*)that;
+	// cout << " count thread " << counter << std::endl;
 	// cout << " front is " << thatNew->q.front() << std::endl;
 	// Crawler* passCrawler = static_cast<Crawler*>(that);
 	return thatNew->runParsingRobotsSendingStatus();
@@ -28,6 +31,7 @@ DWORD WINAPI crawler_thread_starter(LPVOID that)
 DWORD WINAPI status_thread_starter(LPVOID that)
 {
 	Crawler* thatNew = (Crawler*)that;
+
 	return  thatNew->twoSecondPrint();
 }
 
@@ -35,13 +39,15 @@ void handleThreads(Crawler * crawler, int numberThread)
 {
 	cout << "Opened " << crawler->crawlerFileName << " with size " << crawler->parserHelper->intFileSize << std::endl;
 	crawler->crawlersThread = new HANDLE[numberThread];
-	crawler->statsThread = new HANDLE[0];
+	crawler->startTimer = clock();
+	crawler->statusThread = new HANDLE[0];
 	// cout << " crawl check front " << crawler->q.front() << std::endl;
-	crawler->statsThread[0] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)status_thread_starter, crawler, 0, NULL);
+	crawler->statusThread[0] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)status_thread_starter, crawler, 0, NULL);
 
 	for (int i = 0; i < numberThread ; i++)
 	{
-		crawler->crawlersThread[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)crawler_thread_starter, crawler, 0, NULL);
+		// cout << " i counter " << i << std::endl;
+		crawler->crawlersThread[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)crawler_thread_starter, crawler , 0, NULL);
 
 		EnterCriticalSection(&(crawler->threadQueueLock));
 		// cout << " thread amount " << i << std::endl;
@@ -66,8 +72,8 @@ void handleThreads(Crawler * crawler, int numberThread)
 	}
 */
 	bool checkMe = SetEvent(crawler->statusEvent);
-	WaitForSingleObject(crawler->statsThread[0], INFINITE);
-	CloseHandle(crawler->statsThread[0]);
+	WaitForSingleObject(crawler->statusThread[0], INFINITE);
+	CloseHandle(crawler->statusThread[0]);
 
 	crawler->finalPrint();
 }
@@ -148,10 +154,12 @@ int main(int argc, char* argv[])
 		// cin >> stall;
 	}
 	*/
+	int tmpFlag = _CrtSetDbgFlag(_CRTDBG_REPORT_FLAG);
+	tmpFlag |= _CRTDBG_LEAK_CHECK_DF;
 	int numberThread = 10;
 	std::string filename("100url.txt");
 	crawler->crawlerFileName = filename;
-	crawler->startTimer = clock();
+	// crawler->startTimer = clock();
 	crawler->q = crawler->parserHelper->parseTXTFile(filename);
 	// cout << "asdfasdf " << crawler->q.front() << std::endl;
 	handleThreads(&(*crawler), numberThread);

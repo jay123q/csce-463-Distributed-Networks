@@ -21,6 +21,8 @@ class parsedHtml
 {
 
 	public:
+		set<string> seenHosts;
+		set<DWORD> seenIPs;
 		int totalExtractedNoSub;
 		int newNumberBytesInBatch;
 		int newNumberPagesInBatch;
@@ -48,8 +50,7 @@ class parsedHtml
 
 		CRITICAL_SECTION statusCheckMux;// this is for the html status found in parser, reconnect and run 
 
-		set<string> seenHosts;
-		set<DWORD> seenIPs;
+
 		int port;
 		string host;
 		string fragment;

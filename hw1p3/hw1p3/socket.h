@@ -8,8 +8,11 @@
 #include <iostream>
 #include "parsedHTML.h"
 #include "HTMLParserBase.h"
+#include <set>
+#include <queue>
 
 const int INITIAL_BUF_SIZE = 8192;
+
 
 class Socket {
 private:
@@ -17,11 +20,13 @@ private:
 	int allocatedSize; // bytes allocated for buf
 	int curPos; // current position in buffer
 	struct hostent* remote;
-	struct sockaddr_in server;
 public:
 	// extra stuff as needed
+	struct sockaddr_in server;
 	SOCKET sock; // socket handle
 	bool robots;
+
+
 	// DWORD IP;
 	// bool printDNStiming;
 	Socket();
@@ -37,6 +42,14 @@ public:
 	bool Connect(int port);
 	void closeSocket();
 	//void ReadSendCheckStatus(parsedHtml &parser);
+	int parser(char * stringResult, int bytes_file , char * wholeLink)
+	{
+		int nLinks = 0;
+		HTMLParserBase htmlLinkRipper;
+		char* linkCounter = htmlLinkRipper.Parse( stringResult , bytes_file,
+			wholeLink, strlen( wholeLink ), &nLinks);  // 43
+		return nLinks;
+	}
 	const char * printBuf()
 	{
 		return buf;
@@ -49,7 +62,7 @@ public:
 	{
 		return this->remote;
 	}
-	sockaddr_in getServer()
+	struct sockaddr_in getServer()
 	{
 		return this->server;
 	}

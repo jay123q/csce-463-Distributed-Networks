@@ -35,6 +35,8 @@ class parsedHtml
 		struct sockaddr_in serverParserTemp;
 		char* readFileBuf;
 		int intFileSize;
+		int countRobot = 0;
+		int countIp = 0;
 		void resetParser(void);
 		bool parseString(string link); // parses the url
 		void generateGETrequestToSend(void);
