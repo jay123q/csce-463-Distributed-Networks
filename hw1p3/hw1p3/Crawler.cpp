@@ -64,8 +64,8 @@ DWORD Crawler::runParsingRobotsSendingStatus()
 {
 	parsedHtml parserHelper;
 	parserHelper.resetParser();
-	parserHelper.webSocket->robots = true;
-
+	// parserHelper.webSocket->robots = true;
+	// parserHelper.htmlLinkRipper = new HTMLParserBase;
 	while (true)
 	{
 	
@@ -90,13 +90,14 @@ DWORD Crawler::runParsingRobotsSendingStatus()
 			LeaveCriticalSection(&(this->editQueueLink));
 			// url pop failed
 			delete parserHelper.webSocket;
+			delete parserHelper.htmlLinkRipper;
 			parserHelper.webSocket->robots = true;
 			continue;
 		}
 		q.pop();
 		// cout << " size of  main  parser " << sizeof(parser) << std::endl;
 		// parser.resetParser();
-		parserStats->numberExtractedURL--;
+		parserStats->numberExtractedURL++;
 		// parserHelper.webSocket = new Socket();
 		LeaveCriticalSection(&(this->editQueueLink));
 		// parser->parseString(urlLink);
@@ -116,6 +117,7 @@ DWORD Crawler::runParsingRobotsSendingStatus()
 			// LeaveCriticalSection(&(this->extractUrlLock));
 			// return false;
 			delete parserHelper.webSocket;
+			delete parserHelper.htmlLinkRipper;
 			parserHelper.webSocket->robots = true;
 			continue;
 		}
@@ -132,6 +134,7 @@ DWORD Crawler::runParsingRobotsSendingStatus()
 			LeaveCriticalSection(&(parserStats->hostCheckUnique));
 
 			delete parserHelper.webSocket;
+			delete parserHelper.htmlLinkRipper;
 			parserHelper.webSocket->robots = true;			
 
 			//     cout << "failed" << '\n';
@@ -150,6 +153,7 @@ DWORD Crawler::runParsingRobotsSendingStatus()
 		if (parserHelper.webSocket->DNSCheck(parserHelper.host) != true)
 		{
 			delete parserHelper.webSocket;
+			delete parserHelper.htmlLinkRipper;
 			parserHelper.webSocket->robots = true;
 			continue;
 			// return false;
@@ -185,18 +189,11 @@ DWORD Crawler::runParsingRobotsSendingStatus()
 
 			LeaveCriticalSection(&(parserStats->ipCheckLock));
 			delete parserHelper.webSocket;
+			delete parserHelper.htmlLinkRipper;
 			parserHelper.webSocket->robots = true;
 			// return false;
 			continue;
 		}
-		EnterCriticalSection(&(this->genericSyntaxLock));
-
-		this->parserStats->numberRobotPass += parserHelper.numberRobotPass;
-		this->parserStats->newNumberBytesInBatch = parserHelper.newNumberBytesInBatch;
-		this->parserStats->newNumberPagesInBatch = parserHelper.newNumberPagesInBatch;
-		LeaveCriticalSection(&(this->genericSyntaxLock));
-
-
 
 
 
@@ -221,15 +218,22 @@ DWORD Crawler::runParsingRobotsSendingStatus()
 			parserHelper.webSocket->robots = true;
 			delete parserHelper.webSocket;
 		//LeaveCriticalSection(&(this->genericSyntaxLock));
+			delete parserHelper.htmlLinkRipper;
 			continue;
 
 			// return 0;
 		}
 
-		//EnterCriticalSection(&(this->genericSyntaxLock));
+		EnterCriticalSection(&(this->genericSyntaxLock));
+
+		this->parserStats->numberRobotPass += parserHelper.numberRobotPass;
+		this->parserStats->newNumberBytesInBatch = parserHelper.newNumberBytesInBatch;
+		this->parserStats->newNumberPagesInBatch = parserHelper.newNumberPagesInBatch;
+		LeaveCriticalSection(&(this->genericSyntaxLock));
+
+
 		parserHelper.webSocket = new Socket();
 		parserHelper.webSocket->setServer(parserHelper.serverParserTemp);
-		//LeaveCriticalSection(&(this->genericSyntaxLock));
 
 
 		int sendPass = parserHelper.ReconnectHostSend(parserHelper.port);
@@ -239,6 +243,7 @@ DWORD Crawler::runParsingRobotsSendingStatus()
 			//EnterCriticalSection(&(this->genericSyntaxLock));
 			delete parserHelper.webSocket;
 			parserHelper.webSocket->robots = true;
+			delete parserHelper.htmlLinkRipper;
 			//LeaveCriticalSection(&(this->genericSyntaxLock));
 			continue;
 			//	return 0;
@@ -256,52 +261,6 @@ DWORD Crawler::runParsingRobotsSendingStatus()
 		LeaveCriticalSection(&(this->genericSyntaxLock));
 		delete parserHelper.webSocket;
 		parserHelper.webSocket->robots = true;
-		/*
-		else if (statusCode > 199 && statusCode < 300)
-		{
-		}
-
-		else if (statusCode > 299 && statusCode < 400)
-		{
-			
-			EnterCriticalSection(&(this->statusCheckMux));
-			this->http300++;
-			LeaveCriticalSection(&(this->statusCheckMux));
-			
-			return statusCode;
-		}
-		else if (statusCode > 399 && statusCode < 500)
-		{
-			
-			EnterCriticalSection(&(this->statusCheckMux));
-			this->http400++;
-			LeaveCriticalSection(&(this->statusCheckMux));
-			
-			return statusCode;
-
-		}
-		else if (statusCode > 499 && statusCode < 600)
-		{
-			
-			EnterCriticalSection(&(this->statusCheckMux));
-			this->http500++;
-			LeaveCriticalSection(&(this->statusCheckMux));
-			
-			return statusCode;
-
-		}
-		else
-		{
-			
-			EnterCriticalSection(&(this->statusCheckMux));
-			this->httpXXX++;
-			LeaveCriticalSection(&(this->statusCheckMux));
-			
-			return statusCode;
-
-		}
-		}
-		*/
 
 
 	}
@@ -320,7 +279,7 @@ DWORD Crawler::twoSecondPrint()
 	while ((WaitForSingleObject(this->statusEvent, 2000) == WAIT_TIMEOUT) || !printMe)
 	{
 		printMe = true;
-		printf("[%3d] %4d Q %6d E %7d H %6d D %6d I %5d R %5d C %5d L %4dK\n",
+		printf("[%3d] %4d Q %6d E %7d H %6d D  %6d I %5d R %5d C %5d L %4dK\n",
 			(int)(double)(clock() - this->startTimer) / CLOCKS_PER_SEC,
 			this->numberThread,
 			(int)this->q.size(),
@@ -347,7 +306,7 @@ DWORD Crawler::twoSecondPrint()
 		this->parserStats->newNumberPagesInBatch = 0;
 
 		// pass the status on to the next person
-		ResetEvent(statusEvent);
+		// ResetEvent(statusEvent);
 	}
 		return 0;
 }
@@ -357,7 +316,7 @@ void Crawler::finalPrint()
 	double totalTimeElapsed = (int)((double)clock() - this->startTimer) / (double)CLOCKS_PER_SEC;
 
 	// Output final stats
-	printf("Extracted %d URLs @ %d/s\n", this->parserStats->totalExtractedNoSub, (int)(this->parserStats->totalExtractedNoSub / totalTimeElapsed));
+	printf("Extracted %d URLs @ %d/s\n", this->parserStats->numberExtractedURL, (int)(this->parserStats->numberExtractedURL / totalTimeElapsed));
 	printf("Looked up %d DNS names @ %d/s\n", this->parserStats->numberUniqueHost, (int)(this->parserStats->numberDnsLookup / totalTimeElapsed));
 	printf("Attempted %d robots @ %d/s\n", this->parserStats->numberRobotPass, (int)(this->parserStats->numberRobotPass / totalTimeElapsed));
 	printf("Crawled %d pages @ %d/s (%.2f MB)\n", this->parserStats->numberSuccessfullyCrawled, (int)(this->parserStats->numberSuccessfullyCrawled / totalTimeElapsed), (double)(this->totalBytes / (double)1048576));

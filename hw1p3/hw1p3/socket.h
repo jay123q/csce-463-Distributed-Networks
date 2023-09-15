@@ -13,7 +13,7 @@
 #include <queue>
 
 const int INITIAL_BUF_SIZE = 8192;
-
+class HTMLParserBase;
 
 class Socket {
 private:
@@ -46,14 +46,7 @@ public:
 	bool Connect(int port);
 	void closeSocket();
 	//void ReadSendCheckStatus(parsedHtml &parser);
-	int parser(char * stringResult, int bytes_file , char * wholeLink)
-	{
-		int nLinks = 0;
-		HTMLParserBase htmlLinkRipper;
-		char* linkCounter = htmlLinkRipper.Parse( stringResult , bytes_file,
-			wholeLink, strlen( wholeLink ), &nLinks);  // 43
-		return nLinks;
-	}
+
 	const char * printBuf()
 	{
 		return buf;

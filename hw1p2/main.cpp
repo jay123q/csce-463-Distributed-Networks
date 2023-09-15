@@ -71,6 +71,7 @@ int main(int argc, char* argv[])
 	parsedHtml parser;
 	// parser.resetParser();
 	parser.webSocket = new Socket();
+	/* 
 	if (argc == 2)
 	{
 		// std::string filename = "http://allafrica.com/stories/201501021178.html";
@@ -82,7 +83,6 @@ int main(int argc, char* argv[])
 		parser.countRobot = 0;
 		numberThreads = stoi(argv[1]);
 		std::string filename = argv[2];
-		vector<string> totalVector =  parser.parseTXTFile(filename);
 		// int stall = 0;
 		cout << "Opened " << filename << " with size " << parser.intFileSize << std::endl;
 		for (int i = 0; i < totalVector.size() ; i++)
@@ -102,7 +102,6 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 	
-	/* 
 	numberThreads = 1;
 	std::string filename = "100url.txt";
 	vector<string> totalVector =  parser.parseTXTFile(filename);
@@ -115,13 +114,23 @@ int main(int argc, char* argv[])
 	}
 
 	*/
+	/*
 	std::string filename = "100url.txt";
-		continueRunning(&parser,filename.c_str());
 
-		cout << " parser is " << parser.countIp << std::endl;
+		vector<string> totalVector =  parser.parseTXTFile(filename);
+		for (int i = 0; i < totalVector.size(); i++)
+		{
+			continueRunning(&parser, totalVector.at(i).c_str());
+			parser.resetParser();
+			parser.webSocket = new Socket();
+			// cin >> stall;
+		}
+	*/
+	continueRunning(&parser, "http://irl.cs.tamu.edu/");
 		cout << " robots is " << parser.countRobot << std::endl;
 		cout << " allowed is " << parser.countAllowed << std::endl;
-		cout << " robot spam \n " << parser.robotURls << std::endl;
+		cout << " string crawl " << parser.countAllowed << std::endl;
+		// cout << " robot spam \n " << parser.robotURls << std::endl;
 	// parsedHtml parser2;
 	/*
 	std::string filename = "abchttp://";

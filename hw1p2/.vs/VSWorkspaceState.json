@@ -1,10 +1,7 @@
 {
   "ExpandedNodes": [
-    "",
-    "\\Debug",
-    "\\Debug\\hw1p2.tlog",
-    "\\hw1p2"
+    ""
   ],
-  "SelectedNode": "\\hw1p2\\socket.cpp",
+  "SelectedNode": "\\hw1p2.vcxproj",
   "PreviewInSolutionExplorer": false
 }

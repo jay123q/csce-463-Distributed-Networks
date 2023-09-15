@@ -15,13 +15,13 @@
 
 
 class Socket;
-
+class HTMLParserBase;
 using namespace std;
 class parsedHtml
 {
 
 	public:
-
+		HTMLParserBase * htmlLinkRipper;
 		int totalExtractedNoSub;
 		int newNumberBytesInBatch;
 		int newNumberPagesInBatch;
@@ -49,6 +49,14 @@ class parsedHtml
 
 		CRITICAL_SECTION statusCheckMux;// this is for the html status found in parser, reconnect and run 
 
+		int parserHelper(HTMLParserBase* htmlLinkRipper, char* stringResult, int bytes_file, char* wholeLink)
+		{
+			int nLinks = 0;
+
+			char* linkCounter = htmlLinkRipper->Parse(stringResult, bytes_file,
+				wholeLink, strlen(wholeLink), &nLinks);  // 43
+			return nLinks;
+		}
 
 		int port;
 		string host;
@@ -61,11 +69,11 @@ class parsedHtml
 		string httpStatus;
 	// struct sockaddr_in server;
 		Socket* webSocket;
-
+		
 		struct sockaddr_in serverParserTemp;
 		char* readFileBuf;
 		int intFileSize;
-		
+
 
 		parsedHtml();
 		~parsedHtml();

@@ -13,10 +13,10 @@
 #pragma comment (lib, "HTMLParser_release_win32.lib")
 #endif
 #endif
-
 #define MAX_HOST_LEN		256
 #define MAX_URL_LEN			2048
 #define MAX_REQUEST_LEN		2048
+
 
 class HTMLParserBase
 {
