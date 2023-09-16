@@ -235,21 +235,26 @@ queue<string> parsedHtml::parseTXTFile(std::string filename)
     ifstream file(filename, ios::binary | ios::in);
     std::string line;
     std::queue <std::string> queueTotal;
+    struct stat sb;
+    int errorCheck = stat(filename.c_str(), &sb);
+    if (errorCheck < 0)
+    {
+        cout << " file corrupted or couldnt be found \n";
+    }
 
-
-    this->intFileSize = 0;
+    this->intFileSize = sb.st_size;
     // get file length
     while (!file.eof())
     {
         getline(file, line);
-        if (file.eof() == true)
+        if (line[0] == '\0')
         {
             break;
         }
         line = line.substr(0,line.size() - 1);
-        this->intFileSize += strlen(line.c_str());
+        //this->intFileSize += strlen(line.c_str());
      //   cout << " the line is " << line << std::endl;
-       // cout << " push the file " << line << std::endl;
+    //    cout << " push the file " << line << std::endl;
         queueTotal.push(line);
     }
 
@@ -326,9 +331,6 @@ bool parsedHtml::RobotSendRead(int portPassed)
 
             */
 
-                EnterCriticalSection(&(this->robotCheckLock));
-                this->numberRobotPass++; // increment robots
-                LeaveCriticalSection(&(this->robotCheckLock));
 
 
             //   cout << "\t   Verifying header... ";
@@ -344,6 +346,9 @@ bool parsedHtml::RobotSendRead(int portPassed)
                // cout << " parsing HTML ROBOT CHECK PASSED REMOVE ME LATER \n";
 
 
+                EnterCriticalSection(&(this->robotCheckLock));
+                this->numberRobotPass++; // increment robots
+                LeaveCriticalSection(&(this->robotCheckLock));
 
 
 

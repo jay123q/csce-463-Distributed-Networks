@@ -66,7 +66,7 @@ void handleThreads(Crawler * crawler, int numberThread)
 
 
 /*
-	if (checkMe != true)
+	if (checkMe != true)S
 	{
 
 	}
@@ -157,8 +157,9 @@ int main(int argc, char* argv[])
 	int tmpFlag = _CrtSetDbgFlag(_CRTDBG_REPORT_FLAG);
 	tmpFlag |= _CRTDBG_LEAK_CHECK_DF;
 	int numberThread = 500;
-	std::string filename("URL-input-1M.txt");
-	//std::string filename("100url.txt");
+	 std::string filename("URL-input-1M.txt");
+	 // std::string filename("URL-input-1M-2019.txt");
+	 // std::string filename("100url.txt");
 	crawler->crawlerFileName = filename;
 	// crawler->startTimer = clock();
 	crawler->q = crawler->parserStats->parseTXTFile(filename);
