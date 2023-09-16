@@ -64,7 +64,7 @@ class parsedHtml
 
 
 			// tamu check
-			bool tamu = true;
+			bool tamu = false;
 			if (tamu)
 			{
 				for (int i = 0; i < nLinks; i++)

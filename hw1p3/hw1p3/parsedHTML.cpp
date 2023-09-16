@@ -464,12 +464,12 @@ bool parsedHtml::ReconnectHostSend(int portPassed)
 
 
                 
-                EnterCriticalSection(&(this->linkCkeckLock));
                 int nLinks = this->parserHelper( this->htmlLinkRipper, (char*)result, bytes_recieved, (char*)wholeLink.c_str());
 
 
 
 
+                EnterCriticalSection(&(this->linkCkeckLock));
                 this->numberTotalLinks += nLinks; // nlinks for the stats page
                 LeaveCriticalSection(&(this->linkCkeckLock));
 
