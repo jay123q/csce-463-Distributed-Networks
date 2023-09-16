@@ -232,6 +232,7 @@ DWORD Crawler::runParsingRobotsSendingStatus()
 		LeaveCriticalSection(&(this->genericSyntaxLock));
 
 
+		delete parserHelper.webSocket;
 		parserHelper.webSocket = new Socket();
 		parserHelper.webSocket->setServer(parserHelper.serverParserTemp);
 

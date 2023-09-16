@@ -6,6 +6,7 @@
 #pragma comment(lib, "ws2_32.lib")
 #include <iostream>
 #include "parsedHTML.h"
+
 using namespace std;
 
 parsedHtml::parsedHtml()
@@ -50,6 +51,7 @@ void parsedHtml::resetParser(void)
     this->httpStatus = '\0';
     //this->webSocket->~Socket();
     this->webSocket=new Socket();
+    htmlLinkRipper = new HTMLParserBase;
     // this->readFileBuf[0] = '\0';
     this->webSocket->~Socket();
     this->intFileSize = 0;
@@ -218,7 +220,7 @@ void parsedHtml::generateGETrequestToSend(void)
   //  cout << " get request |" << getRequest << "| \n";
   //  cout << " path " << printPathQueryFragment() << std::endl;
    // this->total =  "GET / HTTP/1.1\r\nUser-agent: JoshTamuCrawler/1.1\r\nHost: tamu.edu\r\nConnection: close\r\n\r\n"; // CORRECT
-  //  this->total = "GET " + printPathQueryFragment() + " HTTP/1.0\r\nUser-agent: JoshTamuCrawler/1.3\r\nHost: " + this->host + "\r\nConnection: close\r\n\r\n";
+    this->total = "GET " + printPathQueryFragment() + " HTTP/1.0\r\nUser-agent: JoshTamuCrawler/1.3\r\nHost: " + this->host + "\r\nConnection: close\r\n\r\n";
     //  cout << " total \n" << this->total << std::endl;
      // this->total = "GET /IRL7 HTTP/1.0\r\nUser-agent: JoshTamuCrawler/1.1\r\nHost: s2.irl.cs.tamu.edu\r\nConnection: close\r\n\r\n";
 }
@@ -233,10 +235,18 @@ queue<string> parsedHtml::parseTXTFile(std::string filename)
     ifstream file(filename, ios::binary | ios::in);
     std::string line;
     std::queue <std::string> queueTotal;
+
+
     this->intFileSize = 0;
+    // get file length
     while (!file.eof())
     {
         getline(file, line);
+        if (file.eof() == true)
+        {
+            break;
+        }
+        line = line.substr(0,line.size() - 1);
         this->intFileSize += strlen(line.c_str());
      //   cout << " the line is " << line << std::endl;
        // cout << " push the file " << line << std::endl;
@@ -244,8 +254,8 @@ queue<string> parsedHtml::parseTXTFile(std::string filename)
     }
 
     // EnterCriticalSection(&(this->extractUrlLock));
-    this->numberExtractedURL = queueTotal.size();
-    this->totalExtractedNoSub = queueTotal.size();
+    // this->numberExtractedURL = queueTotal.size();
+   // this->totalExtractedNoSub = queueTotal.size();
     // LeaveCriticalSection(&(this->extractUrlLock));
 
 
@@ -283,14 +293,10 @@ bool parsedHtml::RobotSendRead(int portPassed)
             // bytes must be > 200
           //  EnterCriticalSection(&(this->bitHandlingCheckLock));
 
-
-            if (this->webSocket->getCurPos() == 0)
-            {
-      
-                return false;
-            }
+                EnterCriticalSection(&(this->bitHandlingCheckLock));
             this->newNumberBytesInBatch += strlen(this->webSocket->printBuf()); // number of bytes recieved
             this->newNumberPagesInBatch++; // increment the number of pages recieved
+                LeaveCriticalSection(&(this->bitHandlingCheckLock));
 
 
             string status(this->webSocket->printBuf());
@@ -320,6 +326,9 @@ bool parsedHtml::RobotSendRead(int portPassed)
 
             */
 
+                EnterCriticalSection(&(this->robotCheckLock));
+                this->numberRobotPass++; // increment robots
+                LeaveCriticalSection(&(this->robotCheckLock));
 
 
             //   cout << "\t   Verifying header... ";
@@ -335,9 +344,6 @@ bool parsedHtml::RobotSendRead(int portPassed)
                // cout << " parsing HTML ROBOT CHECK PASSED REMOVE ME LATER \n";
 
 
-                EnterCriticalSection(&(this->robotCheckLock));
-                this->numberRobotPass++; // increment robots
-                LeaveCriticalSection(&(this->robotCheckLock));
 
 
 
@@ -411,7 +417,18 @@ bool parsedHtml::ReconnectHostSend(int portPassed)
             {
 
             const unsigned int statusCode = stoi(status.substr(9.3).c_str());
+                EnterCriticalSection(&(this->urlCheckLock));
+                this->numberSuccessfullyCrawled++; // full htpp obtained
+                LeaveCriticalSection(&(this->urlCheckLock));
             // LeaveCriticalSection(&(this->genericSyntaxLock));
+                const char* result = this->webSocket->printBuf();
+                string stringResult(result);
+
+
+
+
+
+
             if (statusCode > 199 && statusCode < 300)
             {
                 EnterCriticalSection(&(this->statusCheckMux));
@@ -419,46 +436,36 @@ bool parsedHtml::ReconnectHostSend(int portPassed)
                 LeaveCriticalSection(&(this->statusCheckMux));
 
 
-                EnterCriticalSection(&(this->urlCheckLock));
-                this->numberSuccessfullyCrawled++; // full htpp obtained
-                LeaveCriticalSection(&(this->urlCheckLock));
 
 
-
-                clock_t start = clock();
-                clock_t finish = clock();
-                //   cout << "\t + Parsing page... ";
-
-                EnterCriticalSection(&(this->bitHandlingCheckLock));
-                const char* result = this->webSocket->printBuf();
-                string stringResult(result);
-                const char* pastHeaderPtr = strchr(result, '\r\n\r\n');
-
-                int bytes_recieved = this->webSocket->getCurPos();
-
-
-
-                this->newNumberBytesInBatch += bytes_recieved; // number of bytes recieved
+               EnterCriticalSection(&(this->bitHandlingCheckLock));
+                this->newNumberBytesInBatch += this->webSocket->getCurPos(); // number of bytes recieved
                 this->newNumberPagesInBatch++; // increment the number of pages recieved
                 LeaveCriticalSection(&(this->bitHandlingCheckLock));
 
-                //  EnterCriticalSection(&(this->bitHandlingCheckLock));
-                int bytes_header = pastHeaderPtr - result; // header bytes
-                int bytes_file = bytes_recieved - bytes_header;
                 //  EnterCriticalSection(&(this->bitHandlingCheckLock));
 
 
                    // int numberBytesToParse = htmlPointer - webSocket->getCurPos();
                    //asdf
+
+                const char* pastHeaderPtr = strchr(result, '\r\n\r\n');
+                int bytes_recieved = this->webSocket->getCurPos();
+                int bytes_header = pastHeaderPtr - result; // header bytes
+                int bytes_file = bytes_recieved - bytes_header;
+                //  EnterCriticalSection(&(this->bitHandlingCheckLock));
+
+
+                
+                int nLinks = this->parserHelper( this->htmlLinkRipper, (char*)result, bytes_recieved, (char*)wholeLink.c_str());
+
+
+
+
                 EnterCriticalSection(&(this->linkCkeckLock));
-                int nLinks = 0;
-                nLinks = this->webSocket->parser((char*)result, bytes_recieved, (char *) wholeLink.c_str() );
-
-
-
-
                 this->numberTotalLinks += nLinks; // nlinks for the stats page
                 LeaveCriticalSection(&(this->linkCkeckLock));
+
 
 
 
@@ -481,8 +488,8 @@ bool parsedHtml::ReconnectHostSend(int portPassed)
             {
                 EnterCriticalSection(&(this->statusCheckMux));
                 this->http400++;
-                return true;
                 LeaveCriticalSection(&(this->statusCheckMux));
+                return true;
 
             }
             else if (statusCode > 499 && statusCode < 600)
