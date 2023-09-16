@@ -99,12 +99,12 @@ class parsedHtml
 					{
 						// tamuLinkCountStack = tamuLinkCountStack + hostStart + "\r\n";
 						this->tamuCounterStack += 1;
-						std::ofstream out;
+						
 						out.open("output.txt");
 						if (out.is_open())
 						{
 
-							out << hostStart + "\r\n";
+							out << hostStart << std::endl;
 							out.close();
 						}
 						else
@@ -119,7 +119,7 @@ class parsedHtml
 
 			return nLinks;
 		}
-
+		std::ofstream out;
 		int port;
 		string host;
 		string fragment;
