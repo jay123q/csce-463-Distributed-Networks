@@ -12,6 +12,7 @@ Crawler::Crawler()
 	// cout << " in consutruct check \n";
 	// this->q = parserHelper->parseTXTFile(this->crawlerFileName);
 	// int stall = 0;
+	std::ofstream out("output.txt");
 	this->startTimer = clock();
 	this->numberThread = 0;
 	this->bytesDownloadedInBatch = 0.0;
@@ -71,6 +72,13 @@ DWORD Crawler::runParsingRobotsSendingStatus()
 	
 		parserHelper.resetParser();
 		EnterCriticalSection(&(this->editQueueLink));
+
+
+		// tamu check
+		this->parserStats->tamuLinkCountPrint = "";
+
+
+
 		// cout << " length " << q.size() << std::endl;
 		// potentially have a var to set true when fasle 
 		// cout << " front is " << this->q.front() << std::endl;
@@ -227,8 +235,8 @@ DWORD Crawler::runParsingRobotsSendingStatus()
 		EnterCriticalSection(&(this->genericSyntaxLock));
 
 		this->parserStats->numberRobotPass += parserHelper.numberRobotPass;
-		this->parserStats->newNumberBytesInBatch = parserHelper.newNumberBytesInBatch;
-		this->parserStats->newNumberPagesInBatch = parserHelper.newNumberPagesInBatch;
+		this->parserStats->newNumberBytesInBatch += parserHelper.newNumberBytesInBatch;
+		this->parserStats->newNumberPagesInBatch += parserHelper.newNumberPagesInBatch;
 		LeaveCriticalSection(&(this->genericSyntaxLock));
 
 
@@ -257,8 +265,12 @@ DWORD Crawler::runParsingRobotsSendingStatus()
 		this->parserStats->httpXXX += parserHelper.httpXXX;
 		this->parserStats->numberTotalLinks += parserHelper.numberTotalLinks;
 		this->parserStats->numberSuccessfullyCrawled += parserHelper.numberSuccessfullyCrawled;
-		this->parserStats->newNumberBytesInBatch = parserHelper.newNumberBytesInBatch;
-		this->parserStats->newNumberPagesInBatch = parserHelper.newNumberPagesInBatch;
+		this->parserStats->newNumberBytesInBatch += parserHelper.newNumberBytesInBatch;
+		this->parserStats->newNumberPagesInBatch += parserHelper.newNumberPagesInBatch;
+
+
+		this->parserStats->tamuCounterPrint += parserHelper.tamuCounterStack;
+		this->parserStats->tamuLinkCountPrint += parserHelper.tamuLinkCountStack;
 		LeaveCriticalSection(&(this->genericSyntaxLock));
 		delete parserHelper.webSocket;
 		parserHelper.webSocket->robots = true;
@@ -296,15 +308,15 @@ DWORD Crawler::twoSecondPrint()
 	//	this->pagesDownloadedInBatch = (this->parserStats->newNumberPagesInBatch - this->totalPages) / (double)((clock() - this->startTimer) / CLOCKS_PER_SEC);	
 	// 
 	// here	
-		this->bytesDownloadedInBatch = (this->parserStats->newNumberBytesInBatch) / (double)((clock() - this->startTimer) / CLOCKS_PER_SEC);
-		this->pagesDownloadedInBatch = (this->parserStats->newNumberPagesInBatch) / (double)((clock() - this->startTimer) / CLOCKS_PER_SEC);
+		this->bytesDownloadedInBatch = (this->parserStats->newNumberBytesInBatch - this->totalBytes) /  (double)((clock() - this->startTimer) / CLOCKS_PER_SEC);
+		this->pagesDownloadedInBatch = (this->parserStats->newNumberPagesInBatch - this->totalPages) /  (double)((clock() - this->startTimer) / CLOCKS_PER_SEC);
 
 		// Output crawling information
 		printf("\t*** crawling %.1f pps @ %.1f Mbps\n", this->pagesDownloadedInBatch, this->bytesDownloadedInBatch / double(125000));
 		this->totalBytes = this->parserStats->newNumberBytesInBatch;
 		this->totalPages = this->parserStats->newNumberPagesInBatch;
-		this->parserStats->newNumberBytesInBatch = 0;
-		this->parserStats->newNumberPagesInBatch = 0;
+		// this->parserStats->newNumberBytesInBatch = 0;
+		// this->parserStats->newNumberPagesInBatch = 0;
 
 		// pass the status on to the next person
 		// ResetEvent(statusEvent);
@@ -320,10 +332,14 @@ void Crawler::finalPrint()
 	printf("Extracted %d URLs @ %d/s\n", this->parserStats->numberExtractedURL, (int)(this->parserStats->numberExtractedURL / totalTimeElapsed));
 	printf("Looked up %d DNS names @ %d/s\n", this->parserStats->numberUniqueHost, (int)(this->parserStats->numberDnsLookup / totalTimeElapsed));
 	printf("Attempted %d robots @ %d/s\n", this->parserStats->numberRobotPass, (int)(this->parserStats->numberRobotPass / totalTimeElapsed));
-	printf("Crawled %d pages @ %d/s (%.2f MB)\n", this->parserStats->numberSuccessfullyCrawled, (int)(this->parserStats->numberSuccessfullyCrawled / totalTimeElapsed), (double)(this->totalBytes / (double)1048576));
+	printf("Crawled %d pages @ %d/s (%.2f MB)\n", this->parserStats->numberSuccessfullyCrawled, (int)(this->parserStats->numberSuccessfullyCrawled / totalTimeElapsed), (double)(this->parserStats->newNumberBytesInBatch / (double)1048576));
 	printf("Parsed %d links @ %d/s\n", this->parserStats->numberTotalLinks, (int)(this->parserStats->numberTotalLinks / totalTimeElapsed));
 	printf("HTTP codes: 2xx = %d, 3xx = %d, 4xx = %d, 5xx = %d, other = %d\n", this->parserStats->http200, this->parserStats->http300, this->parserStats->http400, this->parserStats->http500, this->parserStats->httpXXX);
+	
 
-	printf(" DEBUGGING! number of ip addresses found %d \n", this->parserStats->numberIpUnique);
+		// tamu check 
+	printf(" tamu link check number %d \n", this->parserStats->tamuCounterPrint);
+	printf(" tamu link check number of links %s \n", this->parserStats->tamuLinkCountPrint.c_str());
+
 
 }

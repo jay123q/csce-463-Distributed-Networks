@@ -19,6 +19,7 @@ public:
 		double totalPages;
 		set<string> seenHosts;
 		set<DWORD> seenIPs;
+
 	HANDLE* crawlersThread;
 	HANDLE* statusThread;
 

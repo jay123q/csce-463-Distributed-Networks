@@ -55,6 +55,7 @@ void parsedHtml::resetParser(void)
     // this->readFileBuf[0] = '\0';
     this->webSocket->~Socket();
     this->intFileSize = 0;
+    this->tamuCounterStack = 0;
 
 }
 
@@ -75,6 +76,7 @@ void parsedHtml::setNumbersForCrawling()
     this->http400 = 0;
     this->http500 = 0;
     this->httpXXX = 0;
+    this->tamuCounterPrint = 0;
 
 }
 
@@ -299,7 +301,7 @@ bool parsedHtml::RobotSendRead(int portPassed)
           //  EnterCriticalSection(&(this->bitHandlingCheckLock));
 
                 EnterCriticalSection(&(this->bitHandlingCheckLock));
-            this->newNumberBytesInBatch += strlen(this->webSocket->printBuf()); // number of bytes recieved
+            this->newNumberBytesInBatch += this->webSocket->getCurPos(); // number of bytes recieved
             this->newNumberPagesInBatch++; // increment the number of pages recieved
                 LeaveCriticalSection(&(this->bitHandlingCheckLock));
 
@@ -462,12 +464,12 @@ bool parsedHtml::ReconnectHostSend(int portPassed)
 
 
                 
+                EnterCriticalSection(&(this->linkCkeckLock));
                 int nLinks = this->parserHelper( this->htmlLinkRipper, (char*)result, bytes_recieved, (char*)wholeLink.c_str());
 
 
 
 
-                EnterCriticalSection(&(this->linkCkeckLock));
                 this->numberTotalLinks += nLinks; // nlinks for the stats page
                 LeaveCriticalSection(&(this->linkCkeckLock));
 
@@ -526,7 +528,7 @@ bool parsedHtml::ReconnectHostSend(int portPassed)
 
 bool parsedHtml::urlCheck(std::string link)
 {
-    /*
+    
    // EnterCriticalSection(&(this->extractUrlLock));
     bool parseCheck = parseString(link);
     this->urlLink = link.c_str();
@@ -536,126 +538,38 @@ bool parsedHtml::urlCheck(std::string link)
         return false;
     }
 
-    this->numberExtractedURL--; // remove a url from the link
       //  LeaveCriticalSection(&(this->extractUrlLock));
 
 
     //  cout << "\t   Checking host uniqueness... ";
-
-     EnterCriticalSection(&(this->hostCheckUnique));
+\
     auto resultHostCheck = seenHosts.insert(host.c_str());
     if (resultHostCheck.second != true)
     { // duplicate host
-       LeaveCriticalSection(&(this->hostCheckUnique));
 
+        return false;
+    }
 
-        //     cout << "failed" << '\n';
+    if (this->webSocket->DNSCheck(this->host.c_str()) != true)
+    {
         return false;
     }
 
 
-    this->numberUniqueHost++;
-     LeaveCriticalSection(&(this->hostCheckUnique));
-;
 
- //     bool DNSpass = this->webSocket->DNSCheck(host.c_str());
-
-
-     this->webSocket->DNSCheck(this->host);
-     // this->ip = server.sin_addr;
-
-     EnterCriticalSection(&(this->dnsCheckLock));
-    this->numberDnsLookup++; // increment dns checkk
-        LeaveCriticalSection(&(this->dnsCheckLock));
-
-    /* 
-    // cout << " size of seen ips " << seenIPs.size() << std::endl;
-        //cout << " ip print is f%" << x << std::endl;
-    printf("hex : %x host : %s \n", x, host.c_str());
-    if (x == 0xd76fea9)
-    {
-        int xa = 0;
-    }
-    */
-    /*
-    EnterCriticalSection(&(this->ipCheckLock));
+    
     int prevInsert = this->seenIPs.size();
     DWORD x = *(DWORD*)this->webSocket->getRemote()->h_addr;
     seenIPs.insert(x);
-    if (prevInsert != seenIPs.size())
+    if (prevInsert == seenIPs.size())
     { // duplicate host
-   /// DWORD x = inet_addr(inet_ntoa(server.sin_addr));
-        this->numberIpUnique++; // increment IP unique
-        LeaveCriticalSection(&(this->ipCheckLock));
-    }
-    else
-    {
-
-        LeaveCriticalSection(&(this->ipCheckLock));
         return false;
+   /// DWORD x = inet_addr(inet_ntoa(server.sin_addr));
     }
 
     // LeaveCriticalSection(&(this->dnsCheckLock));
 
-    if (this->webSocket->DNSCheck(this->host.c_str()) != true)
-    {
-   //     delete webSocket;
-        return false;
-    }
-    this->numberDnsLookup++; // increment dns checkk
 
-   DWORD Ip=  this->webSocket->getIp();
-
-   // EnterCriticalSection(&(this->ipCheckLock));
-    int prevInsert = this->seenIPs.size();
-    // cout << " size of seen ips " << seenIPs.size() << std::endl;
-    DWORD x = inet_addr(inet_ntoa(server.sin_addr));
-    seenIPs.insert(x);
-    if (prevInsert != seenIPs.size())
-    { // duplicate host
-        this->numberIpUnique++; // increment IP unique
-    }
-    else
-    {
-
-        // LeaveCriticalSection(&(this->ipCheckLock));
-        return false;
-    }
-
-        // LeaveCriticalSection(&(this->ipCheckLock));
-    */
-
-
-     /*
-   EnterCriticalSection(&(this->ipCheckLock));
-    // below caused a error if INET_ADDR isnt there odd
-  //  cout << " dword x " << inet_addr(inet_ntoa(this->webSocket->getServer().sin_addr)) << std::endl;
-    // if a valid IP, directly drop its binary version into sin_addr
-    if (prevInsert != seenIPs.size())
-    { // duplicate host
-        this->numberIpUnique++; // increment IP unique
-        LeaveCriticalSection(&(this->ipCheckLock));
-
-    }
-    else
-    {
-
-        LeaveCriticalSection(&(this->ipCheckLock));
-        return false;
-    }
-
-     
-     */
-     
-
-    //        cout << "passed \n";
-            // cout << "passed NO UNIUQE IDS FOUND IN FIRST CHECK  URL CHECK, REMOVE ME LATER \n";
-
-
-
-
-   // LeaveCriticalSection(&(this->extractUrlLock));
-    
 
     return true;
 }

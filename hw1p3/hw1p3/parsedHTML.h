@@ -37,6 +37,12 @@ class parsedHtml
 		int http400;
 		int http500;
 		int httpXXX;
+
+		int tamuCounterStack;
+		int tamuCounterPrint;
+
+		set<string> seenHosts;
+		set<DWORD> seenIPs;
 		CRITICAL_SECTION extractUrlLock;
 		CRITICAL_SECTION genericSyntaxLock;
 		CRITICAL_SECTION urlCheckLock; // this increments when the url returns a status 200 found in parser, reconnect and run 
@@ -55,6 +61,62 @@ class parsedHtml
 
 			char* linkCounter = htmlLinkRipper->Parse(stringResult, bytes_file,
 				wholeLink, strlen(wholeLink), &nLinks);  // 43
+
+
+			// tamu check
+			bool tamu = true;
+			if (tamu)
+			{
+				for (int i = 0; i < nLinks; i++)
+				{
+					std::string linkTamu(linkCounter);
+
+					string hostStart = linkTamu.substr(7);
+
+					size_t fragmentIndex = hostStart.find_first_of('#');
+					
+					if (fragmentIndex != string::npos) {
+						std::string fragmentTamu = hostStart.substr(fragmentIndex + 1);
+						hostStart = hostStart.substr(0, fragmentIndex);
+					}
+
+					size_t queryIndex = hostStart.find_first_of('?');
+					if (queryIndex != string::npos) {
+						std::string queryTamu = hostStart.substr(queryIndex + 1);
+						hostStart = hostStart.substr(0, queryIndex);
+					}
+
+					size_t pathIndex = hostStart.find_first_of('/');
+					if (pathIndex != string::npos) {
+						std::string pathTamu = hostStart.substr(pathIndex);
+						hostStart = hostStart.substr(0, pathIndex);
+					}
+					else {
+						std::string pathTamu = "/";
+					}
+					size_t found = hostStart.find("tamu.edu");
+					if (found != string::npos)
+					{
+						// tamuLinkCountStack = tamuLinkCountStack + hostStart + "\r\n";
+						this->tamuCounterStack += 1;
+						std::ofstream out;
+						out.open("output.txt");
+						if (out.is_open())
+						{
+
+							out << hostStart + "\r\n";
+							out.close();
+						}
+						else
+						{
+							cout << " couldnt open file \n";
+						}
+					}
+				}
+
+			}
+
+
 			return nLinks;
 		}
 
@@ -69,7 +131,8 @@ class parsedHtml
 		string httpStatus;
 	// struct sockaddr_in server;
 		Socket* webSocket;
-		
+		string tamuLinkCountStack;
+		string tamuLinkCountPrint;
 		struct sockaddr_in serverParserTemp;
 		char* readFileBuf;
 		int intFileSize;
