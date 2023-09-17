@@ -64,7 +64,7 @@ class parsedHtml
 
 
 			// tamu check
-			bool tamu = false;
+			bool tamu = true;
 			if (tamu)
 			{
 				for (int i = 0; i < nLinks; i++)
@@ -94,12 +94,14 @@ class parsedHtml
 					else {
 						std::string pathTamu = "/";
 					}
-					size_t found = hostStart.find("tamu.edu");
-					if (found != string::npos)
+					size_t found = hostStart.find("tamu.edu/");
+
+					if (found != string::npos && ( linkTamu[found+1] == '/' || linkTamu[found + 1] == '\0' ) )
 					{
 						// tamuLinkCountStack = tamuLinkCountStack + hostStart + "\r\n";
 						this->tamuCounterStack += 1;
-						
+
+						/*
 						out.open("output.txt");
 						if (out.is_open())
 						{
@@ -111,7 +113,9 @@ class parsedHtml
 						{
 							cout << " couldnt open file \n";
 						}
+						*/
 					}
+
 				}
 
 			}

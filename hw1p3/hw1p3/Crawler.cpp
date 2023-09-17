@@ -338,8 +338,8 @@ void Crawler::finalPrint()
 	
 
 		// tamu check 
-	// printf(" tamu link check number %d \n", this->parserStats->tamuCounterPrint);
-	// printf(" tamu link check number of links %s \n", this->parserStats->tamuLinkCountPrint.c_str());
+	printf(" tamu link check number %d \n", this->parserStats->tamuCounterPrint);
+	printf(" tamu link check number of links %s \n", this->parserStats->tamuLinkCountPrint.c_str());
 
 
 }
