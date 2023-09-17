@@ -94,10 +94,21 @@ class parsedHtml
 					else {
 						std::string pathTamu = "/";
 					}
-					size_t found = hostStart.find("tamu.edu/");
+					size_t found = hostStart.find("tamu.edu");
 
-					if (found != string::npos && ( linkTamu[found+1] == '/' || linkTamu[found + 1] == '\0' ) )
-					{
+					if (found != string::npos )
+					{// 7 for http and 8 for tamu.edu
+						/*
+						if ((linkTamu[found + 15] == '/' || linkTamu[found + 15] == '\0'))
+						{
+							cout << "/ or \0 " << this->wholeLink << std::endl;
+						}
+						else
+						{
+							cout << " general tamu check passed " << this->wholeLink << std::endl;
+
+						}
+						*/
 						// tamuLinkCountStack = tamuLinkCountStack + hostStart + "\r\n";
 						this->tamuCounterStack += 1;
 
