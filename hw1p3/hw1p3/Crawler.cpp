@@ -12,7 +12,7 @@ Crawler::Crawler()
 	// cout << " in consutruct check \n";
 	// this->q = parserHelper->parseTXTFile(this->crawlerFileName);
 	// int stall = 0;
-	std::ofstream out("output.txt");
+
 	this->startTimer = clock();
 	this->numberThread = 0;
 	this->bytesDownloadedInBatch = 0.0;
@@ -69,7 +69,7 @@ DWORD Crawler::runParsingRobotsSendingStatus()
 	// parserHelper.htmlLinkRipper = new HTMLParserBase;
 	while (true)
 	{
-	
+
 		parserHelper.resetParser();
 		EnterCriticalSection(&(this->editQueueLink));
 
@@ -85,7 +85,7 @@ DWORD Crawler::runParsingRobotsSendingStatus()
 		//const char* urlLink = this->q.front().c_str();
 
 		// error here
-		if(q.size() == 0)
+		if (q.size() == 0)
 		{
 			this->numberThread--;
 			LeaveCriticalSection(&(this->editQueueLink));
@@ -133,7 +133,7 @@ DWORD Crawler::runParsingRobotsSendingStatus()
 
 
 
-	  //  cout << "\t   Checking host uniqueness... ";
+		//  cout << "\t   Checking host uniqueness... ";
 
 		EnterCriticalSection(&(parserStats->hostCheckUnique));
 		auto resultHostCheck = this->seenHosts.insert(parserHelper.host.c_str());
@@ -143,7 +143,7 @@ DWORD Crawler::runParsingRobotsSendingStatus()
 
 			delete parserHelper.webSocket;
 			delete parserHelper.htmlLinkRipper;
-			parserHelper.webSocket->robots = true;			
+			parserHelper.webSocket->robots = true;
 
 			//     cout << "failed" << '\n';
 			continue;
@@ -153,7 +153,7 @@ DWORD Crawler::runParsingRobotsSendingStatus()
 
 		parserStats->numberUniqueHost++;
 		LeaveCriticalSection(&(parserStats->hostCheckUnique));
-		
+
 
 		//     bool DNSpass = this->webSocket->DNSCheck(host.c_str());
 
@@ -183,7 +183,7 @@ DWORD Crawler::runParsingRobotsSendingStatus()
 		*/
 		EnterCriticalSection(&(parserStats->ipCheckLock));
 		int prevInsert = this->seenIPs.size();
-	
+
 		// DWORD x = *(DWORD*)parserHelper.webSocket->getRemote()->h_addr;
 		seenIPs.insert(parserHelper.webSocket->getIp());
 		if (prevInsert != seenIPs.size())
@@ -225,7 +225,7 @@ DWORD Crawler::runParsingRobotsSendingStatus()
 
 			parserHelper.webSocket->robots = true;
 			delete parserHelper.webSocket;
-		//LeaveCriticalSection(&(this->genericSyntaxLock));
+			//LeaveCriticalSection(&(this->genericSyntaxLock));
 			delete parserHelper.htmlLinkRipper;
 			continue;
 
@@ -270,6 +270,7 @@ DWORD Crawler::runParsingRobotsSendingStatus()
 
 
 		this->parserStats->tamuCounterPrint += parserHelper.tamuCounterStack;
+		this->parserStats->tamuLinkCountPrint += parserHelper.tamuLinkCountStack;
 		LeaveCriticalSection(&(this->genericSyntaxLock));
 		delete parserHelper.webSocket;
 		parserHelper.webSocket->robots = true;
@@ -290,7 +291,6 @@ DWORD Crawler::twoSecondPrint()
 	bool printMe = false;
 	while ((WaitForSingleObject(this->statusEvent, 2000) == WAIT_TIMEOUT) || !printMe)
 	{
-		
 		printMe = true;
 		printf("[%3d] %4d Q %6d E %7d H %6d D  %6d I %5d R %5d C %5d L %4dK\n",
 			(int)(double)(clock() - this->startTimer) / CLOCKS_PER_SEC,
@@ -304,12 +304,12 @@ DWORD Crawler::twoSecondPrint()
 			this->parserStats->numberSuccessfullyCrawled, // this is non robbot pages
 			this->parserStats->numberTotalLinks / 1000);
 
-	//	this->bytesDownloadedInBatch = (this->parserStats->newNumberBytesInBatch - this->totalBytes) / (double)((clock() - this->startTimer) / CLOCKS_PER_SEC);
-	//	this->pagesDownloadedInBatch = (this->parserStats->newNumberPagesInBatch - this->totalPages) / (double)((clock() - this->startTimer) / CLOCKS_PER_SEC);	
-	// 
-	// here	
-		this->bytesDownloadedInBatch = (this->parserStats->newNumberBytesInBatch - this->totalBytes) /  (double)((clock() - this->startTimer) / CLOCKS_PER_SEC);
-		this->pagesDownloadedInBatch = (this->parserStats->newNumberPagesInBatch - this->totalPages) /  (double)((clock() - this->startTimer) / CLOCKS_PER_SEC);
+		//	this->bytesDownloadedInBatch = (this->parserStats->newNumberBytesInBatch - this->totalBytes) / (double)((clock() - this->startTimer) / CLOCKS_PER_SEC);
+		//	this->pagesDownloadedInBatch = (this->parserStats->newNumberPagesInBatch - this->totalPages) / (double)((clock() - this->startTimer) / CLOCKS_PER_SEC);	
+		// 
+		// here	
+		this->bytesDownloadedInBatch = 8 * ((this->parserStats->newNumberBytesInBatch - this->totalBytes) / (double)((clock() - this->startTimer) / CLOCKS_PER_SEC));
+		this->pagesDownloadedInBatch = (this->parserStats->newNumberPagesInBatch - this->totalPages) / (double)((clock() - this->startTimer) / CLOCKS_PER_SEC);
 
 		// Output crawling information
 		printf("\t*** crawling %.1f pps @ %.1f Mbps\n", this->pagesDownloadedInBatch, this->bytesDownloadedInBatch / double(125000));
@@ -319,16 +319,15 @@ DWORD Crawler::twoSecondPrint()
 		// this->parserStats->newNumberPagesInBatch = 0;
 
 		// pass the status on to the next person
-		
-		ResetEvent(statusEvent);
+		// ResetEvent(statusEvent);
 	}
-		return 0;
+	return 0;
 }
 void Crawler::finalPrint()
 {
+
 	double totalTimeElapsed = (int)((double)clock() - this->startTimer) / (double)CLOCKS_PER_SEC;
 
-	
 	// Output final stats
 	printf("Extracted %d URLs @ %d/s\n", this->parserStats->numberExtractedURL, (int)(this->parserStats->numberExtractedURL / totalTimeElapsed));
 	printf("Looked up %d DNS names @ %d/s\n", this->parserStats->numberUniqueHost, (int)(this->parserStats->numberDnsLookup / totalTimeElapsed));
@@ -336,11 +335,11 @@ void Crawler::finalPrint()
 	printf("Crawled %d pages @ %d/s (%.2f MB)\n", this->parserStats->numberSuccessfullyCrawled, (int)(this->parserStats->numberSuccessfullyCrawled / totalTimeElapsed), (double)(this->parserStats->newNumberBytesInBatch / (double)1048576));
 	printf("Parsed %d links @ %d/s\n", this->parserStats->numberTotalLinks, (int)(this->parserStats->numberTotalLinks / totalTimeElapsed));
 	printf("HTTP codes: 2xx = %d, 3xx = %d, 4xx = %d, 5xx = %d, other = %d\n", this->parserStats->http200, this->parserStats->http300, this->parserStats->http400, this->parserStats->http500, this->parserStats->httpXXX);
-	
 
-	
-		// tamu check 
-	printf(" tamu link check number %d \n", this->parserStats->tamuCounterPrint);
+
+	// tamu check 
+// printf(" tamu link check number %d \n", this->parserStats->tamuCounterPrint);
+// printf(" tamu link check number of links %s \n", this->parserStats->tamuLinkCountPrint.c_str());
 
 
 }

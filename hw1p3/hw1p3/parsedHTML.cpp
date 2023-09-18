@@ -402,7 +402,7 @@ bool parsedHtml::ReconnectHostSend(int portPassed)
     // cout << "request path | Send " << this->total << "| \n";
     bool socketCheck = this->webSocket->Send(this->total, this->host);
   //  LeaveCriticalSection(&(this->genericSyntaxLock));
-
+   // cout << " whole url path for will " << this->wholeLink << std::endl;
     if (socketCheck)
     {
         // now try to read

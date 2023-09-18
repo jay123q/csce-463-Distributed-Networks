@@ -29,7 +29,7 @@ public:
 	SOCKET sock; // socket handle
 	bool robots;
 	int ip;
-
+	CRITICAL_SECTION threadQueueLock;
 
 	// DWORD IP;
 	// bool printDNStiming;

@@ -41,6 +41,7 @@ Socket::Socket()
 	//this->server = nullptr;
 	// ripping from winsock
 	this->sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+
 	if (sock == INVALID_SOCKET)
 	{
 		// 	printf("socket() generated error %d\n", WSAGetLastError());
@@ -64,7 +65,6 @@ void Socket::closeSocket()
 	// closesocket(sock);
 	// cout << " close the socket plox " << sock << std::endl;
 	this->sock = INVALID_SOCKET;
-
 
 
 }
@@ -188,14 +188,14 @@ bool Socket::Read(void)
 
 	// if hanging your error is in how you handle the path
 
-
+	
 	clock_t start = clock(); /// suspect
 	timeout.tv_sec = 10;
 	timeout.tv_usec = 0;
 	// check this
 	this->curPos = 0;
 
-	int counter = 0;
+
 	while (true)
 	{
 		timeout.tv_sec -= (double)(clock() - start) / CLOCKS_PER_SEC;
@@ -209,7 +209,7 @@ bool Socket::Read(void)
 		// https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-select
 		int ret = select(0, &readFds, NULL, NULL, &timeout);
 		// cout << " loop  counter " << counter << std::endl;
-		counter++;
+		
 		// cout << " return from select " << ret << std::endl;
 		// cout << " timer check " << (double)timeout.tv_sec << std::endl;
 		if (ret > 0)
@@ -228,17 +228,19 @@ bool Socket::Read(void)
 				if (this->curPos < 50)
 				{
 					//	cout << "failed with non-HTTP header (does not begin with HTTP/) \n";
-					return false;
+					break;
 				}
 				this->buf[curPos] = '\0'; // 3rd notes said +1 was wrong
 				// NULL-terminate buffer
 			//	clock_t finish = clock(); // shut up compiler
 			//	double duration = (double)(finish - start) / CLOCKS_PER_SEC;
 			//	printf("done in %.1f ms with %d bytes \n", duration * 1000, curPos);
+			//	LeaveCriticalSection(&readLock);
 				return true; // normal completion
 			}
-
+			// EnterCriticalSection(&readLock);
 			curPos += bytes; // update cursor
+			// LeaveCriticalSection(&readLock);
 			// take 512 bites beofre resizing
 			if (this->allocatedSize - curPos < this->allocatedSize / 4)
 			{
@@ -291,7 +293,8 @@ bool Socket::Read(void)
 			break;
 		}
 	}
-
+	// LeaveCriticalSection(&readLock);
+			//	LeaveCriticalSection(&readLock);
 	return false;
 }
 
