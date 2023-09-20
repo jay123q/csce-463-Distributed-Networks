@@ -29,12 +29,12 @@ public:
 	SOCKET sock; // socket handle
 	bool robots;
 	int ip;
-	CRITICAL_SECTION threadQueueLock;
+
 
 	// DWORD IP;
 	// bool printDNStiming;
 	Socket();
-	~Socket() 
+	~Socket()
 	{
 		// closeSocket();
 		// delete server;
@@ -47,7 +47,7 @@ public:
 	void closeSocket();
 	//void ReadSendCheckStatus(parsedHtml &parser);
 
-	const char * printBuf()
+	const char* printBuf()
 	{
 		return buf;
 	}

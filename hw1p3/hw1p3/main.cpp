@@ -93,6 +93,7 @@ int main(int argc, char* argv[])
 
 
 
+	/* 
 	
 	if (argc == 2)
 	{
@@ -121,23 +122,22 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 	
-	/* 
 	// numberThreads = stoi(argv[1]);
 	// std::string filename = argv[2];
+	*/
 
 	int tmpFlag = _CrtSetDbgFlag(_CRTDBG_REPORT_FLAG);
 	tmpFlag |= _CRTDBG_LEAK_CHECK_DF;
-	int numberThread = 10;
+	int numberThread = 500;
 	 // std::string filename("URL-input-1M.txt");
 	 // std::string filename("URL-input-1M-2019.txt");
-	std::string filename("100url.txt");
+	std::string filename("URL-input-1M.txt");
 	crawler->crawlerFileName = filename;
 	// crawler->startTimer = clock();
 	crawler->q = crawler->parserStats->parseTXTFile(filename);
 	// cout << "asdfasdf " << crawler->q.front() << std::endl;
 	handleThreads(&(*crawler), numberThread);
-	*/
-	crawler->~Crawler();
+	//crawler->~Crawler();
 	delete crawler;
 	return 0;
 }
