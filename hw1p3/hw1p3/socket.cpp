@@ -99,7 +99,13 @@ bool Socket::DNSCheck(std::string host)
 	}
 	// this->ip = server.sin_addr;
 	this->IPAddressFromDns = inet_addr(inet_ntoa(server.sin_addr));
-	
+
+	char host[] = “www.google.com”;
+	int pkt_size = strlen(host) + 2 + sizeof(FixedDNSheader) + sizeof(QueryHeader);
+	char* buf = new char[pkt_size];
+	FixedDNSheader* fdh = (FixedDNSheader*)buf;
+	QueryHeader* qh = (QueryHeader*)(buf + pkt_size – sizeof(QueryHeader));
+
 	// seenIPs.insert(server.sin_addr);
 	/*
 	this->serverParserTemp.sin_addr = this->server.sin_addr;
