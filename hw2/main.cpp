@@ -7,11 +7,8 @@
 #include <windows.h>
 #include <iostream>
 #include <vector>
-#include "DNShelper.h"
 #pragma comment(lib, "Ws2_32.lib")
 
-#pragma warning(disable:4996)
-#pragma warning(disable:4099)
 // Get current flag
 
 using namespace std;
@@ -53,38 +50,73 @@ public:
 
 };
 
+void makeDNSquestion(char* buf, string query)
+{
+	string tempQuery = query;
+	string total = "";
+	size_t size_of_next_word = 0;
+
+	//  int indexParse = 0;
+	int i = 0;
+	while (true) {
+		size_of_next_word = tempQuery.find('.');
+
+		if (size_of_next_word == string::npos || size_of_next_word > tempQuery.size())
+		{
+			buf[i] = strlen((char*)tempQuery.c_str());
+			i++;
+			memcpy(buf + i, (char*)tempQuery.c_str(), strlen((char*)tempQuery.c_str()));
+			i += strlen((char*)tempQuery.c_str());
+
+			break;
+		}
+		buf[i++] = (char)size_of_next_word;
+		memcpy(buf + i, (char*)tempQuery.c_str(), size_of_next_word);
+		i += size_of_next_word;
+		// if I have www, then we need www. removed
+		tempQuery = tempQuery.substr(size_of_next_word + 1, query.size());
+		//  size_last_pos = size_of_next_word;
+	}
+
+	buf[i] = 0; // last word NULL-terminated
+
+
+};
+
 
 int main(int argc, char* argv[])
 {
+	/*
 	if (argc != 3)
 	{
 		cout << " CHECK HOW YOU RUNNING OR WHAT WE ARE TESTING ./hw2.exe query ip \n";
 		return 0;
 	}
+	
+	*/
 
-	DnsHelper sendDns;
+
 	// sendDns.generateQuery(argv[1], argv[2])
 	string query( "www.xyz.com" );
 	string DNS ( "128.194.135.79" );
 
-
 	DWORD IP = inet_addr(query.c_str());
-	sendDns.attemptCount = 0;
+	bool amI1or12 = true;
 	if (IP == INADDR_NONE)
 	{
 		// if not a valid IP, then do a DNS lookup
-		sendDns.amI1or12 = true;
+		amI1or12 = true;
 
 	}
 	else
 	{
-		sendDns.amI1or12 = false;
+		amI1or12 = false;
 		// here parse the query and remove the .com adding .in-addr.arpa
 		query = query + ".in-addr.arpa";
 
+
 	}
-	// this->ip = server.sin_addr;
-	sendDns.ip = IP;
+
 
 
 	// char host[] = “www.google.com”;
@@ -104,7 +136,7 @@ int main(int argc, char* argv[])
 	fdh->additional = htons(0);
 
 
-	if (sendDns.amI1or12 == true)
+	if (amI1or12 == true)
 	{
 		qh->qType = htons(DNS_A);
 	}
@@ -117,14 +149,61 @@ int main(int argc, char* argv[])
 	// handle the dns change here 
 	// 3www4tamu3edu0 reply whould be
 
-	string modifiedQuery = sendDns.replacePeriodWithNumber(query);
-	cout << " the modified query is " << modifiedQuery << std::endl;
+	makeDNSquestion( (char * ) fdh+1, query );
+	// cout << " the modified query is " << modifiedQuery << std::endl;
 	// makeDNSquestion(fdh + 1, modifiedQuery);
-	// printf("Query\t: %s, type %d, TXID 0x%04d\n", query.c_str(), htons(qh->qType), htons(fdh->ID));
-	// sendto(sock, buf, );
+	printf("Query\t: %s, type %d, TXID 0x%04d\n", query.c_str(), htons(qh->qType), htons(fdh->ID));
+
+
+	//handle socket creation and connection 
+
+	WSADATA wsaData;
+
+	//Initialize WinSock; once per program run
+	WORD wVersionRequested = MAKEWORD(2, 2);
+	if (WSAStartup(wVersionRequested, &wsaData) != 0) {
+		printf("WSAStartup error %d\n", WSAGetLastError());
+		WSACleanup();
+		return 0;
+	}
+
+
+	// open a TCP socket
+	SOCKET sock = socket(AF_INET, SOCK_DGRAM, 0);
+	// handle errors
+	struct sockaddr_in local;
+	memset(&local, 0, sizeof(local));
+	local.sin_family = AF_INET;
+	local.sin_addr.s_addr = INADDR_ANY;
+	local.sin_port = htons(0);
+	if (bind(sock, (struct sockaddr*)&local, sizeof(local)) == SOCKET_ERROR)
+	{
+		printf("WSAStartup error %d\n", WSAGetLastError());
+		WSACleanup();		
+		return 0;
+
+	}
+
+	struct sockaddr_in remote;
+	memset(&remote, 0, sizeof(remote));
+	remote.sin_family = AF_INET;
+	remote.sin_addr.S_un.S_addr = IP; // server’s IP
+	remote.sin_port = htons(53); // DNS port on server
+	if (sendto(sock, buf, pkt_size, 0, (struct sockaddr*)&remote, sizeof(remote)) == SOCKET_ERROR)
+	{
+		printf("WSAStartup error %d\n", WSAGetLastError());
+		WSACleanup();
+		return 0;
+
+	}
+		// handle errors 
+
+
 	// delete buf;
 	// ayo these are guess, I cant get the vs community to open the properties tab and then show the defaul to throw in the texts
 	// no idea tf is happening.
+
+
 
 	return 0;
 }

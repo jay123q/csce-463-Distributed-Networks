@@ -21,7 +21,7 @@ public:
 	int attemptCount;
 	string modifiedQuery;
 	string query;
-	string replacePeriodWithNumber( string query );
+	void makeDNSquestion(char* buffer, string query );
 };
 
 // jump return a string to then contaction

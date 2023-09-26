@@ -1,35 +1,44 @@
 #include "pch.h"
-#include "DNShelper.h"
+
 #include <iostream>
 #include <string>
 /* DNS query types */
 
-class FixedDNSheader;
-class QueryHeader;
+using namespace::std;
 
 
 
 
- string DnsHelper::replacePeriodWithNumber( string query )
+void makeDNSquestion(char* buf, string query)
 {
-	 this->query = query;
-	 string total = "";
-	 int find = 0;
-	 int indexParse = 0;
-	 while (true)
-	 {
-		 find = query.find('.');
-		 if (find == string::npos || find > query.size() )
-		 {
-			 break;
-		 }
-		 total = query.substr(indexParse, find);
-		 total += find + 1;
+	string tempQuery = query;
+	string total = "";
+	size_t size_of_next_word = 0;
+
+	//  int indexParse = 0;
+	int i = 0;
+	while (true) {
+		size_of_next_word = tempQuery.find('.');
+
+		if (size_of_next_word == string::npos || size_of_next_word > tempQuery.size())
+		{
+			buf[i] = strlen((char*)tempQuery.c_str());
+			i++;
+			memcpy(buf + i, (char*)tempQuery.c_str(), strlen((char*)tempQuery.c_str()));
+			i += strlen((char*)tempQuery.c_str());
+
+			break;
+		}
+		buf[i++] = (char)size_of_next_word;
+		memcpy(buf + i, (char*)tempQuery.c_str(), size_of_next_word);
+		i += size_of_next_word;
+		// if I have www, then we need www. removed
+		tempQuery = tempQuery.substr(size_of_next_word + 1, query.size());
+		//  size_last_pos = size_of_next_word;
+	}
+
+	buf[i] = 0; // last word NULL-terminated
 
 
-
-	 }
-	 this->modifiedQuery = total;
-	 return total;
+};
 	
-}
