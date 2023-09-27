@@ -81,7 +81,7 @@ void makeDNSquestion(char* buf, string query)
 	buf[i] = 0; // last word NULL-terminated
 
 
-};
+}
 
 
 int main(int argc, char* argv[])
@@ -162,7 +162,8 @@ int main(int argc, char* argv[])
 	//Initialize WinSock; once per program run
 	WORD wVersionRequested = MAKEWORD(2, 2);
 	if (WSAStartup(wVersionRequested, &wsaData) != 0) {
-		printf("WSAStartup error %d\n", WSAGetLastError());
+		printf("WSAStartup error sart up %d\n", WSAGetLastError());
+	
 		WSACleanup();
 		return 0;
 	}
@@ -178,7 +179,8 @@ int main(int argc, char* argv[])
 	local.sin_port = htons(0);
 	if (bind(sock, (struct sockaddr*)&local, sizeof(local)) == SOCKET_ERROR)
 	{
-		printf("WSAStartup error %d\n", WSAGetLastError());
+		printf("WSAStartup bind error %d\n", WSAGetLastError());
+		closesocket(sock);
 		WSACleanup();		
 		return 0;
 
@@ -191,7 +193,8 @@ int main(int argc, char* argv[])
 	remote.sin_port = htons(53); // DNS port on server
 	if (sendto(sock, buf, pkt_size, 0, (struct sockaddr*)&remote, sizeof(remote)) == SOCKET_ERROR)
 	{
-		printf("WSAStartup error %d\n", WSAGetLastError());
+		printf("WSAStartup error send to %d\n", WSAGetLastError());
+		closesocket(sock);
 		WSACleanup();
 		return 0;
 
