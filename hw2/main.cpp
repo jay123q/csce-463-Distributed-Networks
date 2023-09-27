@@ -30,6 +30,17 @@ using namespace std;
 #define DNS_TC (1 << 9) /* truncated */
 #define DNS_RD (1 << 8) /* recursion desired */
 #define DNS_RA (1 << 7) /* recursion available */ 
+
+#define MAX_DNS_SIZE 512 // largest valid UDP packet
+#pragma pack(push,1) // sets struct padding/alignment to 1 byte
+class DNSanswerHdr {
+	u_short type;
+	u_short classDef;
+	u_int TTL;
+	u_short len;
+};
+
+
 /*
 
 */
@@ -49,6 +60,7 @@ public:
 	USHORT additional;
 
 };
+#pragma pack(pop) // restores old packing
 
 void makeDNSquestion(char* buf, string query)
 {
@@ -63,8 +75,7 @@ void makeDNSquestion(char* buf, string query)
 
 		if (size_of_next_word == string::npos || size_of_next_word > tempQuery.size())
 		{
-			buf[i] = strlen((char*)tempQuery.c_str());
-			i++;
+			buf[i++] = strlen((char*)tempQuery.c_str());
 			memcpy(buf + i, (char*)tempQuery.c_str(), strlen((char*)tempQuery.c_str()));
 			i += strlen((char*)tempQuery.c_str());
 
@@ -83,6 +94,15 @@ void makeDNSquestion(char* buf, string query)
 
 }
 
+void jump(char * ans , int curPos)
+{
+	/*
+		if size is 0 of the final array, return the substring of all replies back
+	*/
+
+	int off = ((ans[curPos] & 0x3F) << 8) + ans[curPos + 1];
+}
+
 
 int main(int argc, char* argv[])
 {
@@ -97,10 +117,10 @@ int main(int argc, char* argv[])
 
 
 	// sendDns.generateQuery(argv[1], argv[2])
-	string query( "www.xyz.com" );
-	string DNS ( "128.194.135.79" );
+	string query( "www.google.com" );
+	string DNS ( "128.194.135.85" );
 
-	DWORD IP = inet_addr(query.c_str());
+	DWORD IP = inet_addr((char* ) query.c_str());
 	bool amI1or12 = true;
 	if (IP == INADDR_NONE)
 	{
@@ -117,24 +137,23 @@ int main(int argc, char* argv[])
 
 	}
 
+	char* bytePointer = (char*) &IP;
+	// char query[] = “www.google.com”;
 
 
-	// char host[] = “www.google.com”;
 
 	int pkt_size = strlen(query.c_str()) + 2 + sizeof(FixedDNSheader) + sizeof(QueryHeader); // handdle space issues 
 	char* buf = new char[pkt_size];
 	FixedDNSheader* fdh = (FixedDNSheader*)buf;
 	QueryHeader* qh = (QueryHeader*)(buf + pkt_size - sizeof(QueryHeader));
 
-	// fixed field initialization
-	// https://datatracker.ietf.org/doc/html/rfc1035
-	fdh->ID = htons(1);
+
+	fdh->ID = htons(1237);
 	fdh->flags = htons(DNS_QUERY | DNS_RD | DNS_STDQUERY);
 	fdh->questions = htons(1);
 	fdh->answers = htons(0);
 	fdh->authority = htons(0);
 	fdh->additional = htons(0);
-
 
 	if (amI1or12 == true)
 	{
@@ -146,12 +165,19 @@ int main(int argc, char* argv[])
 
 	}
 	qh->qClass = htons(DNS_INET);
+	// fixed field initialization
+	// https://datatracker.ietf.org/doc/html/rfc1035
+
+
 	// handle the dns change here 
 	// 3www4tamu3edu0 reply whould be
 
-	makeDNSquestion( (char * ) fdh+1, query );
+	makeDNSquestion( (char * ) (fdh+1),  (char *) query.c_str() );
 	// cout << " the modified query is " << modifiedQuery << std::endl;
-	// makeDNSquestion(fdh + 1, modifiedQuery);
+
+	// printf(" %3u, %3u , %3u, %3u, %3u , %3u  ", htons( fdh->ID ), htons( fdh->flags ) , htons( fdh->questions ) , htons( fdh->answers ) , htons( fdh->authority )  , htons( fdh->additional ) );
+	// char* ptr = (char*)(fdh + 1);
+	// printf(" print buffer ", ptr);
 	printf("Query\t: %s, type %d, TXID 0x%04d\n", query.c_str(), htons(qh->qType), htons(fdh->ID));
 
 
@@ -163,7 +189,6 @@ int main(int argc, char* argv[])
 	WORD wVersionRequested = MAKEWORD(2, 2);
 	if (WSAStartup(wVersionRequested, &wsaData) != 0) {
 		printf("WSAStartup error sart up %d\n", WSAGetLastError());
-	
 		WSACleanup();
 		return 0;
 	}
@@ -179,7 +204,7 @@ int main(int argc, char* argv[])
 	local.sin_port = htons(0);
 	if (bind(sock, (struct sockaddr*)&local, sizeof(local)) == SOCKET_ERROR)
 	{
-		printf("WSAStartup bind error %d\n", WSAGetLastError());
+		printf(" bind error %d\n", WSAGetLastError());
 		closesocket(sock);
 		WSACleanup();		
 		return 0;
@@ -189,11 +214,13 @@ int main(int argc, char* argv[])
 	struct sockaddr_in remote;
 	memset(&remote, 0, sizeof(remote));
 	remote.sin_family = AF_INET;
-	remote.sin_addr.S_un.S_addr = IP; // server’s IP
+	remote.sin_addr.S_un.S_addr = inet_addr(DNS.c_str()); // server’s IP
 	remote.sin_port = htons(53); // DNS port on server
+
+
 	if (sendto(sock, buf, pkt_size, 0, (struct sockaddr*)&remote, sizeof(remote)) == SOCKET_ERROR)
 	{
-		printf("WSAStartup error send to %d\n", WSAGetLastError());
+		printf(" send to error %d\n", WSAGetLastError());
 		closesocket(sock);
 		WSACleanup();
 		return 0;
