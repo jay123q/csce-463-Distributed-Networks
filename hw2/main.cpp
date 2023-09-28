@@ -32,6 +32,10 @@ using namespace std;
 #define DNS_RA (1 << 7) /* recursion available */ 
 
 #define MAX_DNS_SIZE 512 // largest valid UDP packet
+#define MAX_ATTEMPTS 3
+
+
+
 #pragma pack(push,1) // sets struct padding/alignment to 1 byte
 class DNSanswerHdr {
 	u_short type;
@@ -118,7 +122,10 @@ int main(int argc, char* argv[])
 
 	// sendDns.generateQuery(argv[1], argv[2])
 	string query( "www.google.com" );
-	string DNS ( "128.194.135.85" );
+	string DNS ( "128.194.135.79" );
+
+	printf("Lookup : %s\n", query.c_str() );
+
 
 	DWORD IP = inet_addr((char* ) query.c_str());
 	bool amI1or12 = true;
@@ -137,7 +144,6 @@ int main(int argc, char* argv[])
 
 	}
 
-	char* bytePointer = (char*) &IP;
 	// char query[] = “www.google.com”;
 
 
@@ -178,7 +184,7 @@ int main(int argc, char* argv[])
 	// printf(" %3u, %3u , %3u, %3u, %3u , %3u  ", htons( fdh->ID ), htons( fdh->flags ) , htons( fdh->questions ) , htons( fdh->answers ) , htons( fdh->authority )  , htons( fdh->additional ) );
 	// char* ptr = (char*)(fdh + 1);
 	// printf(" print buffer ", ptr);
-	printf("Query\t: %s, type %d, TXID 0x%04d\n", query.c_str(), htons(qh->qType), htons(fdh->ID));
+	printf("Query\t: %s, type %d, TXID 0x%4d\n", query.c_str(), htons(qh->qType), htons(fdh->ID));
 
 
 	//handle socket creation and connection 
@@ -192,7 +198,6 @@ int main(int argc, char* argv[])
 		WSACleanup();
 		return 0;
 	}
-
 
 	// open a TCP socket
 	SOCKET sock = socket(AF_INET, SOCK_DGRAM, 0);
@@ -217,6 +222,8 @@ int main(int argc, char* argv[])
 	remote.sin_addr.S_un.S_addr = inet_addr(DNS.c_str()); // server’s IP
 	remote.sin_port = htons(53); // DNS port on server
 
+	printf("Server  : %s\n", DNS.c_str());
+	printf("********************************\n");
 
 	if (sendto(sock, buf, pkt_size, 0, (struct sockaddr*)&remote, sizeof(remote)) == SOCKET_ERROR)
 	{
@@ -229,10 +236,83 @@ int main(int argc, char* argv[])
 		// handle errors 
 
 
-	// delete buf;
-	// ayo these are guess, I cant get the vs community to open the properties tab and then show the defaul to throw in the texts
-	// no idea tf is happening.
+	int count = 0;
+	while (count++ < MAX_ATTEMPTS)
+	{
+		// send request to the server
+		clock_t start = clock();
+		timeval timeout;
+		timeout.tv_sec = 10;
+		timeout.tv_usec = 0;
+		fd_set fd;
+		FD_ZERO(&fd); // clear the set
+		FD_SET(sock, &fd); // add your socket to the set
+		int available = select(0, &fd, NULL, NULL, &timeout);
+		if (available > 0)
+		{
+			char buf[MAX_DNS_SIZE];
+			struct sockaddr_in response;
+			int responseSize = sizeof(response);
+			if (int bytes = recvfrom(sock, buf, MAX_DNS_SIZE, 0, (struct sockaddr*)&response, &responseSize) == SOCKET_ERROR)
+			{
+				// error processing
+				// check if this packet came from the server to which we sent the query earlier
 
+				if (response.sin_addr.S_un.S_addr != remote.sin_addr.S_un.S_addr || response.sin_port != remote.sin_port)
+				{
+					// bogus reply, complain
+					printf(" sresponse error %d\n", WSAGetLastError());
+					closesocket(sock);
+					WSACleanup();
+					return 0;
+				}
+
+				// search for packet
+			
+				double duration = (double)(clock() - start) / CLOCKS_PER_SEC;
+				printf("done in %.1f ms with %d bytes \n", duration * 1000, bytes);
+
+
+				if (bytes < pkt_size )
+				{
+					printf(" bytes is less than pkt_size, ERROR \n ");
+				}
+				FixedDNSheader* fdh = (FixedDNSheader*)buf;
+
+				// read fdh->ID and other fields
+			
+
+				printf("\tTXID %.4x flags %d questions %d answers %d authority %d additional %d",
+					htons(fdh->ID),
+					htons(fdh->flags),
+					htons(fdh->questions),
+					htons(fdh->authority),
+					htons(fdh->additional)
+
+					);
+			// parse questions and arrive to the answer section
+			
+			// suppose off is the current position in the packet
+				int off = 0;
+				DNSanswerHdr * dah = (DNSanswerHdr*)(buf + off);
+				// read dah->len and other fields 
+			// parse the response
+			// break from the loop
+			}
+		}
+		else if (available == 0)
+		{
+			cout << " time out occured \n";
+		}
+		else
+		{
+			printf(" select error %d\n", WSAGetLastError());
+			closesocket(sock);
+			WSACleanup();
+			return 0;
+		}
+		// error checking here
+	}
 
 
 	return 0;
