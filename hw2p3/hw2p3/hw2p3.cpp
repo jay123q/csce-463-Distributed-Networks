@@ -124,7 +124,7 @@ int main(int argc, char* argv[])
 
 
 	// sendDns.generateQuery(argv[1], argv[2])
-	string query( "randomA.irl" );
+	string query("yahoo.com" );
 	string DNS ( "128.194.135.85" );
 
 	printf("Lookup  : %s\n", query.c_str() );
@@ -325,14 +325,18 @@ int main(int argc, char* argv[])
 				if (htons(fdhRec->questions) > 0)
 				{
 					printf("\t------------ [questions] ----------\n");
+					/*
 					char bufProcess[512];
 					memcpy(bufProcess, buf, sizeof(buf));
+					printf("\t  %c", bufProcess[i]);
 					for (int i = 0; i < sizeof(bufProcess); i++)
 					{
 						printf("\t  %c", bufProcess[i]);
 						
 					}
-
+					*/
+					string test(buf + 12);
+					printf(test.c_str());
 					// printf("%s", saveBuffer);
 					 // printf("%s", htons(fdhRec->questions));
 					// error check
