@@ -98,13 +98,16 @@ void makeDNSquestion(char* buf, string query)
 
 }
 
-void jump(char * ans , int curPos)
-{
+string jump(string ans , int curPos)
+{	
 	/*
 		if size is 0 of the final array, return the substring of all replies back
 	*/
+	printf(" answer is = %s", ans);
 
 	int off = ((ans[curPos] & 0x3F) << 8) + ans[curPos + 1];
+	
+	return " ";
 }
 
 
@@ -121,10 +124,10 @@ int main(int argc, char* argv[])
 
 
 	// sendDns.generateQuery(argv[1], argv[2])
-	string query( "www.google.com" );
-	string DNS ( "128.194.135.79" );
+	string query( "google.com" );
+	string DNS ( "128.194.135.11" );
 
-	printf("Lookup : %s\n", query.c_str() );
+	printf("Lookup  : %s\n", query.c_str() );
 
 
 	DWORD IP = inet_addr((char* ) query.c_str());
@@ -184,7 +187,7 @@ int main(int argc, char* argv[])
 	// printf(" %3u, %3u , %3u, %3u, %3u , %3u  ", htons( fdh->ID ), htons( fdh->flags ) , htons( fdh->questions ) , htons( fdh->answers ) , htons( fdh->authority )  , htons( fdh->additional ) );
 	// char* ptr = (char*)(fdh + 1);
 	// printf(" print buffer ", ptr);
-	printf("Query\t: %s, type %d, TXID 0x%4d\n", query.c_str(), htons(qh->qType), htons(fdh->ID));
+	printf("Query   : %s, type %d, TXID 0x%4d\n", query.c_str(), htons(qh->qType), htons(fdh->ID));
 
 
 	//handle socket creation and connection 
@@ -244,6 +247,7 @@ int main(int argc, char* argv[])
 		timeval timeout;
 		timeout.tv_sec = 10;
 		timeout.tv_usec = 0;
+		printf("Attempt %d with %d bytes... ", count, pkt_size );
 		fd_set fd;
 		FD_ZERO(&fd); // clear the set
 		FD_SET(sock, &fd); // add your socket to the set
@@ -253,7 +257,8 @@ int main(int argc, char* argv[])
 			char buf[MAX_DNS_SIZE];
 			struct sockaddr_in response;
 			int responseSize = sizeof(response);
-			if (int bytes = recvfrom(sock, buf, MAX_DNS_SIZE, 0, (struct sockaddr*)&response, &responseSize) == SOCKET_ERROR)
+			int bytes = recvfrom(sock, buf, MAX_DNS_SIZE, 0, (struct sockaddr*)&response, &responseSize);
+			if (bytes != SOCKET_ERROR)
 			{
 				// error processing
 				// check if this packet came from the server to which we sent the query earlier
@@ -261,44 +266,103 @@ int main(int argc, char* argv[])
 				if (response.sin_addr.S_un.S_addr != remote.sin_addr.S_un.S_addr || response.sin_port != remote.sin_port)
 				{
 					// bogus reply, complain
-					printf(" sresponse error %d\n", WSAGetLastError());
-					closesocket(sock);
-					WSACleanup();
-					return 0;
+					printf(" DNS or PORT error  %d\n", WSAGetLastError());
+					break;
+					// closesocket(sock);
+					// WSACleanup();
+					// delete buf;
+					// return 0;					
 				}
 
 				// search for packet
-			
 				double duration = (double)(clock() - start) / CLOCKS_PER_SEC;
 				printf("done in %.1f ms with %d bytes \n", duration * 1000, bytes);
 
 
-				if (bytes < pkt_size )
-				{
-					printf(" bytes is less than pkt_size, ERROR \n ");
-				}
-				FixedDNSheader* fdh = (FixedDNSheader*)buf;
+				// error checking here
+
+				FixedDNSheader* fdhRec = (FixedDNSheader*)buf;
+				// printf("succeeded with Rcode = %d", fdhRec->answers);
 
 				// read fdh->ID and other fields
 			
 
-				printf("\tTXID %.4x flags %d questions %d answers %d authority %d additional %d",
-					htons(fdh->ID),
-					htons(fdh->flags),
-					htons(fdh->questions),
-					htons(fdh->authority),
-					htons(fdh->additional)
+				printf("\tTXID %.4x flags %d questions %d answers %d authority %d additional %d\n",
+					htons(fdhRec->ID),
+					htons(fdhRec->flags),
+					htons(fdhRec->questions),
+					htons(fdhRec->answers),
+					htons(fdhRec->authority),
+					htons(fdhRec->additional)
 
 					);
+				// https://datatracker.ietf.org/doc/html/rfc1035 
+				//
+				if ( (htons(fdhRec->flags) & 0X000f ) != 0)
+				{
+					printf("\tfailed with Rcode = %d\n ", htons(fdhRec->flags));
+					// closesocket(sock);
+					// WSACleanup();
+					// delete buf;
+					break;
+					// return 0;
+				}
+				printf("\tsucceeded with Rcode = %d\n", htons(fdhRec->flags));
+
+
+
+				if (fdhRec->ID != fdh->ID) {
+					printf("\t++ invalid reply: TXID mismatch, sent 0x%0.4x, received 0x%0.4x\n", htons(fdh->ID), htons(fdhRec->ID));
+				//	WSACleanup();
+				//	closesocket(sock);
+					break;
+					// delete buf;
+					// return 0;
+				}
+
+				int offset = 0;
 			// parse questions and arrive to the answer section
-			
+				if (htons(fdhRec->questions) > 0)
+				{
+					printf("\t------------ [questions] ----------\n");
+					printf("%x", htons(fdhRec->questions));
+					// error check
+					// string questions( (char * ) htons(fdhRec->questions) );
+					// printf(" questions print  %s", questions);
+
+				}				
+				if (htons(fdhRec->answers) > 0)
+				{
+					printf("\t------------ [answers] ----------\n");
+					// error check
+				}
+				if (htons(fdhRec->authority) > 0)
+				{
+					printf("\t------------ [authority] ----------\n");
+					// error check
+				}
+				if (htons(fdhRec->additional) > 0)
+				{
+					printf("\t------------ [additional] ----------\n");
+					// error check
+				}
 			// suppose off is the current position in the packet
-				int off = 0;
-				DNSanswerHdr * dah = (DNSanswerHdr*)(buf + off);
+				// int off = 0;
+				// DNSanswerHdr * dah = (DNSanswerHdr*)(buf + off);
 				// read dah->len and other fields 
 			// parse the response
 			// break from the loop
+				printf("breaking line 335 \n");
+				break;
 			}
+			else
+			{
+				printf(" recfrom error %d\n", WSAGetLastError());
+				break;
+				// WSACleanup();
+				// closesocket(sock);
+			}
+
 		}
 		else if (available == 0)
 		{
@@ -307,13 +371,16 @@ int main(int argc, char* argv[])
 		else
 		{
 			printf(" select error %d\n", WSAGetLastError());
-			closesocket(sock);
-			WSACleanup();
-			return 0;
+			// closesocket(sock);
+			// WSACleanup();
+			//return 0;
 		}
-		// error checking here
+
+
 	}
 
+		WSACleanup();
+		closesocket(sock);
 
 	return 0;
 }
