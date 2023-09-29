@@ -125,7 +125,6 @@ int main(int argc, char* argv[])
 
 	// sendDns.generateQuery(argv[1], argv[2])
 	string query("randomA.irl" );
-	//string DNS ( "128.194.135.85" );
 	string DNS ( "128.194.135.82" );
 
 	printf("Lookup  : %s\n", query.c_str() );
@@ -148,7 +147,7 @@ int main(int argc, char* argv[])
 
 	}
 
-	// char query[] = ìwww.google.comî;
+	// char query[] = ‚Äúwww.google.com‚Äù;
 
 
 
@@ -223,7 +222,7 @@ int main(int argc, char* argv[])
 	struct sockaddr_in remote;
 	memset(&remote, 0, sizeof(remote));
 	remote.sin_family = AF_INET;
-	remote.sin_addr.S_un.S_addr = inet_addr(DNS.c_str()); // serverís IP
+	remote.sin_addr.S_un.S_addr = inet_addr(DNS.c_str()); // server‚Äôs IP
 	remote.sin_port = htons(53); // DNS port on server
 
 	printf("Server  : %s\n", DNS.c_str());
@@ -336,20 +335,56 @@ int main(int argc, char* argv[])
 						
 					}
 					*/
-					int moveBuf = 13;
-					string test(buf + moveBuf);
-					int indexInteger = test.find("/[1 - 9]/");
-					printf(test.c_str());
+					int pastHeader = 13; // this is 12, adding 1 to remove the leading number
+					for (int i = 0; i < htons(fdhRec->questions); i++)
+					{
+
+						string linkCheck(buf + pastHeader);
+						// remove the number in the middle
+						// only run once
+						if (amI1or12 == true && i == 0)
+						{
+							linkCheck[linkCheck.size() - 4] = '.';
+						}
+						else if( i == 0)
+						{
+							// 19.138.194.128.in-addr.arpa 
+							linkCheck[linkCheck.size() - 4] = '.';
+							linkCheck[linkCheck.size() - 14] = '.';
+						}
+						// loop through link buffer and change all unknown chars into " "
+						for (int i = 0; i < strlen( linkCheck.c_str() ); i++)
+						{ 
+							// char checkChar = linkCheck[i];
+							int checkDigit = linkCheck[i];
+							if (checkDigit >= 1 && checkDigit <= 9 )
+							{
+								linkCheck[i] = ' ';
+							}
+						}
+						
 
 
 
-					moveBuf = sizeof(test);
-					string queryType(buf + 2*pkt_size);
-					// printf("%s", saveBuffer);
-					 // printf("%s", htons(fdhRec->questions));
-					// error check
-					// string questions( (char * ) htons(fdhRec->questions) );
-					// printf(" questions print  %s", questions);
+						printf("\t\t");
+						printf(linkCheck.c_str());
+
+						pastHeader = linkCheck.size() + pastHeader + 2 ; // now theres two empty bytes,
+						int typeBuf;
+						typeBuf = (int) buf[pastHeader];
+						printf(" %d",typeBuf);
+
+						pastHeader += 2; // next single bytes 
+						int classBuf;
+						classBuf = (int)buf[pastHeader];
+						printf(" %d\n",classBuf);
+						pastHeader += 2; // next link 
+						// printf("%s", saveBuffer);
+						 // printf("%s", htons(fdhRec->questions));
+						// error check
+						// string questions( (char * ) htons(fdhRec->questions) );
+						// printf(" questions print  %s", questions);
+					}
 
 				}				
 				if (htons(fdhRec->answers) > 0)
