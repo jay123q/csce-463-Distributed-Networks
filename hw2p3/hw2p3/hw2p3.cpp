@@ -124,8 +124,9 @@ int main(int argc, char* argv[])
 
 
 	// sendDns.generateQuery(argv[1], argv[2])
-	string query("yahoo.com" );
-	string DNS ( "128.194.135.85" );
+	string query("randomA.irl" );
+	//string DNS ( "128.194.135.85" );
+	string DNS ( "128.194.135.82" );
 
 	printf("Lookup  : %s\n", query.c_str() );
 
@@ -335,8 +336,15 @@ int main(int argc, char* argv[])
 						
 					}
 					*/
-					string test(buf + 12);
+					int moveBuf = 13;
+					string test(buf + moveBuf);
+					int indexInteger = test.find("/[1 - 9]/");
 					printf(test.c_str());
+
+
+
+					moveBuf = sizeof(test);
+					string queryType(buf + 2*pkt_size);
 					// printf("%s", saveBuffer);
 					 // printf("%s", htons(fdhRec->questions));
 					// error check
