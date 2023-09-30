@@ -98,7 +98,7 @@ void makeDNSquestion(char* buf, string query)
 
 }
 
-string jump(string ans , int curPos)
+string jump(char * ans , int curPos, char * name)
 {	
 	/*
 		if size is 0 of the final array, return the substring of all replies back
@@ -106,8 +106,10 @@ string jump(string ans , int curPos)
 	printf(" answer is = %s", ans);
 
 	int off = ((ans[curPos] & 0x3F) << 8) + ans[curPos + 1];
-	
-	return " ";
+	// printf(ans[off]);
+	// printf(ans[off]);
+	string returnme(ans);
+	return returnme;
 }
 
 
@@ -124,8 +126,8 @@ int main(int argc, char* argv[])
 
 
 	// sendDns.generateQuery(argv[1], argv[2])
-	string query("randomA.irl" );
-	string DNS ( "128.194.135.82" );
+	string query("www.dhs.gov" );
+	string DNS ( "128.194.135.85" );
 
 	printf("Lookup  : %s\n", query.c_str() );
 
@@ -322,6 +324,7 @@ int main(int argc, char* argv[])
 
 				int offset = 0;
 			// parse questions and arrive to the answer section
+					int pastHeader = 13; // this is 12, adding 1 to remove the leading number
 				if (htons(fdhRec->questions) > 0)
 				{
 					printf("\t------------ [questions] ----------\n");
@@ -335,7 +338,6 @@ int main(int argc, char* argv[])
 						
 					}
 					*/
-					int pastHeader = 13; // this is 12, adding 1 to remove the leading number
 					for (int i = 0; i < htons(fdhRec->questions); i++)
 					{
 
@@ -380,10 +382,6 @@ int main(int argc, char* argv[])
 						printf(" %d\n",classBuf);
 						pastHeader += 2; // next link 
 						// printf("%s", saveBuffer);
-						 // printf("%s", htons(fdhRec->questions));
-						// error check
-						// string questions( (char * ) htons(fdhRec->questions) );
-						// printf(" questions print  %s", questions);
 					}
 
 				}				
@@ -391,6 +389,10 @@ int main(int argc, char* argv[])
 				{
 					printf("\t------------ [answers] ----------\n");
 					// error check
+					string passIntoJump(buf + pastHeader);
+					char name[MAX_DNS_SIZE];
+					string answer = jump((char* ) passIntoJump.c_str(), pastHeader, name );
+					printf(answer.c_str());
 				}
 				if (htons(fdhRec->authority) > 0)
 				{
