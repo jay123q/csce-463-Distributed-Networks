@@ -99,20 +99,23 @@ void makeDNSquestion(char* buf, string query)
 
 }
 
-string jump(char * ans , int curPos, char * name)
+string jump(char * ans, int curPos, char* name)
 {	
 	/*
 		if size is 0 of the final array, return the substring of all replies back
 	*/
+	// string copyString = "";
 
-
-	printf(" answer is = %s", ans);
+	int jumpBack = ans[curPos];
+	// int jumpTo = curPos - jumpBack;
+	string copyString( ans + jumpBack + 1 ) ; // skip the first number
+	// printf(" answer is = %s", copyString);
 
 	int off = ((ans[curPos] & 0x3F) << 8) + ans[curPos + 1];
 	// printf(ans[off]);
 	// printf(ans[off]);
-	string returnme(ans);
-	return returnme;
+	// string returnme(ans);
+	return copyString;
 }
 
 
@@ -129,11 +132,13 @@ int main(int argc, char* argv[])
 
 
 	// sendDns.generateQuery(argv[1], argv[2])
-	// string query("www.dhs.gov" );
-	string query("randomA.irl" );
-	// string DNS ( "128.194.135.85" );
-	string DNS ( "128.194.135.82" );
+	 string query("yahoo.com" );
+	 string DNS ( "128.194.135.85" );
 
+	/*
+	string query("randomA.irl" );
+	string DNS ( "128.194.135.82" );
+	*/
 	printf("Lookup  : %s\n", query.c_str() );
 
 
@@ -218,7 +223,7 @@ int main(int argc, char* argv[])
 	// char* ptr = (char*)(fdh + 1);
 	// printf(" print buffer ", ptr);
 
-	printf("Query   : %s, type %d, TXID 0x%4d\n", query.c_str(), htons(qh->qType), htons(fdh->ID));
+	printf("Query   : %s, type %d, TXID 0x%4x\n", query.c_str(), htons(qh->qType), htons(fdh->ID));
 
 
 	//handle socket creation and connection 
@@ -307,7 +312,7 @@ int main(int argc, char* argv[])
 
 				// search for packet
 				double duration = (double)(clock() - start) / CLOCKS_PER_SEC;
-				printf("done in %.1f ms with %d bytes \n", duration * 1000, bytes);
+				printf("response in %.1f ms with %d bytes \n", duration * 1000, bytes);
 
 				
 				// error checking here
@@ -318,7 +323,7 @@ int main(int argc, char* argv[])
 				// read fdh->ID and other fields
 			
 
-				printf("\tTXID %.4x flags %d questions %d answers %d authority %d additional %d\n",
+				printf("\tTXID 0x%.4x flags 0x%x questions %d answers %d authority %d additional %d\n",
 					htons(fdhRec->ID),
 					htons(fdhRec->flags),
 					htons(fdhRec->questions),
@@ -412,16 +417,8 @@ int main(int argc, char* argv[])
 						int classBuf;
 						classBuf = (int)buf[pastHeader];
 						printf(" %d\n",classBuf);
-						
-						if ( i < htons(fdhRec->questions))
-						{
-							// proper printing and jumpping for the change
-							pastHeader += 2; // next link & rremove number
-						}
-						else
-						{
-							pastHeader += 1;
-						}
+						pastHeader += 2;
+
 						// printf("%s", saveBuffer);
 					}
 
@@ -432,16 +429,21 @@ int main(int argc, char* argv[])
 					// error check
 					string passIntoJump(buf + pastHeader);
 					int holdOldPointer = pastHeader;
-					for (int i = 0; i < strlen(passIntoJump.c_str()); i++)
+					char name[MAX_DNS_SIZE];
+
+					string answer = jump( buf , pastHeader, name);
+
+
+					for (int i = 0; i < strlen(answer.c_str()); i++)
 					{
 						// char checkChar = linkCheck[i];
-						int checkDigit = passIntoJump[i];
+						int checkDigit = answer[i];
 						if (checkDigit >= 1 && checkDigit <= 9)
 						{
-							passIntoJump[i] = '.';
+							answer[i] = '.';
 						}
 					}
-					string holdOldStringOut = passIntoJump;
+					string holdOldStringOut = answer;
 						pastHeader = passIntoJump.size() + pastHeader + 2 ; // now theres two empty bytes,
 
 					for (int i = 0; i < htons(fdhRec->answers); i++)
@@ -460,7 +462,15 @@ int main(int argc, char* argv[])
 						classifyType = (int)buf[pastHeader];
 						// we are at the end of one// 1 byte to adjust, 2 to reach the Q
 
-						char name[MAX_DNS_SIZE];
+						// char name[MAX_DNS_SIZE];
+						
+						
+						
+						// replies cannot be largert than NAME
+
+
+
+
 
 						string answer = jump( buf , pastHeader, name);
 						DNSanswerHdr* reply = (DNSanswerHdr*) answer.c_str();
