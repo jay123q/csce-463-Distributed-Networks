@@ -38,6 +38,7 @@ using namespace std;
 
 #pragma pack(push,1) // sets struct padding/alignment to 1 byte
 class DNSanswerHdr {
+public:
 	u_short type;
 	u_short classDef;
 	u_int TTL;
@@ -103,6 +104,8 @@ string jump(char * ans , int curPos, char * name)
 	/*
 		if size is 0 of the final array, return the substring of all replies back
 	*/
+
+
 	printf(" answer is = %s", ans);
 
 	int off = ((ans[curPos] & 0x3F) << 8) + ans[curPos + 1];
@@ -126,8 +129,10 @@ int main(int argc, char* argv[])
 
 
 	// sendDns.generateQuery(argv[1], argv[2])
-	string query("www.dhs.gov" );
-	string DNS ( "128.194.135.85" );
+	// string query("www.dhs.gov" );
+	string query("randomA.irl" );
+	// string DNS ( "128.194.135.85" );
+	string DNS ( "128.194.135.82" );
 
 	printf("Lookup  : %s\n", query.c_str() );
 
@@ -144,7 +149,30 @@ int main(int argc, char* argv[])
 	{
 		amI1or12 = false;
 		// here parse the query and remove the .com adding .in-addr.arpa
-		query = query + ".in-addr.arpa";
+		int findPeriod = query.find('.');
+		string copyQuery = query;
+		string periodString = ".";
+		string subQuery = "";
+		subQuery.insert(0, copyQuery.substr(0,findPeriod).c_str());
+		subQuery.insert(0,periodString.c_str());
+		copyQuery = copyQuery.substr(findPeriod +1 );
+		findPeriod = query.find('.');
+		
+		subQuery.insert(0, copyQuery.substr(0,findPeriod).c_str());
+		subQuery.insert(0,periodString.c_str());
+		copyQuery = copyQuery.substr(findPeriod +1);
+		findPeriod = query.find('.');
+		
+		subQuery.insert(0, copyQuery.substr(0,findPeriod).c_str());
+		subQuery.insert(0,periodString.c_str());
+		copyQuery = copyQuery.substr(findPeriod +1);
+		findPeriod = query.find('.');
+		
+		subQuery.insert(0, copyQuery.substr(0, findPeriod).c_str());
+
+
+
+		query = subQuery + ".in-addr.arpa";
 
 
 	}
@@ -159,7 +187,7 @@ int main(int argc, char* argv[])
 	QueryHeader* qh = (QueryHeader*)(buf + pkt_size - sizeof(QueryHeader));
 
 
-	fdh->ID = htons(1237);
+	fdh->ID = htons(0xAA03);
 	fdh->flags = htons(DNS_QUERY | DNS_RD | DNS_STDQUERY);
 	fdh->questions = htons(1);
 	fdh->answers = htons(0);
@@ -189,6 +217,7 @@ int main(int argc, char* argv[])
 	// printf(" %3u, %3u , %3u, %3u, %3u , %3u  ", htons( fdh->ID ), htons( fdh->flags ) , htons( fdh->questions ) , htons( fdh->answers ) , htons( fdh->authority )  , htons( fdh->additional ) );
 	// char* ptr = (char*)(fdh + 1);
 	// printf(" print buffer ", ptr);
+
 	printf("Query   : %s, type %d, TXID 0x%4d\n", query.c_str(), htons(qh->qType), htons(fdh->ID));
 
 
@@ -344,6 +373,7 @@ int main(int argc, char* argv[])
 						string linkCheck(buf + pastHeader);
 						// remove the number in the middle
 						// only run once
+						/*
 						if (amI1or12 == true && i == 0)
 						{
 							linkCheck[linkCheck.size() - 4] = '.';
@@ -354,6 +384,7 @@ int main(int argc, char* argv[])
 							linkCheck[linkCheck.size() - 4] = '.';
 							linkCheck[linkCheck.size() - 14] = '.';
 						}
+						*/
 						// loop through link buffer and change all unknown chars into " "
 						for (int i = 0; i < strlen( linkCheck.c_str() ); i++)
 						{ 
@@ -361,11 +392,11 @@ int main(int argc, char* argv[])
 							int checkDigit = linkCheck[i];
 							if (checkDigit >= 1 && checkDigit <= 9 )
 							{
-								linkCheck[i] = ' ';
+								linkCheck[i] = '.';
 							}
 						}
 						
-
+						
 
 
 						printf("\t\t");
@@ -375,12 +406,22 @@ int main(int argc, char* argv[])
 						int typeBuf;
 						typeBuf = (int) buf[pastHeader];
 						printf(" %d",typeBuf);
+						pastHeader += 2;
 
-						pastHeader += 2; // next single bytes 
+						// pastHeader += 2; // next single bytes 
 						int classBuf;
 						classBuf = (int)buf[pastHeader];
 						printf(" %d\n",classBuf);
-						pastHeader += 2; // next link 
+						
+						if ( i < htons(fdhRec->questions))
+						{
+							// proper printing and jumpping for the change
+							pastHeader += 2; // next link & rremove number
+						}
+						else
+						{
+							pastHeader += 1;
+						}
 						// printf("%s", saveBuffer);
 					}
 
@@ -390,9 +431,59 @@ int main(int argc, char* argv[])
 					printf("\t------------ [answers] ----------\n");
 					// error check
 					string passIntoJump(buf + pastHeader);
-					char name[MAX_DNS_SIZE];
-					string answer = jump((char* ) passIntoJump.c_str(), pastHeader, name );
-					printf(answer.c_str());
+					int holdOldPointer = pastHeader;
+					for (int i = 0; i < strlen(passIntoJump.c_str()); i++)
+					{
+						// char checkChar = linkCheck[i];
+						int checkDigit = passIntoJump[i];
+						if (checkDigit >= 1 && checkDigit <= 9)
+						{
+							passIntoJump[i] = '.';
+						}
+					}
+					string holdOldStringOut = passIntoJump;
+						pastHeader = passIntoJump.size() + pastHeader + 2 ; // now theres two empty bytes,
+
+					for (int i = 0; i < htons(fdhRec->answers); i++)
+					{
+						// remove the number in the middle
+						// adjust byte pointer
+
+
+						printf("\t\t");
+						printf(holdOldStringOut.c_str()); // this is the old web dns
+
+						pastHeader += 2; // 2 for the \0
+
+						int classifyType;
+						pastHeader += 4;
+						classifyType = (int)buf[pastHeader];
+						// we are at the end of one// 1 byte to adjust, 2 to reach the Q
+
+						char name[MAX_DNS_SIZE];
+
+						string answer = jump( buf , pastHeader, name);
+						DNSanswerHdr* reply = (DNSanswerHdr*) answer.c_str();
+						if (htons(reply->type) == DNS_A)
+						{
+							printf("A ");
+						}
+						else if (htons(reply->type) == DNS_NS)
+						{
+							printf("NS ");
+						}
+						else if (htons(reply->type) == DNS_CNAME)
+						{
+							printf("CNAME ");
+
+						}
+						else if (htons(reply->type) == DNS_PTR)
+						{
+							printf("PTR ");
+
+						}
+						printf(answer.c_str());
+					}
 				}
 				if (htons(fdhRec->authority) > 0)
 				{
