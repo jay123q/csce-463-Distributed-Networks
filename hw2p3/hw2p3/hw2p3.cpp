@@ -143,6 +143,9 @@ string jump(u_char * ans, int curPos, char* name, int firstJump )
 	// ans[curPos +1] right 8 bits
 	// 
 	// find the next jump and then return the first jump + next;
+						
+	// accurate jumps here this was 45, when we needed 44
+	// pastHeader = pastHeader + answer.size() -1 + sizeof(reply); // now theres two empty bytes,
 
 	return copyString;
 }
