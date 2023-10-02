@@ -1,0 +1,12 @@
+*.tlog
+*.idb
+*.pdb
+*.lastbuildstate
+*.obj
+*.log
+*.ilk
+*.recipe
+*.sqlite
+*.json
+*.vsidx
+*.ipch
