@@ -98,23 +98,52 @@ void makeDNSquestion(char* buf, string query)
 
 
 }
-
-string jump(char * ans, int curPos, char* name)
+/*
+processJump() {
+   // extract everything you can without jumping
+   // Identify where the next jump is
+   return whatIJustParsed ++ processJump(jmpLocation);
+}
+*/
+string jump(u_char * ans, int curPos, char* name, int firstJump )
 {	
 	/*
 		if size is 0 of the final array, return the substring of all replies back
 	*/
 	// string copyString = "";
-
-	int jumpBack = ans[curPos];
+	u_char jumpBack = ans[curPos];
 	// int jumpTo = curPos - jumpBack;
-	string copyString( ans + jumpBack + 1 ) ; // skip the first number
+	string copyString( (char *) ans + jumpBack + 1 ) ; // skip the first number
 	// printf(" answer is = %s", copyString);
 
+	int currentPosInDec = ans[curPos];
+	int constantJumpCheckInDec = 0xC0;
+	if (ans[curPos] >= 0xC0)
+	{
+		printf(" gotta jump more \n ");
+		// jump more
+	}
+	else
+	{
+		// uncompressed keep running and shutup
+		printf(" can proceed \n ");
+	}
+	
+
 	int off = ((ans[curPos] & 0x3F) << 8) + ans[curPos + 1];
-	// printf(ans[off]);
-	// printf(ans[off]);
-	// string returnme(ans);
+	if (ans[off] == 0) // this should be the 0th bit
+	{
+		return "";
+	}
+	return copyString + jump(ans, off, name, firstJump);
+
+	// 00111111 0x3F
+	// 11000011 0xC3
+	// 11 U ans[curPos + 1]
+	// ans[curPos +1] right 8 bits
+	// 
+	// find the next jump and then return the first jump + next;
+
 	return copyString;
 }
 
@@ -427,53 +456,39 @@ int main(int argc, char* argv[])
 				{
 					printf("\t------------ [answers] ----------\n");
 					// error check
-					string passIntoJump(buf + pastHeader);
-					int holdOldPointer = pastHeader;
-					char name[MAX_DNS_SIZE];
-
-					string answer = jump( buf , pastHeader, name);
-
-
-					for (int i = 0; i < strlen(answer.c_str()); i++)
-					{
-						// char checkChar = linkCheck[i];
-						int checkDigit = answer[i];
-						if (checkDigit >= 1 && checkDigit <= 9)
-						{
-							answer[i] = '.';
-						}
-					}
-					string holdOldStringOut = answer;
-						pastHeader = passIntoJump.size() + pastHeader + 2 ; // now theres two empty bytes,
+						// this is a consistent 16 byte jump, I can take advantage of this
 
 					for (int i = 0; i < htons(fdhRec->answers); i++)
 					{
+						string passIntoJump(buf + pastHeader);
+						int holdOldPointer = pastHeader;
+						char name[MAX_DNS_SIZE];
+
+						string answer = jump( (u_char * ) buf , pastHeader, name , pastHeader );
+						DNSanswerHdr* reply = (DNSanswerHdr*) ( answer.c_str() + pastHeader );
+						int a = sizeof(reply);
+						a++;
+
+						for (int i = 0; i < strlen(answer.c_str()); i++)
+						{
+							// char checkChar = linkCheck[i];
+							int checkDigit = answer[i];
+							if (checkDigit >= 1 && checkDigit <= 9)
+							{
+								answer[i] = '.';
+							}
+						}
 						// remove the number in the middle
 						// adjust byte pointer
 
 
+						string holdOldStringOut = answer;
 						printf("\t\t");
 						printf(holdOldStringOut.c_str()); // this is the old web dns
 
-						pastHeader += 2; // 2 for the \0
 
-						int classifyType;
-						pastHeader += 4;
-						classifyType = (int)buf[pastHeader];
-						// we are at the end of one// 1 byte to adjust, 2 to reach the Q
-
-						// char name[MAX_DNS_SIZE];
-						
-						
-						
-						// replies cannot be largert than NAME
-
-
-
-
-
-						string answer = jump( buf , pastHeader, name);
-						DNSanswerHdr* reply = (DNSanswerHdr*) answer.c_str();
+						// remove answer.size() null ptr
+						pastHeader = pastHeader + answer.size() -1 + sizeof(reply); // now theres two empty bytes,
 						if (htons(reply->type) == DNS_A)
 						{
 							printf("A ");
@@ -492,6 +507,26 @@ int main(int argc, char* argv[])
 							printf("PTR ");
 
 						}
+
+
+						/*
+						pastHeader += 2; // 2 for the \0
+
+						int classifyType;
+						pastHeader += 4;
+						classifyType = (int)buf[pastHeader];
+						*/
+						// we are at the end of one// 1 byte to adjust, 2 to reach the Q
+
+						// char name[MAX_DNS_SIZE];
+						
+						
+						
+						// replies cannot be largert than NAME
+
+
+
+
 						printf(answer.c_str());
 					}
 				}

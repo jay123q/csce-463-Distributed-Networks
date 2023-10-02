@@ -127,7 +127,7 @@ int main(int argc, char* argv[])
 			// cin >> stall;
 		}
 	*/
-	continueRunning(&parser, "http://www.oxbridge.edu.cn");
+	continueRunning(&parser, "http://128.194.135.85/IRL1");
 		cout << " robots is " << parser.countRobot << std::endl;
 		cout << " allowed is " << parser.countAllowed << std::endl;
 		cout << " string crawl " << parser.countAllowed << std::endl;
