@@ -10,4 +10,4 @@
 *.json
 *.vsidx
 *.ipch
-*\.vs
+.vs
