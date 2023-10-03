@@ -515,7 +515,10 @@ int main(int argc, char* argv[])
 						// remove the number in the middle
 						// adjust byte pointer
 
-
+						// buf 29-37 fail
+						// buf 27-35 fail
+						// this is assuming reply reads DNSanswerHdr size of bytes being 8, idk if this is true
+						// likely a larger problem
 						DNSanswerHdr* reply = (DNSanswerHdr*) ( buf + pastHeader + 1 );
 						int a = sizeof(reply);
 						a++;
