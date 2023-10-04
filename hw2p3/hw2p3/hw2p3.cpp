@@ -41,7 +41,8 @@ class DNSanswerHdr {
 public:
 	u_short type;
 	u_short classDef;
-	u_int TTL;
+	u_short TTL1;
+	u_short TTL2;
 	u_short len;
 };
 
@@ -125,14 +126,10 @@ string jump(u_char * ans, int curPos, char* name, int firstJump , bool &jumpChec
 		placeHolder += 1;
 		int placeHolder2 = ans[off];
 		placeHolder2 += 1;
-		if (ans[off] == 0x0) // this should be the 0th bit
-		{
-			return "";
-		}
 		u_char jumpBack = ans[off];
 		// int jumpTo = curPos - jumpBack;
 		string copyString( (char *) ans + off + 1 ) ; // skip the first number		
-		printf(" gotta jump more \n ");
+		// printf(" gotta jump more \n ");
 		for (int i = 0; i < strlen(copyString.c_str()); i++)
 		{
 			// char checkChar = linkCheck[i];
@@ -143,7 +140,13 @@ string jump(u_char * ans, int curPos, char* name, int firstJump , bool &jumpChec
 			}
 		}
 		// return copyString + jump(ans, off, name, firstJump, jumpOccur);
+		int offCheck = off + copyString.size() + 1;
+		if (ans[offCheck] == 0x0) // this should be the 0th bit
+		{
+			return copyString;
+		}
 		string debugMe = jump(ans, off, name, firstJump, jumpCheck);
+		// printf(" string yeet %s", copyString + debugMe);
 		return copyString + debugMe;
 		// jump more
 	}
@@ -152,8 +155,6 @@ string jump(u_char * ans, int curPos, char* name, int firstJump , bool &jumpChec
 		// u_char jumpBack = ans[curPos];
 		// int jumpTo = curPos - jumpBack;
 
-		if (jumpCheck == false)
-		{
 
 			// uncompressed answer
 			string copyString((char*)ans + curPos + 1); // skip the first number
@@ -166,14 +167,11 @@ string jump(u_char * ans, int curPos, char* name, int firstJump , bool &jumpChec
 					copyString[i] = '.';
 				}
 			}
+			// printf(" happy path, uncompressed answer no jump %s \n", copyString);
 			return copyString;
 
-		}
-		else
-		{
-			// we are in a jump statement and terminating
-			return "";
-		}
+	
+
 	}
 	
 	/*
@@ -381,7 +379,7 @@ int main(int argc, char* argv[])
 				if (response.sin_addr.S_un.S_addr != remote.sin_addr.S_un.S_addr || response.sin_port != remote.sin_port)
 				{
 					// bogus reply, complain
-					printf(" DNS or PORT error  %d\n", WSAGetLastError());
+					printf("  DNS or PORT error  %d\n", WSAGetLastError());
 					break;
 					// closesocket(sock);
 					// WSACleanup();
@@ -391,7 +389,7 @@ int main(int argc, char* argv[])
 
 				// search for packet
 				double duration = (double)(clock() - start) / CLOCKS_PER_SEC;
-				printf("response in %0f ms with %d bytes \n", duration * 1000, bytes);
+				printf("   response in %0f ms with %d bytes \n", duration * 1000, bytes);
 
 				
 				// error checking here
@@ -402,7 +400,7 @@ int main(int argc, char* argv[])
 				// read fdh->ID and other fields
 			
 
-				printf("\tTXID 0x%.4x flags 0x%x questions %d answers %d authority %d additional %d\n",
+				printf("   TXID 0x % .4x flags 0x % x questions % d answers % d authority % d additional % d\n",
 					htons(fdhRec->ID),
 					htons(fdhRec->flags),
 					htons(fdhRec->questions),
@@ -415,19 +413,19 @@ int main(int argc, char* argv[])
 				// auto rCodeCheck = htons(fdhRec->flags);
 				if (  (htons(fdhRec->flags) & 0xF ) != 0)
 				{
-					printf("\tfailed with Rcode = %d\n ", htons(fdhRec->flags));
+					printf("   failed with Rcode = %d\n ", htons(fdhRec->flags));
 					// closesocket(sock);
 					// WSACleanup();
 					// delete buf;
 					break;
 					// return 0;
 				}
-				printf("\tsucceeded with Rcode = %d\n", htons(fdhRec->flags));
+				printf("   succeeded with Rcode = %d\n", htons(fdhRec->flags));
 
 
 
 				if (fdhRec->ID != fdh->ID) {
-					printf("\t++ invalid reply: TXID mismatch, sent %0.4x, received x%0.4x\n", htons(fdh->ID), htons(fdhRec->ID));
+					printf("   ++ invalid reply: TXID mismatch, sent %0.4x, received x%0.4x\n", htons(fdh->ID), htons(fdhRec->ID));
 				//	WSACleanup();
 				//	closesocket(sock);
 					break;
@@ -437,10 +435,10 @@ int main(int argc, char* argv[])
 
 				int offset = 0;
 			// parse questions and arrive to the answer section
-					int pastHeader = 13; // this is 12, adding 1 to remove the leading number
+					int pastHeader = 12; // this is 12, adding 1 to remove the leading number
 				if (htons(fdhRec->questions) > 0)
 				{
-					printf("\t------------ [questions] ----------\n");
+					printf("   ------------ [questions] ----------\n");
 					/*
 					char bufProcess[512];
 					memcpy(bufProcess, buf, sizeof(buf));
@@ -457,7 +455,7 @@ int main(int argc, char* argv[])
 						string linkCheck(buf + pastHeader);
 						// remove the number in the middle
 						// only run once
-
+						linkCheck[0] = ' ';
 						// loop through link buffer and change all unknown chars into " "
 						for (int i = 0; i < strlen( linkCheck.c_str() ); i++)
 						{ 
@@ -468,11 +466,8 @@ int main(int argc, char* argv[])
 								linkCheck[i] = '.';
 							}
 						}
-						
-						
 
-
-						printf("\t\t");
+						printf("       "); // this is 7 spaces bc the leading string has a number that becomes a space we are going megaminded bb
 						printf(linkCheck.c_str());
 
 						pastHeader = linkCheck.size() + pastHeader + 2 ; // now theres two empty bytes,
@@ -485,7 +480,7 @@ int main(int argc, char* argv[])
 						int classBuf;
 						classBuf = (int)buf[pastHeader];
 						printf(" %d\n",classBuf);
-						pastHeader += 2; // idea is to avoid the extra space
+						pastHeader += 1; // idea is to avoid the extra space
 
 						// printf("%s", saveBuffer);
 					}
@@ -493,7 +488,7 @@ int main(int argc, char* argv[])
 				}				
 				if (htons(fdhRec->answers) > 0)
 				{
-					printf("\t------------ [answers] ----------\n");
+					printf("   ------------ [answers] ----------\n");
 					// error check
 						// this is a consistent 16 byte jump, I can take advantage of this
 
@@ -502,31 +497,37 @@ int main(int argc, char* argv[])
 						string passIntoJump(buf + pastHeader);
 						int holdOldPointer = pastHeader;
 
-
-						// replies cannot be largert than NAME
-
-
-
 						char name[MAX_DNS_SIZE];
 						// -64 means jump 11000000
-						bool jumpOccur = false;
-						string answer = jump( (u_char * ) buf , pastHeader -1, name , pastHeader , jumpOccur );
+						bool jumpOccur = false;//enter into at 0xc0
+						string answer = jump( (u_char * ) buf , pastHeader , name , pastHeader , jumpOccur );
 
 
 						// remove the number in the middle
 						// adjust byte pointer
+						if (jumpOccur == false)
+						{
+							// uncompressed header handle
+							pastHeader += answer.size(); // land on class type
+							/*
+							pastHeader += 2; // class type
+							pastHeader += 1; // class query
+							pastHeader += 2; // 2 more null ptrs ending the uncompressed question
+							*/
+						}
+						pastHeader += 2; // always handle the next two bytes
 
-						// buf 29-37 fail
-						// buf 27-35 fail
-						// this is assuming reply reads DNSanswerHdr size of bytes being 8, idk if this is true
-						// likely a larger problem
+
+
+						// buf @ ptr after 2 jumping bytes for 8 bytes is the DNSanswerHeader
+						// \0 1 \0 1 \0 \0 \0 should be how it looks 
 						DNSanswerHdr* reply = (DNSanswerHdr*) ( buf + pastHeader );
-						int a = sizeof(reply);
+						int a = sizeof(reply); // this should be 8 bytes 
 						a++;
 						/*
 							# DNS_A 1 
 							 DNS_NS 2 
-							 DNS_CNAME 5 
+							 DNS_CNAME 5 %
 							 DNS_PTR 12
 						*/
 					
@@ -536,45 +537,40 @@ int main(int argc, char* argv[])
 						int testCNAMEHtons = htons(reply->type);
 						int testPTRHtons = htons(reply->type);
 						*/
-
-						printf("\t\t");
+						pastHeader += sizeof(reply);
+						printf("\t");
 						printf(answer.c_str()); // this is the old web dns
-						/*
-						if (jumpOccur == true)
-						{
-							pastHeader += 16;// 16 bits given in slides
-
-						}
-						else
-						{ // no jump modify pastHeader by answer.szie()
-							pastHeader = answer.size() + pastHeader + 2; // now theres two empty bytes,
-							pastHeader += 4;// get past the 4 queryHeader bytes
-						}
-						*/
-						if (jumpOccur == false)
-						{
-							// uncompressed answer
-							pastHeader = answer.size() + pastHeader + 2; // now theres two empty bytes,
-							pastHeader += 4;// get past the 4 queryHeader bytes
-
-						}
-						
 
 						// remove answer.size() null ptr
 						// pastHeader = pastHeader + answer.size() -1 + sizeof(reply); // now theres two empty bytes,
 						if (dnsConversionToServer == DNS_A)
 						{
-							printf(" adding two extra pointers here for the A type, check this 554 \n ");
-							pastHeader += 2;// shift to TTL pointing directly at as there is 0, 30 left
+							pastHeader += 2;
+
 							printf(" A ");
 							// pull out and print bytes and TTL
-							int TTL = buf[pastHeader];
-							printf("TTL %d ", TTL);
-							printf(" reply TTL %d ", reply->TTL);
-							// handle IP
-							pastHeader += 3; // move 2 bytes up and 1 more to remove the leading char count
-							printf("IP %d.%d.%d.%d", buf[pastHeader++], buf[pastHeader++], buf[pastHeader++], buf[pastHeader++]);
+							// unsigned int TTL = buf[pastHeader];
 
+							// handle IP
+							// pastHeader += 3; // move 2 bytes up and 1 more to remove the leading char count
+							 // unsigned int ip1 = ( buf[pastHeader] >> 4 ) + ( buf[pastHeader] & 0x0f );
+							unsigned int ip1 = (u_char) buf[pastHeader];
+							pastHeader++;							
+							// unsigned int ip2 = ( buf[pastHeader] >> 4 ) + ( buf[pastHeader] & 0x0f );
+							unsigned int ip2 = (u_char) buf[pastHeader];
+							pastHeader++;
+							// unsigned int ip3 = ( buf[pastHeader] >> 4 ) + ( buf[pastHeader] & 0x0f );
+							unsigned int ip3 = (u_char) buf[pastHeader];
+							pastHeader++;
+							// unsigned int ip4 = ( buf[pastHeader] >> 4 ) + ( buf[pastHeader] & 0x0f );
+							unsigned int ip4 = (u_char) buf[pastHeader];
+							pastHeader++;
+							printf("IP %u.%u.%u.%u", ip1,ip2,ip3,ip4 );
+							
+
+							// printf("TTL %d ", TTL);
+							printf(" reply TTL %d\n", htons(reply->TTL1) + htons(reply->TTL2) );
+							// pastHeader++; // land on 12 / record after 0xc0
 						}
 						else if (dnsConversionToServer == DNS_NS)
 						{
@@ -644,12 +640,12 @@ int main(int argc, char* argv[])
 				}
 				if (htons(fdhRec->authority) > 0)
 				{
-					printf("\t------------ [authority] ----------\n");
+					printf("   ------------ [authority] ----------\n");
 					// error check
 				}
 				if (htons(fdhRec->additional) > 0)
 				{
-					printf("\t------------ [additional] ----------\n");
+					printf("   ------------ [additional] ----------\n");
 					// error check
 				}
 			// suppose off is the current position in the packet
