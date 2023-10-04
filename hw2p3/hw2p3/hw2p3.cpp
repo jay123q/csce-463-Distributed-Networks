@@ -506,6 +506,7 @@ int main(int argc, char* argv[])
 						// replies cannot be largert than NAME
 
 
+
 						char name[MAX_DNS_SIZE];
 						// -64 means jump 11000000
 						bool jumpOccur = false;
