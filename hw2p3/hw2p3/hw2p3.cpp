@@ -162,6 +162,18 @@ string jump(u_char * ans, int &curPos, char* name, int firstJump , bool &jumpChe
 
 		string copyString( (char *) ans + off ) ; // skip the first number		
 		// printf(" gotta jump more \n ");
+		int findIndex = copyString.find(-64);
+		if (findIndex != string::npos)
+		{
+			copyString = copyString.substr(0, findIndex);
+			curPos += copyString.size(); // ajdust for recursive case
+			// printf(" inside happy path, find a jump \n ");
+			copyString += jump(ans, curPos, name, firstJump, jumpCheck);
+			curPos += 1;
+			copyString = removeNumbers(copyString);
+			return copyString;
+
+		}
 		copyString = removeNumbers(copyString);
 		// return copyString + jump(ans, off, name, firstJump, jumpOccur);
 		int offCheck = off + copyString.size();
@@ -170,13 +182,6 @@ string jump(u_char * ans, int &curPos, char* name, int firstJump , bool &jumpChe
 			return copyString;
 		}
 
-		// I dont think the logic below is used
-		string debugMe = jump(ans, off, name, firstJump, jumpCheck);
-		// printf(" string yeet %s", copyString + debugMe);
-		debugMe = removeNumbers(debugMe);
-		curPos += debugMe.size();
-		return copyString + debugMe;
-		// jump more
 	}
 	else
 	{
@@ -240,10 +245,9 @@ string processJump( u_char* buf, int &pastHeader,char * name, int &firstJumpPos)
 		{
 			// uncompressed header handle
 			firstJumpPos += answer.size(); // land on class type
-
 		}
-
 	firstJumpPos += 1;
+
 	return answer;
 }
 
