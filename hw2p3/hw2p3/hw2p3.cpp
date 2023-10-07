@@ -75,7 +75,7 @@ string removeNumbers(string str)
 	{
 		char checkChar = str[i];
 		int checkDigit = str[i];
-		if (checkDigit >= 1 && checkDigit <= 9 )
+		if (checkDigit >= 1 && checkDigit <= 9)
 		{
 			str[i] = '.';
 		}
@@ -102,7 +102,7 @@ string removeNumbers(string str)
 		str.erase(str.cbegin());
 	}
 	*/
-	
+
 	return str;
 }
 void makeDNSquestion(char* buf, string query)
@@ -138,8 +138,9 @@ void makeDNSquestion(char* buf, string query)
 }
 
 
-string jump(u_char * ans, int &curPos, char* name, int firstJump , bool &jumpCheck )
-{	
+string jump(u_char* ans, int &curPos, char* name, int firstJump, bool& jumpCheck, bool &jumpJumpHoldPos, int &countJumps )
+{
+	countJumps++;
 	/*
 		if size is 0 of the final array, return the substring of all replies back
 	*/
@@ -160,43 +161,68 @@ string jump(u_char * ans, int &curPos, char* name, int firstJump , bool &jumpChe
 
 
 
-		string copyString( (char *) ans + off ) ; // skip the first number		
+		string copyString((char*)ans + off); // skip the first number		
 		// printf(" gotta jump more \n ");
+		int offCheckInitial = off + copyString.size();
 		int findIndex = copyString.find(-64);
+		// int copyStringAdd1 = ans[off + 1];
 		if (findIndex != string::npos)
 		{
 			copyString = copyString.substr(0, findIndex);
-			curPos += copyString.size(); // ajdust for recursive case
+			// off = ((ans[curPos + findIndex ] & 0x3F) << 8) + ans[curPos + findIndex  + 1];
+
+			/*
+			copyString = copyString.substr(0, findIndex);
 			// printf(" inside happy path, find a jump \n ");
-			copyString += jump(ans, curPos, name, firstJump, jumpCheck);
-			curPos += 1;
+			findIndex += curPos;
+			copyString += jump(ans, off, name, firstJump, jumpCheck, jumpJumpHoldPos );
+			int holdChangedPos = copyString.size() + curPos; // ajdust for recursive case
 			copyString = removeNumbers(copyString);
 			return copyString;
+			*/
 
 		}
 		copyString = removeNumbers(copyString);
-		// return copyString + jump(ans, off, name, firstJump, jumpOccur);
-		int offCheck = off + copyString.size();
-		if (ans[offCheck] == 0x0) // this should be the 0th bit
+		// return copyString + jump(ans, off, name, firstJump, jumpOccur);i
+		int offCheckUpdated = copyString.size() + off;
+		offCheckInitial = off + copyString.size();
+		if ( ( ans[offCheckInitial] == 0x0 || ans[offCheckUpdated] == 0x0 ) && off < 512 ) // this should be the 0th bit
 		{
 			return copyString;
 		}
+
+			return copyString + jump(ans, offCheckInitial, name, firstJump, jumpCheck, jumpJumpHoldPos, countJumps);
 
 	}
 	else
 	{
 		string modifier((char*)ans + curPos);
-		// read the leading bytes
+		// read the leading bytess
 		int findIndex = modifier.find(-64);
 		if (findIndex != string::npos)
 		{
 			modifier = modifier.substr(0, findIndex);
-			curPos += modifier.size(); // ajdust for recursive case
+			int holdChangedPos = modifier.size() + curPos; // ajdust for recursive case
 			// printf(" inside happy path, find a jump \n ");
-			modifier += jump(ans, curPos, name, firstJump, jumpCheck);
-			curPos += 1;
-			modifier = removeNumbers(modifier);
-			return modifier;
+
+			// second jump handle
+			// indIndex += curPos;
+
+			int off = ((ans[curPos+ findIndex] & 0x3F) << 8) + ans[curPos + findIndex + 1];
+			jumpJumpHoldPos = true;
+				modifier = removeNumbers(modifier);
+				curPos = holdChangedPos;
+			if (ans[holdChangedPos] == 0x0) // this should be the 0th bit
+			{
+				return modifier;
+			}
+			else
+			{
+				return modifier + jump(ans, off, name, firstJump, jumpCheck, jumpJumpHoldPos , countJumps);
+			}
+			// modifier += jump(ans, off, name, firstJump, jumpCheck, jumpJumpHoldPos );
+
+			// return modifier;
 
 		}
 		modifier = removeNumbers(modifier);
@@ -204,20 +230,20 @@ string jump(u_char * ans, int &curPos, char* name, int firstJump , bool &jumpChe
 
 		return modifier;
 
-			// uncompressed answer
+		// uncompressed answer
 
 
-	
+
 
 	}
-	
+
 	/*
 	if (ans[off] == 0) // this should be the 0th bit
 	{
 		return "";
 	}
 	*/
-	
+
 
 	// 00111111 0x3F
 	// 11000011 0xC3
@@ -225,28 +251,45 @@ string jump(u_char * ans, int &curPos, char* name, int firstJump , bool &jumpChe
 	// ans[curPos +1] right 8 bits
 	// 
 	// find the next jump and then return the first jump + next;
-						
+
 	// accurate jumps here this was 45, when we needed 44
 	// pastHeader = pastHeader + answer.size() -1 + sizeof(reply); // now theres two empty bytes,
 
 	// return copyString;
 }
 
-string processJump( u_char* buf, int &pastHeader,char * name, int &firstJumpPos) {
+string processJump(u_char* buf, int& pastHeader, char* name, int firstJumpPos) {
 	// logic here is going to be, see if I jump at the front
 
 
 	string answer = "";
-		bool jumpOccur = false;//enter into at 0xc0
-		// answer += jump( buf, pastHeader, name, firstJumpPos, jumpOccur);
-		answer += jump( buf, pastHeader, name, firstJumpPos, jumpOccur);
-
-		if (jumpOccur == false)
-		{
-			// uncompressed header handle
-			firstJumpPos += answer.size(); // land on class type
-		}
-	firstJumpPos += 1;
+	bool jumpOccur = false;//enter into at 0xc0
+	bool jumpJumpHoldPos = false;
+	// answer += jump( buf, pastHeader, name, firstJumpPos, jumpOccur);
+	int countJumps = 0;
+	answer += jump(buf, pastHeader, name, firstJumpPos, jumpOccur, jumpJumpHoldPos , countJumps );
+	printf(" jump count %d", countJumps);
+	if (jumpJumpHoldPos == true)
+	{ // this is going to be if theres a jump and another jump 
+		printf(" x new jump ");
+		pastHeader += 2; // shift bits by 2
+		return answer;
+	}
+	if (jumpOccur == false)
+	{
+		// uncompressed header handle
+		pastHeader += answer.size(); // land on class type
+	}
+	pastHeader += 1;
+	/*
+	u_int checkChar = buf[firstJumpPos + answer.size()];
+	u_int checkChar1 = buf[firstJumpPos + answer.size()+1];
+	u_int checkChar2 = buf[firstJumpPos + answer.size()-1];
+	if ( isalpha(checkChar)  )
+	{
+		pastHeader--;
+	}
+	*/
 
 	return answer;
 }
@@ -259,7 +302,7 @@ int main(int argc, char* argv[])
 		cout << " CHECK HOW YOU RUNNING OR WHAT WE ARE TESTING ./hw2.exe query ip \n";
 		return 0;
 	}
-	
+
 	*/
 
 
@@ -268,19 +311,21 @@ int main(int argc, char* argv[])
 	 string query("yahoo.com" );
 	 string DNS ( "128.194.135.85" );
 
-	string query("randomA.irl" );
-	string DNS ( "128.194.135.82" );
 
 	string query("www.google.com");
 	string DNS ( "8.8.8.8" );
 
+
+	string query("randomA.irl" );
+	string DNS ( "128.194.135.82" );
+
 	*/
 	string query("www.dhs.gov");
-	 string DNS ( "128.194.135.85" );
-	printf("Lookup  : %s\n", query.c_str() );
+	string DNS("128.194.135.85");
+	printf("Lookup  : %s\n", query.c_str());
 
 
-	DWORD IP = inet_addr((char* ) query.c_str());
+	DWORD IP = inet_addr((char*)query.c_str());
 	bool amI1or12 = true;
 	if (IP == INADDR_NONE)
 	{
@@ -296,21 +341,21 @@ int main(int argc, char* argv[])
 		string copyQuery = query;
 		string periodString = ".";
 		string subQuery = "";
-		subQuery.insert(0, copyQuery.substr(0,findPeriod).c_str());
-		subQuery.insert(0,periodString.c_str());
-		copyQuery = copyQuery.substr(findPeriod +1 );
+		subQuery.insert(0, copyQuery.substr(0, findPeriod).c_str());
+		subQuery.insert(0, periodString.c_str());
+		copyQuery = copyQuery.substr(findPeriod + 1);
 		findPeriod = query.find('.');
-		
-		subQuery.insert(0, copyQuery.substr(0,findPeriod).c_str());
-		subQuery.insert(0,periodString.c_str());
-		copyQuery = copyQuery.substr(findPeriod +1);
+
+		subQuery.insert(0, copyQuery.substr(0, findPeriod).c_str());
+		subQuery.insert(0, periodString.c_str());
+		copyQuery = copyQuery.substr(findPeriod + 1);
 		findPeriod = query.find('.');
-		
-		subQuery.insert(0, copyQuery.substr(0,findPeriod).c_str());
-		subQuery.insert(0,periodString.c_str());
-		copyQuery = copyQuery.substr(findPeriod +1);
+
+		subQuery.insert(0, copyQuery.substr(0, findPeriod).c_str());
+		subQuery.insert(0, periodString.c_str());
+		copyQuery = copyQuery.substr(findPeriod + 1);
 		findPeriod = query.find('.');
-		
+
 		subQuery.insert(0, copyQuery.substr(0, findPeriod).c_str());
 
 
@@ -354,7 +399,7 @@ int main(int argc, char* argv[])
 	// handle the dns change here 
 	// 3www4tamu3edu0 reply whould be
 
-	makeDNSquestion( (char * ) (fdh+1),  (char *) query.c_str() );
+	makeDNSquestion((char*)(fdh + 1), (char*)query.c_str());
 	// cout << " the modified query is " << modifiedQuery << std::endl;
 
 	// printf(" %3u, %3u , %3u, %3u, %3u , %3u  ", htons( fdh->ID ), htons( fdh->flags ) , htons( fdh->questions ) , htons( fdh->answers ) , htons( fdh->authority )  , htons( fdh->additional ) );
@@ -388,7 +433,7 @@ int main(int argc, char* argv[])
 	{
 		printf(" bind error %d\n", WSAGetLastError());
 		closesocket(sock);
-		WSACleanup();		
+		WSACleanup();
 		return 0;
 
 	}
@@ -410,7 +455,7 @@ int main(int argc, char* argv[])
 		return 0;
 
 	}
-		// handle errors 
+	// handle errors 
 
 
 	int count = 0;
@@ -421,7 +466,7 @@ int main(int argc, char* argv[])
 		timeval timeout;
 		timeout.tv_sec = 10;
 		timeout.tv_usec = 0;
-		printf("Attempt %d with %d bytes... ", count, pkt_size );
+		printf("Attempt %d with %d bytes... ", count, pkt_size);
 		fd_set fd;
 		FD_ZERO(&fd); // clear the set
 		FD_SET(sock, &fd); // add your socket to the set
@@ -452,14 +497,14 @@ int main(int argc, char* argv[])
 				double duration = (double)(clock() - start) / CLOCKS_PER_SEC;
 				printf("   response in %0f ms with %d bytes \n", duration * 1000, bytes);
 
-				
+
 				// error checking here
 				// printf(" print buffer %s",saveBuffer);
 				FixedDNSheader* fdhRec = (FixedDNSheader*)buf;
 				// printf("succeeded with Rcode = %d", fdhRec->answers);
 
 				// read fdh->ID and other fields
-			
+
 
 				printf("   TXID 0x % .4x flags 0x % x questions % d answers % d authority % d additional % d\n",
 					htons(fdhRec->ID),
@@ -469,11 +514,11 @@ int main(int argc, char* argv[])
 					htons(fdhRec->authority),
 					htons(fdhRec->additional)
 
-					);
+				);
 				// https://datatracker.ietf.org/doc/html/rfc1035 
 
 				// bottem 4 bits of flag reg
-				if (  (htons(fdhRec->flags) & 0xF ) != 0)
+				if ((htons(fdhRec->flags) & 0xF) != 0)
 				{
 					printf("   failed with Rcode = %d\n ", htons(fdhRec->flags));
 					// closesocket(sock);
@@ -488,16 +533,16 @@ int main(int argc, char* argv[])
 
 				if (fdhRec->ID != fdh->ID) {
 					printf("   ++ invalid reply: TXID mismatch, sent %0.4x, received x%0.4x\n", htons(fdh->ID), htons(fdhRec->ID));
-				//	WSACleanup();
-				//	closesocket(sock);
+					//	WSACleanup();
+					//	closesocket(sock);
 					break;
 					// delete buf;
 					// return 0;
 				}
 
 				int offset = 0;
-			// parse questions and arrive to the answer section
-					int pastHeader = 12; // this is 12, adding 1 to remove the leading number
+				// parse questions and arrive to the answer section
+				int pastHeader = 12; // this is 12, adding 1 to remove the leading number
 				if (htons(fdhRec->questions) > 0)
 				{
 					printf("   ------------ [questions] ----------\n");
@@ -508,7 +553,7 @@ int main(int argc, char* argv[])
 					for (int i = 0; i < sizeof(bufProcess); i++)
 					{
 						printf("\t  %c", bufProcess[i]);
-						
+
 					}
 					*/
 					for (int i = 0; i < htons(fdhRec->questions); i++)
@@ -524,22 +569,22 @@ int main(int argc, char* argv[])
 						printf("       "); // this is 7 spaces bc the leading string has a number that becomes a space we are going megaminded bb
 						printf(linkCheck.c_str());
 
-						pastHeader = linkCheck.size() + pastHeader + 2 ; // now theres two empty bytes,
+						pastHeader = linkCheck.size() + pastHeader + 2; // now theres two empty bytes,
 						int typeBuf;
-						typeBuf = (int) buf[pastHeader];
-						printf(" %d",typeBuf);
+						typeBuf = (int)buf[pastHeader];
+						printf(" %d", typeBuf);
 						pastHeader += 2;
 
 						// pastHeader += 2; // next single bytes 
 						int classBuf;
 						classBuf = (int)buf[pastHeader];
-						printf(" %d\n",classBuf);
+						printf(" %d\n", classBuf);
 						pastHeader += 1; // idea is to avoid the extra space
 
 						// printf("%s", saveBuffer);
 					}
 
-				}				
+				}
 				if (htons(fdhRec->answers) > 0)
 				{
 					printf("   ------------ [answers] ----------\n");
@@ -553,21 +598,21 @@ int main(int argc, char* argv[])
 
 						char name[MAX_DNS_SIZE];
 						// -64 means jump 11000000
-						
-						string answer = processJump( (u_char *) buf, pastHeader, name, pastHeader);
+
+						string answer = processJump((u_char*)buf, pastHeader, name, pastHeader);
 
 						// buf @ ptr after 2 jumping bytes for 8 bytes is the DNSanswerHeader
 						// \0 1 \0 1 \0 \0 \0 should be how it looks 
-						DNSanswerHdr* reply = (DNSanswerHdr*) ( buf + pastHeader );
+						DNSanswerHdr* reply = (DNSanswerHdr*)(buf + pastHeader);
 						int a = sizeof(reply); // this should be 8 bytes 
 						a++;
 						/*
-							# DNS_A 1 
-							 DNS_NS 2 
+							# DNS_A 1
+							 DNS_NS 2
 							 DNS_CNAME 5 %
 							 DNS_PTR 12
 						*/
-					
+
 						int dnsConversionToServer = reply->classDef;
 						/*
 						int testNSHtons = htons(reply->type);
@@ -594,19 +639,19 @@ int main(int argc, char* argv[])
 							// handle IP
 							// pastHeader += 3; // move 2 bytes up and 1 more to remove the leading char count
 							 // unsigned int ip1 = ( buf[pastHeader] >> 4 ) + ( buf[pastHeader] & 0x0f );
-							pastHeader++;							
-							unsigned int ip1 = (u_char) buf[pastHeader];
-							pastHeader++;							
+							pastHeader++;
+							unsigned int ip1 = (u_char)buf[pastHeader];
+							pastHeader++;
 							// unsigned int ip2 = ( buf[pastHeader] >> 4 ) + ( buf[pastHeader] & 0x0f );
-							unsigned int ip2 = (u_char) buf[pastHeader];
+							unsigned int ip2 = (u_char)buf[pastHeader];
 							pastHeader++;
 							// unsigned int ip3 = ( buf[pastHeader] >> 4 ) + ( buf[pastHeader] & 0x0f );
-							unsigned int ip3 = (u_char) buf[pastHeader];
+							unsigned int ip3 = (u_char)buf[pastHeader];
 							pastHeader++;
 							// unsigned int ip4 = ( buf[pastHeader] >> 4 ) + ( buf[pastHeader] & 0x0f );
-							unsigned int ip4 = (u_char) buf[pastHeader];
-							pastHeader++;
-							printf("IP %u.%u.%u.%u", ip1,ip2,ip3,ip4 );
+							unsigned int ip4 = (u_char)buf[pastHeader];
+							// pastHeader++;
+							printf("IP %u.%u.%u.%u", ip1, ip2, ip3, ip4);
 							printf(" TTL %d\n", htons(reply->TTL1) + htons(reply->TTL2));
 
 
@@ -616,9 +661,9 @@ int main(int argc, char* argv[])
 						else
 						{
 							// string jumpAgain = processJump((u_char*)buf, pastHeader, name, pastHeader);
-							
 
-							
+
+
 
 							if (dnsConversionToServer == DNS_NS)
 							{
@@ -650,44 +695,44 @@ int main(int argc, char* argv[])
 							}
 						}
 
-							/*
-						else
+						/*
+					else
+					{
+						char name[MAX_DNS_SIZE];
+						// -64 means jump 11000000
+						bool jumpOccur = false;
+						int savePlace = pastHeader; //28
+						// pastHeader += 16;
+						string answer = jump((u_char*)buf, pastHeader - 1, name, pastHeader, jumpOccur);
+
+
+						// remove the number in the middle
+						// adjust byte pointer
+
+
+						DNSanswerHdr* reply = (DNSanswerHdr*)(buf + pastHeader);
+						int a = sizeof(reply);
+						a++;
+						int testA = reply->type;
+						int testNS = reply->type;
+						int testCNAME = reply->type;
+						int testPTR = reply->type;
+						if (reply->type == DNS_NS)
 						{
-							char name[MAX_DNS_SIZE];
-							// -64 means jump 11000000
-							bool jumpOccur = false;
-							int savePlace = pastHeader; //28
-							// pastHeader += 16;
-							string answer = jump((u_char*)buf, pastHeader - 1, name, pastHeader, jumpOccur);
-
-
-							// remove the number in the middle
-							// adjust byte pointer
-
-
-							DNSanswerHdr* reply = (DNSanswerHdr*)(buf + pastHeader);
-							int a = sizeof(reply);
-							a++;
-							int testA = reply->type;
-							int testNS = reply->type;
-							int testCNAME = reply->type;
-							int testPTR = reply->type;
-							if (reply->type == DNS_NS)
-							{
-								printf(" NS ");
-							}
-							else if (reply->type == DNS_CNAME)
-							{
-								printf(" CNAME ");
-
-							}
-							else if (reply->type == DNS_PTR)
-							{
-								printf(" PTR ");
-
-							}
+							printf(" NS ");
 						}
-							*/
+						else if (reply->type == DNS_CNAME)
+						{
+							printf(" CNAME ");
+
+						}
+						else if (reply->type == DNS_PTR)
+						{
+							printf(" PTR ");
+
+						}
+					}
+						*/
 
 
 						/*
@@ -765,7 +810,7 @@ int main(int argc, char* argv[])
 							pastHeader++;
 							// unsigned int ip4 = ( buf[pastHeader] >> 4 ) + ( buf[pastHeader] & 0x0f );
 							unsigned int ip4 = (u_char)buf[pastHeader];
-							pastHeader++;
+							// pastHeader++;
 							printf("IP %u.%u.%u.%u", ip1, ip2, ip3, ip4);
 							printf(" TTL %d\n", htons(reply->TTL1) + htons(reply->TTL2));
 
@@ -816,13 +861,13 @@ int main(int argc, char* argv[])
 					printf("   ------------ [additional] ----------\n");
 					// error check
 				}
-			// suppose off is the current position in the packet
-				// int off = 0;
-				// DNSanswerHdr * dah = (DNSanswerHdr*)(buf + off);
-				// read dah->len and other fields 
-			// parse the response
-			// break from the loop
-				// printf("breaking line 335 \n");
+				// suppose off is the current position in the packet
+					// int off = 0;
+					// DNSanswerHdr * dah = (DNSanswerHdr*)(buf + off);
+					// read dah->len and other fields 
+				// parse the response
+				// break from the loop
+					// printf("breaking line 335 \n");
 				break;
 			}
 			else
@@ -849,8 +894,8 @@ int main(int argc, char* argv[])
 
 	}
 
-		WSACleanup();
-		closesocket(sock);
+	WSACleanup();
+	closesocket(sock);
 
 	return 0;
 }
