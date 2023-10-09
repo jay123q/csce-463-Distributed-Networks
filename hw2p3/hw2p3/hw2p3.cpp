@@ -460,7 +460,7 @@ int runMainFunction(string queryReplace, string DNSReplace)
 		timeval timeout;
 		timeout.tv_sec = 10;
 		timeout.tv_usec = 0;
-		printf("Attempt %d with %d bytes... ", count, pkt_size);
+		printf("Attempt %d with %d bytes... ", count-1, pkt_size);
 		fd_set fd;
 		FD_ZERO(&fd); // clear the set
 		FD_SET(sock, &fd); // add your socket to the set
@@ -489,7 +489,7 @@ int runMainFunction(string queryReplace, string DNSReplace)
 
 				// search for packet
 				double duration = (double)(clock() - start) / CLOCKS_PER_SEC;
-				printf("response in %d ms with %d bytes \n", duration * 1000, bytes);
+				printf("response in %d ms with %d bytes \n", (int) duration * 1000, bytes);
 
 
 				// error checking here
@@ -541,16 +541,6 @@ int runMainFunction(string queryReplace, string DNSReplace)
 				if (htons(fdhRec->questions) > 0)
 				{
 					printf("   ------------ [questions] ----------\n");
-					/*
-					char bufProcess[512];
-					memcpy(bufProcess, buf, sizeof(buf));
-					printf("\t  %c", bufProcess[i]);
-					for (int i = 0; i < sizeof(bufProcess); i++)
-					{
-						printf("\t  %c", bufProcess[i]);
-
-					}
-					*/
 					for (int i = 0; i < htons(fdhRec->questions); i++)
 					{
 
@@ -588,37 +578,21 @@ int runMainFunction(string queryReplace, string DNSReplace)
 
 					for (int i = 0; i < htons(fdhRec->answers); i++)
 					{
-						string passIntoJump(buf + pastHeader);
-						int holdOldPointer = pastHeader;
-
-						// -64 means jump 11000000
-
 						string answer = processJump((u_char*)buf, pastHeader, pastHeader, i);
-
 						// buf @ ptr after 2 jumping bytes for 8 bytes is the DNSanswerHeader
 						// \0 1 \0 1 \0 \0 \0 should be how it looks 
 						DNSanswerHdr* reply = (DNSanswerHdr*)(buf + pastHeader);
-						int a = sizeof(reply); // this should be 8 bytes 
-						a++;
 						/*
-							# DNS_A 1
+							 DNS_A 1
 							 DNS_NS 2
 							 DNS_CNAME 5 %
 							 DNS_PTR 12
 						*/
 
 						int dnsConversionToServer = reply->classDef;
-						/*
-						int testNSHtons = htons(reply->type);
-						int testCNAMEHtons = htons(reply->type);
-						int testPTRHtons = htons(reply->type);
-						*/
 						pastHeader += sizeof(reply);
 						printf("\t");
 						printf(answer.c_str() + 1); // this is the old web dns
-
-						// remove answer.size() null ptr
-						// pastHeader = pastHeader + answer.size() -1 + sizeof(reply); // now theres two empty bytes,
 						pastHeader += 3; // move past TTL to names
 
 
@@ -627,67 +601,36 @@ int runMainFunction(string queryReplace, string DNSReplace)
 							// pastHeader += 2;
 
 							printf(" A ");
-							// pull out and print bytes and TTL
-							// unsigned int TTL = buf[pastHeader];
-
-							// handle IP
-							// pastHeader += 3; // move 2 bytes up and 1 more to remove the leading char count
-							// pastHeader++;
-							// unsigned int ip1 = ( buf[pastHeader] >> 4 ) + ( buf[pastHeader] & 0x0f );
 							unsigned int ip1 = (u_char)buf[pastHeader];
 							pastHeader++;
-							// unsigned int ip2 = ( buf[pastHeader] >> 4 ) + ( buf[pastHeader] & 0x0f );
 							unsigned int ip2 = (u_char)buf[pastHeader];
 							pastHeader++;
-							// unsigned int ip3 = ( buf[pastHeader] >> 4 ) + ( buf[pastHeader] & 0x0f );
 							unsigned int ip3 = (u_char)buf[pastHeader];
 							pastHeader++;
-							// unsigned int ip4 = ( buf[pastHeader] >> 4 ) + ( buf[pastHeader] & 0x0f );
 							unsigned int ip4 = (u_char)buf[pastHeader];
 							pastHeader++;
 							printf("%u.%u.%u.%u", ip1, ip2, ip3, ip4);
-							printf(" TTL %d\n", htons(reply->TTL1) + htons(reply->TTL2));
-
-
-							// printf("TTL %d ", TTL);
-							// pastHeader++; // land on 12 / record after 0xc0
 						}
 						else
 						{
-							// string jumpAgain = processJump((u_char*)buf, pastHeader, name, pastHeader);
-
-
-
-
 							if (dnsConversionToServer == DNS_NS)
 							{
 								printf(" NS ");
-								string jumpAgain = processJump((u_char*)buf, pastHeader, pastHeader, i);
-								printf("%s", jumpAgain.c_str() + 1);
-								printf(" TTL %d\n", htons(reply->TTL1) + htons(reply->TTL2));
-
 
 							}
 							else if (dnsConversionToServer == DNS_CNAME)
 							{
 								printf(" CNAME ");
-								string jumpAgain = processJump((u_char*)buf, pastHeader, pastHeader, i);
-								printf("%s", jumpAgain.c_str() + 1);
-								printf(" TTL %d\n", htons(reply->TTL1) + htons(reply->TTL2));
-
-
-
 							}
 							else if (dnsConversionToServer == DNS_PTR)
 							{
 								printf(" PTR ");
-								string jumpAgain = processJump((u_char*)buf, pastHeader, pastHeader, i);
-								printf(".%s", jumpAgain.c_str() + 1);
-								printf(" TTL %d\n", htons(reply->TTL1) + htons(reply->TTL2));
-
-
 							}
+							string jumpAgain = processJump((u_char*)buf, pastHeader, pastHeader, i);
+							printf("%s", jumpAgain.c_str() + 1);
 						}
+
+						printf(" TTL %d\n", htons(reply->TTL1) + htons(reply->TTL2));
 					}
 				}
 				if (htons(fdhRec->authority) > 0)
@@ -695,14 +638,7 @@ int runMainFunction(string queryReplace, string DNSReplace)
 					printf("   ------------ [authority] ----------\n");
 					for (int i = 0; i < htons(fdhRec->authority); i++)
 					{
-						// error check
-						string passIntoJump(buf + pastHeader);
-						int holdOldPointer = pastHeader;
-
-						// -64 means jump 11000000
-
 						string answer = processJump((u_char*)buf, pastHeader, pastHeader, i);
-
 						// buf @ ptr after 2 jumping bytes for 8 bytes is the DNSanswerHeader
 						// \0 1 \0 1 \0 \0 \0 should be how it looks 
 						DNSanswerHdr* reply = (DNSanswerHdr*)(buf + pastHeader);
@@ -716,220 +652,117 @@ int runMainFunction(string queryReplace, string DNSReplace)
 						*/
 
 						int dnsConversionToServer = reply->classDef;
-						/*
-						int testNSHtons = htons(reply->type);
-						int testCNAMEHtons = htons(reply->type);
-						int testPTRHtons = htons(reply->type);
-						*/
 						pastHeader += sizeof(reply);
 						printf("\t");
 						printf(answer.c_str() + 1); // this is the old web dns
-
-						// remove answer.size() null ptr
-						// pastHeader = pastHeader + answer.size() -1 + sizeof(reply); // now theres two empty bytes,
 						pastHeader += 3; // move past TTL to names
-
 
 						if (dnsConversionToServer == DNS_A)
 						{
-							// pastHeader += 2;
 
 							printf(" A ");
-							// pull out and print bytes and TTL
-							// unsigned int TTL = buf[pastHeader];
-
-							// handle IP
-							// pastHeader += 3; // move 2 bytes up and 1 more to remove the leading char count
-							// pastHeader++;
-							// unsigned int ip1 = ( buf[pastHeader] >> 4 ) + ( buf[pastHeader] & 0x0f );
 							unsigned int ip1 = (u_char)buf[pastHeader];
 							pastHeader++;
-							// unsigned int ip2 = ( buf[pastHeader] >> 4 ) + ( buf[pastHeader] & 0x0f );
 							unsigned int ip2 = (u_char)buf[pastHeader];
 							pastHeader++;
-							// unsigned int ip3 = ( buf[pastHeader] >> 4 ) + ( buf[pastHeader] & 0x0f );
 							unsigned int ip3 = (u_char)buf[pastHeader];
 							pastHeader++;
-							// unsigned int ip4 = ( buf[pastHeader] >> 4 ) + ( buf[pastHeader] & 0x0f );
 							unsigned int ip4 = (u_char)buf[pastHeader];
 							pastHeader++;
 							printf("%u.%u.%u.%u", ip1, ip2, ip3, ip4);
-							printf(" TTL %d\n", htons(reply->TTL1) + htons(reply->TTL2));
-
-
-							// printf("TTL %d ", TTL);
-							// pastHeader++; // land on 12 / record after 0xc0
 						}
 						else
 						{
-							// string jumpAgain = processJump((u_char*)buf, pastHeader, name, pastHeader);
-
-
-
-
 							if (dnsConversionToServer == DNS_NS)
 							{
 								printf(" NS ");
-								string jumpAgain = processJump((u_char*)buf, pastHeader, pastHeader, i);
-								printf("%s", jumpAgain.c_str() + 1);
-								printf(" TTL %d\n", htons(reply->TTL1) + htons(reply->TTL2));
-
 
 							}
 							else if (dnsConversionToServer == DNS_CNAME)
 							{
 								printf(" CNAME ");
-								string jumpAgain = processJump((u_char*)buf, pastHeader, pastHeader, i);
-								printf("%s", jumpAgain.c_str() + 1);
-								printf(" TTL %d\n", htons(reply->TTL1) + htons(reply->TTL2));
-
-
-
 							}
 							else if (dnsConversionToServer == DNS_PTR)
 							{
 								printf(" PTR ");
-								string jumpAgain = processJump((u_char*)buf, pastHeader, pastHeader, i);
-								printf(".%s", jumpAgain.c_str() + 1);
-								printf(" TTL %d\n", htons(reply->TTL1) + htons(reply->TTL2));
-
-
 							}
+							string jumpAgain = processJump((u_char*)buf, pastHeader, pastHeader, i);
+							printf("%s", jumpAgain.c_str() + 1);
 						}
+						printf(" TTL %d\n", htons(reply->TTL1) + htons(reply->TTL2));
+					
 					}
 				}
 				if (htons(fdhRec->additional) > 0)
 				{
 					printf("   ------------ [additional] ----------\n");
-					// error check
 					for (int i = 0; i < htons(fdhRec->additional); i++)
 					{
-						// error check
-						string passIntoJump(buf + pastHeader);
-						int holdOldPointer = pastHeader;
-
-						// -64 means jump 11000000
-
 						string answer = processJump((u_char*)buf, pastHeader, pastHeader, i);
-
 						// buf @ ptr after 2 jumping bytes for 8 bytes is the DNSanswerHeader
 						// \0 1 \0 1 \0 \0 \0 should be how it looks 
 						DNSanswerHdr* reply = (DNSanswerHdr*)(buf + pastHeader);
-						int a = sizeof(reply); // this should be 8 bytes 
-						a++;
 						/*
 							# DNS_A 1
 							 DNS_NS 2
 							 DNS_CNAME 5 %
 							 DNS_PTR 12
 						*/
-
 						int dnsConversionToServer = reply->classDef;
-						/*
-						int testNSHtons = htons(reply->type);
-						int testCNAMEHtons = htons(reply->type);
-						int testPTRHtons = htons(reply->type);
-						*/
 						pastHeader += sizeof(reply);
 						printf("\t");
 						printf(answer.c_str() + 1); // this is the old web dns
-
-						// remove answer.size() null ptr
-						// pastHeader = pastHeader + answer.size() -1 + sizeof(reply); // now theres two empty bytes,
 						pastHeader += 3; // move past TTL to names
 
 
 						if (dnsConversionToServer == DNS_A)
 						{
-							// pastHeader += 2;
-
 							printf(" A ");
-							// pull out and print bytes and TTL
-							// unsigned int TTL = buf[pastHeader];
-
-							// handle IP
-							// pastHeader += 3; // move 2 bytes up and 1 more to remove the leading char count
-							// pastHeader++;
-							// unsigned int ip1 = ( buf[pastHeader] >> 4 ) + ( buf[pastHeader] & 0x0f );
 							unsigned int ip1 = (u_char)buf[pastHeader];
 							pastHeader++;
-							// unsigned int ip2 = ( buf[pastHeader] >> 4 ) + ( buf[pastHeader] & 0x0f );
 							unsigned int ip2 = (u_char)buf[pastHeader];
 							pastHeader++;
-							// unsigned int ip3 = ( buf[pastHeader] >> 4 ) + ( buf[pastHeader] & 0x0f );
 							unsigned int ip3 = (u_char)buf[pastHeader];
 							pastHeader++;
-							// unsigned int ip4 = ( buf[pastHeader] >> 4 ) + ( buf[pastHeader] & 0x0f );
 							unsigned int ip4 = (u_char)buf[pastHeader];
 							pastHeader++;
 							printf("%u.%u.%u.%u", ip1, ip2, ip3, ip4);
-							printf(" TTL %d\n", htons(reply->TTL1) + htons(reply->TTL2));
-
-
-							// printf("TTL %d ", TTL);
-							// pastHeader++; // land on 12 / record after 0xc0
 						}
 						else
 						{
-							// string jumpAgain = processJump((u_char*)buf, pastHeader, name, pastHeader);
-
-
-
 
 							if (dnsConversionToServer == DNS_NS)
 							{
 								printf(" NS ");
-								string jumpAgain = processJump((u_char*)buf, pastHeader, pastHeader, i);
-								printf("%s", jumpAgain.c_str() + 1);
-								printf(" TTL %d\n", htons(reply->TTL1) + htons(reply->TTL2));
-
-
 							}
 							else if (dnsConversionToServer == DNS_CNAME)
 							{
 								printf(" CNAME ");
-								string jumpAgain = processJump((u_char*)buf, pastHeader, pastHeader, i);
-								printf("%s", jumpAgain.c_str() + 1);
-								printf(" TTL %d\n", htons(reply->TTL1) + htons(reply->TTL2));
-
-
-
 							}
 							else if (dnsConversionToServer == DNS_PTR)
 							{
 								printf(" PTR ");
-								string jumpAgain = processJump((u_char*)buf, pastHeader, pastHeader, i);
-								printf(".%s", jumpAgain.c_str() + 1);
-								printf(" TTL %d\n", htons(reply->TTL1) + htons(reply->TTL2));
-
-
 							}
+							string jumpAgain = processJump((u_char*)buf, pastHeader, pastHeader, i);
+							printf("%s", jumpAgain.c_str() + 1);
 						}
+						printf(" TTL %d\n", htons(reply->TTL1) + htons(reply->TTL2));
 					}
 
 				}
-				// suppose off is the current position in the packet
-					// int off = 0;
-					// DNSanswerHdr * dah = (DNSanswerHdr*)(buf + off);
-					// read dah->len and other fields 
-				// parse the response
-				// break from the loop
-					// printf("breaking line 335 \n");
+
 				break;
 			}
 			else
 			{
 				printf(" recfrom error %d\n", WSAGetLastError());
 				break;
-				// WSACleanup();
-				// closesocket(sock);
 			}
 
 		}
 		else if (available == 0)
 		{
-			double duration = (double)(clock() - start) / CLOCKS_PER_SEC;
-			printf("timeout in %d ms\n", duration * 1000);
+			printf("timeout in %d ms\n", (int) (1000*((double)(clock() - start)) / CLOCKS_PER_SEC));
 		}
 		else
 		{
@@ -975,18 +808,21 @@ int main(int argc, char* argv[])
 
 	string query("yahoo.com" );
 	string DNS ( "128.194.135.85" );
-   */
-	/*
-	vector<string> happyQuery = { "www.google.com","www.dhs.gov","randomA.irl","yahoo.com" };
-	vector<string> happyDNS = { "8.8.8.8","128.194.135.85","128.194.135.82",  "128.194.135.85" };
+
+	string query("128.194.138.19" );
+	string DNS ( "128.194.135.85" );
+
+	runMainFunction(query, DNS);
+	vector<string> happyQuery = { "www.google.com","www.dhs.gov","randomA.irl","yahoo.com","128.194.138.19" };
+	vector<string> happyDNS = { "8.8.8.8","128.194.135.85","128.194.135.82",  "128.194.135.85","128.194.138.85" };
 	for (int i = 0; i < happyQuery.size(); i++)
 	{
 		runMainFunction(happyQuery[i], happyDNS[i]);
 		printf("\n\n\n\n\n\n");
 
 	}
-	*/
-	vector<string> unhappyQuery = { "google.c","12.190.0.107","random2.irl","random9.irl","randomB.irl","google.com"};
+   */
+	vector<string> unhappyQuery = { "www.google.c","12.190.0.107","random2.irl","random9.irl","randomB.irl","www.google.com"};
 	vector<string> unhappyDNS = {"128.194.135.85","128.194.135.85","128.194.135.82","128.194.135.82","128.194.135.82","128.194.135.9"};
 	for (int i = 0; i < unhappyQuery.size(); i++)
 	{
@@ -994,6 +830,8 @@ int main(int argc, char* argv[])
 		printf("\n\n\n\n\n\n");
 
 	}
+	/*
+	*/
 
 	return 0;
 
