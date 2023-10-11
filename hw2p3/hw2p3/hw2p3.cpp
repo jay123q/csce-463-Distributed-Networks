@@ -43,9 +43,9 @@ class DNSanswerHdr {
 public:
 	u_short type;
 	u_short classDef;
+	u_short len;
 	u_short TTL1;
 	u_short TTL2;
-	u_short len;
 };
 
 
@@ -76,7 +76,7 @@ string removeNumbers(string str)
 	{
 		char checkChar = str[i];
 		int checkDigit = str[i];
-		if (checkDigit >= 1 && checkDigit <= 9)
+		if (checkDigit >= 1 && checkDigit <= 47 )
 		{
 			str[i] = '.';
 		}
@@ -691,8 +691,8 @@ int runMainFunction(string queryReplace, string DNSReplace)
 						// loop through link buffer and change all unknown chars into " "
 						linkCheck = removeNumbers(linkCheck);
 
-						printf("       "); // this is 7 spaces bc the leading string has a number that becomes a space we are going megaminded bb
-						printf(linkCheck.c_str());
+						printf("\t"); // this is 7 spaces bc the leading string has a number that becomes a space we are going megaminded bb
+						printf(linkCheck.c_str()+1);
 
 						pastHeader = linkCheck.size() + pastHeader + 2; // now theres two empty bytes,
 						int typeBuf;
@@ -762,7 +762,13 @@ int runMainFunction(string queryReplace, string DNSReplace)
 							unsigned int ip4 = (u_char)buf[pastHeader];
 							pastHeader++;
 							printf("%u.%u.%u.%u", ip1, ip2, ip3, ip4);
-							printf(" TTL %d\n", htons(reply->TTL1) + htons(reply->TTL2));
+							int a212= htons(reply->len);
+							int a2123 = htons(reply->len);
+							int a = htons(reply->TTL1);
+							int a2 = 256*htons(reply->TTL1);
+							int a23 = htons(reply->TTL2);
+							int a4 = 256*htons(reply->TTL2);
+							printf(" TTL %d\n", reply->TTL1 + reply->TTL2);
 						}
 						else
 						{
@@ -776,7 +782,7 @@ int runMainFunction(string queryReplace, string DNSReplace)
 									break;
 								}
 								printf("%s", jumpAgain.c_str() + 1);
-								printf(" TTL %d\n", htons(reply->TTL1) + htons(reply->TTL2));
+								printf(" TTL %d\n", reply->TTL1 + reply->TTL2);
 
 							}
 							else if (dnsConversionToServer == DNS_CNAME)
@@ -789,7 +795,7 @@ int runMainFunction(string queryReplace, string DNSReplace)
 									break;
 								}
 								printf("%s", jumpAgain.c_str() + 1);
-								printf(" TTL %d\n", htons(reply->TTL1) + htons(reply->TTL2));
+								printf(" TTL %d\n", reply->TTL1 + reply->TTL2);
 							}
 							else if (dnsConversionToServer == DNS_PTR)
 							{
@@ -801,7 +807,7 @@ int runMainFunction(string queryReplace, string DNSReplace)
 									break;
 								}
 								printf("%s", jumpAgain.c_str() + 1);
-								printf(" TTL %d\n", htons(reply->TTL1) + htons(reply->TTL2));
+								printf(" TTL %d\n", reply->TTL1 + reply->TTL2);
 							}
 						}
 
@@ -822,7 +828,7 @@ int runMainFunction(string queryReplace, string DNSReplace)
 						}
 						// buf @ ptr after 2 jumping bytes for 8 bytes is the DNSanswerHeader
 						// \0 1 \0 1 \0 \0 \0 should be how it looks 
-						DNSanswerHdr* reply = (DNSanswerHdr*)(buf + pastHeader);
+						DNSanswerHdr* reply = (DNSanswerHdr*)((u_char*) buf + pastHeader);
 						int a = sizeof(reply); // this should be 8 bytes 
 						a++;
 						/*
@@ -858,7 +864,7 @@ int runMainFunction(string queryReplace, string DNSReplace)
 							unsigned int ip4 = (u_char)buf[pastHeader];
 							pastHeader++;
 							printf("%u.%u.%u.%u", ip1, ip2, ip3, ip4);
-							printf(" TTL %d\n", htons(reply->TTL1) + htons(reply->TTL2));
+								printf(" TTL %d\n", reply->TTL1 + reply->TTL2);
 						}
 						else
 						{
@@ -872,7 +878,7 @@ int runMainFunction(string queryReplace, string DNSReplace)
 									break;
 								}
 								printf("%s", jumpAgain.c_str() + 1);
-								printf(" TTL %d\n", htons(reply->TTL1) + htons(reply->TTL2));
+								printf(" TTL %d\n", reply->TTL1 + reply->TTL2);
 							}
 							else if (dnsConversionToServer == DNS_CNAME)
 							{
@@ -884,7 +890,7 @@ int runMainFunction(string queryReplace, string DNSReplace)
 									break;
 								}
 								printf("%s", jumpAgain.c_str() + 1);
-								printf(" TTL %d\n", htons(reply->TTL1) + htons(reply->TTL2));
+								printf(" TTL %d\n", reply->TTL1 + reply->TTL2);
 							}
 							else if (dnsConversionToServer == DNS_PTR)
 							{
@@ -896,7 +902,7 @@ int runMainFunction(string queryReplace, string DNSReplace)
 									break;
 								}
 								printf("%s", jumpAgain.c_str() + 1);
-								printf(" TTL %d\n", htons(reply->TTL1) + htons(reply->TTL2));
+								printf(" TTL %d\n", reply->TTL1 + reply->TTL2);
 							}
 						}
 
@@ -950,7 +956,7 @@ int runMainFunction(string queryReplace, string DNSReplace)
 							unsigned int ip4 = (u_char)buf[pastHeader];
 							pastHeader++;
 							printf("%u.%u.%u.%u", ip1, ip2, ip3, ip4);
-							printf(" TTL %d\n", htons(reply->TTL1) + htons(reply->TTL2));
+								printf(" TTL %d\n", reply->TTL1 + reply->TTL2);
 						}
 						else
 						{
@@ -965,7 +971,7 @@ int runMainFunction(string queryReplace, string DNSReplace)
 									break;
 								}
 								printf("%s", jumpAgain.c_str() + 1);
-								printf(" TTL %d\n", htons(reply->TTL1) + htons(reply->TTL2));
+								printf(" TTL %d\n", reply->TTL1 + reply->TTL2);
 							}
 							else if (dnsConversionToServer == DNS_CNAME)
 							{
@@ -977,7 +983,7 @@ int runMainFunction(string queryReplace, string DNSReplace)
 									break;
 								}
 								printf("%s", jumpAgain.c_str() + 1);
-								printf(" TTL %d\n", htons(reply->TTL1) + htons(reply->TTL2));
+								printf(" TTL %d\n", reply->TTL1 + reply->TTL2);
 							}
 							else if (dnsConversionToServer == DNS_PTR)
 							{
@@ -989,7 +995,7 @@ int runMainFunction(string queryReplace, string DNSReplace)
 									break;
 								}
 								printf("%s", jumpAgain.c_str() + 1);
-								printf(" TTL %d\n", htons(reply->TTL1) + htons(reply->TTL2));
+								printf(" TTL %d\n", reply->TTL1 + reply->TTL2);
 							}
 						}
 
@@ -1030,18 +1036,19 @@ int runMainFunction(string queryReplace, string DNSReplace)
 
 int main(int argc, char* argv[])
 {
-	/*
+
 	if (argc != 3)
 	{
 		cout << " CHECK HOW YOU RUNNING OR WHAT WE ARE TESTING ./hw2.exe query ip \n";
 		return 0;
 	}
 
-	*/
+	runMainFunction(argv[1], argv[2]);
 
-
-	// runMainFunction(query, DNS);
    /*
+	
+
+
 
    string query("www.google.com");
    string DNS ( "8.8.8.8" );
@@ -1059,19 +1066,17 @@ int main(int argc, char* argv[])
 	string DNS ( "128.194.135.85" );
 
 	runMainFunction(query, DNS);
-	vector<string> happyQuery = { "www.google.com","www.dhs.gov","randomA.irl","yahoo.com","128.194.138.19" };
-	vector<string> happyDNS = { "8.8.8.8","128.194.135.85","128.194.135.82",  "128.194.135.85","128.194.138.85" };
    */
-   /*
-	vector<string> happyQuery = { "www.dhs.gov","randomA.irl","yahoo.com","128.194.138.19" };
-	vector<string> happyDNS = { "128.194.135.85","128.194.135.82",  "128.194.135.85","128.194.138.85" };
+	/*
+	vector<string> happyQuery = { "www.google.com","www.dhs.gov","randomA.irl","yahoo.com","23.203.88.222" ,"128.194.135.77"};
+	vector<string> happyDNS = { "8.8.8.8","128.194.135.85","128.194.135.82",  "128.194.135.85","128.194.138.85","128.194.135.85"};
+  
    for (int i = 0; i < happyQuery.size(); i++)
    {
 	   runMainFunction(happyQuery[i], happyDNS[i]);
 	   printf("\n\n\n\n\n\n");
 
    }
-   */
 	vector<string> unhappyQuery = { "www.google.c","12.190.0.107","random2.irl","random9.irl","randomB.irl","google.com" };
 	vector<string> unhappyDNS = { "128.194.135.85","128.194.135.85","128.194.135.82","128.194.135.82","128.194.135.82","128.194.135.9" };
 	for (int i = 0; i < unhappyQuery.size(); i++)
@@ -1081,8 +1086,9 @@ int main(int argc, char* argv[])
 
 	}
 
-	//randomX.irl 1-9 A-B
+   */
 	 /*
+	//randomX.irl 1-9 A-B
 	 vector<string> randomQuery = { "random0.irl", "random1.irl","random2.irl", "random3.irl","random4.irl", "random5.irl","random6.irl", "random7.irl","random8.irl","random9.irl","randomA.irl","randomB.irl" };
 	  // vector<string> randomQuery = {"random5.irl","random5.irl","random5.irl","random5.irl","random5.irl" };
 	 for (int i = 0; i < randomQuery.size(); i++)
@@ -1098,7 +1104,7 @@ int main(int argc, char* argv[])
 	 printf("\n\n\n\n\n\n");
 	 runMainFunction(query , "128.194.135.82");
 	 printf("\n\n\n\n\n\n");
-	 runMainFunction(query , "128.194.135.82");
+	 runMainFunction(query , "128.194.135.85");
 	 printf("\n\n\n\n\n\n");
 	 */
 	return 0;
