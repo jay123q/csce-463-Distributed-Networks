@@ -32,8 +32,9 @@ using namespace std;
 void main(int argc, char** argv)
 {
     LinkProperties linkedProperties;
-    std::string host("128.194.135.82");
-    int power = 24;
+     std::string host("s3.irl.cs.tamu.edu");
+   // std::string host("127.0.0.1");
+    int power = 20;
     int sendingWindow = 10;
     linkedProperties.RTT = 0.2;
     linkedProperties.pLoss[FORWARD_PATH] = 0.000001;
@@ -80,9 +81,9 @@ void main(int argc, char** argv)
     SenderSocket ss; // instance of your class
     DWORD status;
 
-    printf("Main: initializing DWORD array with 2^%d elements... done in %0.3f ms\n",
+    printf("Main: initializing DWORD array with 2^%d elements... done in %d ms\n",
         power,
-        (clock()- timeOpen)/CLOCKS_PER_SEC
+        double ((clock()- timeOpen)/CLOCKS_PER_SEC) * 1000
         
         );
 
@@ -90,6 +91,7 @@ void main(int argc, char** argv)
     {
         // error handling: print status and quit
         printf("Main: connect failed with status %d\n", status);
+                return;
 
     }
 
@@ -99,14 +101,17 @@ void main(int argc, char** argv)
     UINT64 bytes = 0;
 
         UINT64 off = 0; // current position in buffer
+
+
         while (off < byteBufferSize)
         {
             // decide the size of next chunk
             bytes = min(byteBufferSize - off, MAX_PKT_SIZE - sizeof(SenderDataHeader));
             // send chunk into socket
-            if ((status = ss.Send(charBuf + off, bytes )) != STATUS_OK)
+            if ((status = ss.Send(charBuf + off, bytes)) != STATUS_OK)
             {
                 printf("Main: connect failed with status %d\n", status);
+                return;
                 // error handing: print status and quit
 
             }
@@ -114,8 +119,9 @@ void main(int argc, char** argv)
 
                 off += bytes;
         }
-        printf("Main: connected to %s in %0.3f sec, pkt size &d bytes\n",
-            host,
+
+        printf("Main: connected to %s in %0.3f sec, pkt size %d bytes\n",
+            host.c_str(),
             ss.packet->lp.RTT,
             bytes
         );
@@ -125,10 +131,11 @@ void main(int argc, char** argv)
     {
         // error handing: print status and quit
         printf("Main: connect failed with status %d\n", status);
+                return;
 
     }
     printf("Main: transfer finished in %0.3f sec\n",
-        (clock() - transferTime) / CLOCKS_PER_SEC
+        (double) ((clock() - transferTime) / CLOCKS_PER_SEC)
     );
 }
 
