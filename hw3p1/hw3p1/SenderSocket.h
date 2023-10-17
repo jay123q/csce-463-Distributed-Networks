@@ -54,17 +54,21 @@ class SenderSocket {
     struct sockaddr_in local;
     struct hostent* remote;
     struct sockaddr_in server;
+    int bytes;
     LinkProperties* lp;
     string host;
     DWORD IP;
 
 public:
+    bool opened;
+    double RTT;
     SenderSynHeader* packet;
     SOCKET sock;
     clock_t time;
     SenderSocket();
     DWORD Open(string host, int portNumber, int senderWindow, LinkProperties* lp);
     DWORD Send(char* pointer, UINT64 bytes );
+    DWORD recvFrom(long RTOsec, long RTOusec, bool inOpen);
     DWORD Close();
 
 };

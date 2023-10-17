@@ -32,13 +32,14 @@ using namespace std;
 void main(int argc, char** argv)
 {
     LinkProperties linkedProperties;
-     std::string host("s3.irl.cs.tamu.edu");
-   // std::string host("127.0.0.1");
+    // std::string host("s3.irl.cs.tamu.edu");
+    std::string host("127.0.0.1");
     int power = 20;
     int sendingWindow = 10;
     linkedProperties.RTT = 0.2;
-    linkedProperties.pLoss[FORWARD_PATH] = 0.000001;
-    linkedProperties.pLoss[RETURN_PATH] = 0.0001;
+
+    linkedProperties.pLoss[FORWARD_PATH] = 0;
+    linkedProperties.pLoss[RETURN_PATH] = 0;
     linkedProperties.speed = 100.0;
 
     /*
@@ -91,10 +92,11 @@ void main(int argc, char** argv)
     {
         // error handling: print status and quit
         printf("Main: connect failed with status %d\n", status);
+        ss.opened = false;
                 return;
 
     }
-
+    /*
 
     char* charBuf = (char*)dwordBuf; // this buffer goes into socket
     UINT64 byteBufferSize = dwordBufSize << 2; // convert to bytes
@@ -119,17 +121,23 @@ void main(int argc, char** argv)
 
                 off += bytes;
         }
-
-        printf("Main: connected to %s in %0.3f sec, pkt size %d bytes\n",
-            host.c_str(),
-            ss.packet->lp.RTT,
-            bytes
+    */
+    char* charBuf = (char*)dwordBuf; // this buffer goes into socket
+    UINT64 byteBufferSize = dwordBufSize << 2; // convert to bytes
+        UINT64 off = 0; // current position in buffer
+    UINT64 bytes = 0;
+    bytes = min(byteBufferSize - off, MAX_PKT_SIZE - sizeof(SenderDataHeader));
+    printf("Main: connected to %s in %0.3f sec, pkt size %d bytes\n",
+        host.c_str(),
+        ss.RTT,
+        bytes
         );
     // recieve from
         clock_t transferTime = clock();
     if ((status = ss.Close()) != STATUS_OK)
     {
         // error handing: print status and quit
+        ss.opened = false;
         printf("Main: connect failed with status %d\n", status);
                 return;
 
