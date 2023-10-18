@@ -51,7 +51,7 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
 
     this->sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (this->sock == INVALID_SOCKET) {
-        printf(" [%0.3f] --> target %s is invalid\n",
+        printf(" [%.3f] --> target %s is invalid\n",
             (clock() - time) / CLOCKS_PER_SEC,
             host
         );
@@ -66,7 +66,7 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
     local.sin_port = 0;
 
     if (bind(sock, (struct sockaddr*)&local, sizeof(local)) == SOCKET_ERROR) {
-        printf(" [%0.3f] --> target %s is invalid\n",
+        printf(" [%.3f] --> target %s is invalid\n",
             (clock() - time) / CLOCKS_PER_SEC,
             host
         );
@@ -77,19 +77,36 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
     }
 
 
-    this->packet = new SenderSynHeader();
-    packet->lp.bufferSize = senderWindow + 3 ; // window size is 10 with retransmit it 3x
-    packet->lp.pLoss[0] = lp->pLoss[0];
-    packet->lp.pLoss[1] = lp->pLoss[1];
-    packet->lp.RTT = lp->RTT;
-    packet->lp.speed = lp->speed;
+    this->packetSyn = new SenderSynHeader();
+    memset(packetSyn, 0, sizeof(SenderSynHeader));
+    packetSyn->lp.bufferSize = senderWindow + 3 ; // window size is 10 with retransmit it 3x
+    packetSyn->lp.pLoss[0] = lp->pLoss[0];
+    packetSyn->lp.pLoss[1] = lp->pLoss[1];
+    packetSyn->lp.RTT = lp->RTT;
+    packetSyn->lp.speed = lp->speed;
 
-    packet->sdh.flags.reserved = 0;
-    packet->sdh.flags.magic = MAGIC_PROTOCOL;
-    packet->sdh.flags.SYN = 1;
-    packet->sdh.flags.FIN = 0;
-    packet->sdh.flags.ACK = 0;
-    packet->sdh.seq = 0;
+    packetSyn->sdh.flags.reserved = 0;
+    packetSyn->sdh.flags.magic = MAGIC_PROTOCOL;
+    packetSyn->sdh.flags.SYN = 1;
+    packetSyn->sdh.flags.FIN = 0;
+    packetSyn->sdh.flags.ACK = 0;
+    packetSyn->sdh.seq = 0;
+
+
+    this->packetFin = new SenderSynHeader();
+    memset(packetFin, 0, sizeof(SenderSynHeader));
+    packetFin->lp.bufferSize = senderWindow + 3; // window size is 10 with retransmit it 3x
+    packetFin->lp.pLoss[0] = lp->pLoss[0];
+    packetFin->lp.pLoss[1] = lp->pLoss[1];
+    packetFin->lp.RTT = lp->RTT;
+    packetFin->lp.speed = lp->speed;
+
+    packetFin->sdh.flags.reserved = 0;
+    packetFin->sdh.flags.magic = MAGIC_PROTOCOL;
+    packetFin->sdh.flags.SYN = 0;
+    packetFin->sdh.flags.FIN = 1;
+    packetFin->sdh.flags.ACK = 0;
+    packetFin->sdh.seq = 0;
 
     this->host = host.c_str();
     DWORD IP = inet_addr(host.c_str());
@@ -120,15 +137,14 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
     long RTOsec = 1;
     long RTOusec = 0;
     DWORD recvReturn;
-    clock_t startRTT = clock();
-    int a = sizeof(SenderSynHeader);
+    this->startRTT = clock();
     for (int i = 1; i < 4; i++)
     {
-
-        if (sendto(sock, (char*)&packet, sizeof(SenderSynHeader), 0, (struct sockaddr*)&server, sizeof(server)) == SOCKET_ERROR)
+        // you saw cc cc cc cc showing that the packet waas on the heap due to & being used. 
+        if (sendto(sock, (char*) packetSyn, sizeof(SenderSynHeader), 0, (struct sockaddr*)&server, sizeof(server)) == SOCKET_ERROR)
             // if (sendto(sock, pointer , bytes , 0, (struct sockaddr*)&server, sizeof(server)) == SOCKET_ERROR)
         {
-            printf(" [%0.3f] --> failed sendto with %d\n",
+            printf(" [%.3f] --> failed sendto with %d\n",
                 (double)(clock() - time) / CLOCKS_PER_SEC,
                 WSAGetLastError());
             closesocket(sock);
@@ -137,20 +153,20 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
             return FAILED_SEND;
 
         }
-        printf(" [%0.3f] --> SYN 0 (attempt %d of 3, RTO %0.3g) to %d\n",
+        printf(" [%.3f] --> SYN 0 (attempt %d of 3, RTO %.3g) to %s\n",
             (double)(clock() - time) / CLOCKS_PER_SEC,
             i,
             (double)RTOsec + (double)RTOusec / 1e6
-            , IP
+            , inet_ntoa(server.sin_addr)
         );
 
         recvReturn = recvFrom(RTOsec, RTOusec, true);
         if (recvReturn  == STATUS_OK || recvReturn == FAILED_RECV )
         {
+
             break;
         }
     }
-    this->RTT = (clock() - startRTT) / CLOCKS_PER_SEC;
     return recvReturn; 
 }
 
@@ -182,11 +198,15 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
                 // return GetLastError();
             }
             // packet->lp.RTT = (clock() - time) / CLOCKS_PER_SEC;
-            printf(" [%0.3f] <-- ",
+            printf(" [%.3f] <-- ",
                 (double)(clock() - time) / CLOCKS_PER_SEC);
-            printf("SYN-ACK 0 window 1; setting initial RTO to %0.3g\n",
-                (double)RTOsec + (double)RTOusec / 1e6
+
+            this->RTT = (clock() - this->startRTT) / CLOCKS_PER_SEC;
+            printf("SYN-ACK 0 window 1; setting initial RTO to %.3g\n",
+               // (double)RTOsec + (double)RTOusec / 1e6
+                this->RTT*3
             );
+            this->bytesRec = sizeof(rh.ackSeq) + sizeof(rh.recvWnd);
         }
         else if (available >= 0)
         {
@@ -217,11 +237,12 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
                 // return GetLastError();
             }
             // packet->lp.RTT = (clock() - time) / CLOCKS_PER_SEC;
-            printf(" [%0.3f] <-- ",
+            printf(" [%.3f] <-- ",
                 (double)(clock() - time) / CLOCKS_PER_SEC);
-            printf("FIN-ACK 0 window 0; setting initial RTO to %0.3g\n",
+            printf("FIN-ACK 0 window 0\n",
                3*RTT
             );
+            this->bytesRec = sizeof(rh.ackSeq) + sizeof(rh.recvWnd);
         }
         else if (available >= 0)
         {
@@ -235,14 +256,16 @@ DWORD SenderSocket::Send(char* pointer, UINT64 bytes ) {
     return STATUS_OK;
 }
 DWORD SenderSocket::Close() {
+
     int count = 0;
     DWORD recvReturn;
+    this->closeTime = (clock() - startRTT)/CLOCKS_PER_SEC;
     while (count < 5)
     {
         count++;
-        if (sendto(sock, (char*)&packet, sizeof(SenderDataHeader), 0, (struct sockaddr*)&server, sizeof(server)) == SOCKET_ERROR)
+        if (sendto(sock, (char*) packetFin, sizeof(SenderDataHeader), 0, (struct sockaddr*)&server, sizeof(server)) == SOCKET_ERROR)
         {
-            printf(" [%0.3f] --> failed sendto with %d\n",
+            printf(" [%.3f] --> failed sendto with %d\n",
                 (double) (clock() - time) / CLOCKS_PER_SEC,
                 WSAGetLastError());
             closesocket(sock);
@@ -250,17 +273,18 @@ DWORD SenderSocket::Close() {
             // return GetLastError();
             return FAILED_SEND;
         }
-        printf(" [%0.3f] --> FIN 0 (attempt %d of 5, RTO %0.3g)\n",
+        printf(" [%.3f] --> FIN 0 (attempt %d of 5, RTO %.3g)\n",
             (double) (clock() - time) / CLOCKS_PER_SEC,
             count,
             3*RTT
         );
 
-        recvReturn = recvFrom(1, 0, true);
+        recvReturn = recvFrom(1, 0, false);
         if (recvReturn == STATUS_OK || recvReturn == FAILED_RECV)
         {
+            this->closeTransferTime = clock() - closeTime;
             break;
         }
     }
-    return STATUS_OK; // happy
+    return recvReturn; // happy
 }

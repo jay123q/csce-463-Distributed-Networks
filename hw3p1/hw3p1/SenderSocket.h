@@ -60,11 +60,16 @@ class SenderSocket {
     DWORD IP;
 
 public:
+    int bytesRec;
     bool opened;
     double RTT;
-    SenderSynHeader* packet;
     SOCKET sock;
     clock_t time;
+    clock_t closeTime;
+    clock_t startRTT;
+    float closeTransferTime;
+    SenderSynHeader * packetSyn;
+    SenderSynHeader * packetFin;
     SenderSocket();
     DWORD Open(string host, int portNumber, int senderWindow, LinkProperties* lp);
     DWORD Send(char* pointer, UINT64 bytes );

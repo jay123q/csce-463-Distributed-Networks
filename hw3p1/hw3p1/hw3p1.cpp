@@ -31,15 +31,15 @@ using namespace std;
 
 void main(int argc, char** argv)
 {
-    LinkProperties linkedProperties;
-    // std::string host("s3.irl.cs.tamu.edu");
-    std::string host("127.0.0.1");
+     LinkProperties linkedProperties;
+    std::string host("s3.irl.cs.tamu.edu");
+   // std::string host("127.0.0.1");
     int power = 20;
     int sendingWindow = 10;
     linkedProperties.RTT = 0.2;
 
-    linkedProperties.pLoss[FORWARD_PATH] = 0;
-    linkedProperties.pLoss[RETURN_PATH] = 0;
+    linkedProperties.pLoss[FORWARD_PATH] = 0.6;
+    linkedProperties.pLoss[RETURN_PATH] = 0.0001;
     linkedProperties.speed = 100.0;
 
     /*
@@ -52,14 +52,7 @@ void main(int argc, char** argv)
     linkedProperties.pLoss[RETURN_PATH] = atof( argv[6] );
     linkedProperties.speed = atof( argv[7] );
     */
-    /*
-    LinkProperties lp;
-    lp.RTT = atof(...);
-    lp.speed = 1e6 * atof(...); // convert to megabits
-    lp.pLoss[FORWARD_PATH] = atof(...);
-    lp.pLoss[RETURN_PATH] = atof(...);
-    if ((status = ss.Open(targetHost, MAGIC_PORT, senderWindow, &lp)) != STATUS_OK)
-    */
+
 
     clock_t timeOpen = clock();
     printf("Main: sender W = %d, RTT %.3f sec, loss %g / %g, link %g Mbps\n",
@@ -81,10 +74,9 @@ void main(int argc, char** argv)
         dwordBuf[i] = i;
     SenderSocket ss; // instance of your class
     DWORD status;
-
     printf("Main: initializing DWORD array with 2^%d elements... done in %d ms\n",
         power,
-        double ((clock()- timeOpen)/CLOCKS_PER_SEC) * 1000
+        ((clock() - timeOpen) * 1000) / CLOCKS_PER_SEC
         
         );
 
@@ -127,13 +119,14 @@ void main(int argc, char** argv)
         UINT64 off = 0; // current position in buffer
     UINT64 bytes = 0;
     bytes = min(byteBufferSize - off, MAX_PKT_SIZE - sizeof(SenderDataHeader));
-    printf("Main: connected to %s in %0.3f sec, pkt size %d bytes\n",
+
+    printf("Main: connected to %s in %.3f sec, pkt size %d bytes\n",
         host.c_str(),
         ss.RTT,
-        bytes
+        bytes + ss.bytesRec
         );
     // recieve from
-        clock_t transferTime = clock();
+    // double connectToMain = (clock() - ss.startRTT)/CLOCKS_PER_SEC;
     if ((status = ss.Close()) != STATUS_OK)
     {
         // error handing: print status and quit
@@ -142,8 +135,11 @@ void main(int argc, char** argv)
                 return;
 
     }
-    printf("Main: transfer finished in %0.3f sec\n",
-        (double) ((clock() - transferTime) / CLOCKS_PER_SEC)
+
+    printf("Main: transfer finished in %.3f sec\n",
+          (double) ((ss.closeTime- ss.startRTT) / CLOCKS_PER_SEC)
     );
+
+    printf(" close called time is %.3f \n startRTT time is %.3f \n", (double)ss.closeTime/1000, (double)ss.startRTT);
 }
 
