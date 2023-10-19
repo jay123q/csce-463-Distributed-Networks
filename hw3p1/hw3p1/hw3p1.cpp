@@ -32,8 +32,8 @@ using namespace std;
 void main(int argc, char** argv)
 {
      LinkProperties linkedProperties;
-    std::string host("s3.irl.cs.tamu.edu");
-   // std::string host("127.0.0.1");
+   // std::string host("s3.irl.cs.tamu.edu");
+    std::string host("127.0.0.1");
     int power = 20;
     int sendingWindow = 10;
     linkedProperties.RTT = 0.2;
@@ -88,6 +88,7 @@ void main(int argc, char** argv)
                 return;
 
     }
+    clock_t OpenReturnTime = clock();
     /*
 
     char* charBuf = (char*)dwordBuf; // this buffer goes into socket
@@ -137,9 +138,8 @@ void main(int argc, char** argv)
     }
 
     printf("Main: transfer finished in %.3f sec\n",
-          (double) ((ss.closeTime- ss.startRTT) / CLOCKS_PER_SEC)
+          (double) ( (ss.closeCalledTime - OpenReturnTime)/CLOCKS_PER_SEC )
     );
 
-    printf(" close called time is %.3f \n startRTT time is %.3f \n", (double)ss.closeTime/1000, (double)ss.startRTT);
 }
 

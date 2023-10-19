@@ -65,9 +65,8 @@ public:
     double RTT;
     SOCKET sock;
     clock_t time;
-    clock_t closeTime;
+    double closeCalledTime;
     clock_t startRTT;
-    float closeTransferTime;
     SenderSynHeader * packetSyn;
     SenderSynHeader * packetFin;
     SenderSocket();

@@ -41,7 +41,6 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
     {
         return ALREADY_CONNECTED;
     }
-    struct sockaddr_in remote;
     WSADATA wsaData;
     WORD wVersionRequested = MAKEWORD(2, 2);
     if (WSAStartup(wVersionRequested, &wsaData) != 0) {
@@ -52,8 +51,8 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
     this->sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (this->sock == INVALID_SOCKET) {
         printf(" [%.3f] --> target %s is invalid\n",
-            (clock() - time) / CLOCKS_PER_SEC,
-            host
+            (double) (clock() - time) / CLOCKS_PER_SEC,
+            host.c_str()
         );
         printf(" invalid socket erorr \n ");
         closesocket(sock);
@@ -67,8 +66,8 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
 
     if (bind(sock, (struct sockaddr*)&local, sizeof(local)) == SOCKET_ERROR) {
         printf(" [%.3f] --> target %s is invalid\n",
-            (clock() - time) / CLOCKS_PER_SEC,
-            host
+            (double) (clock() - time) / CLOCKS_PER_SEC,
+            host.c_str()
         );
         closesocket(sock);
         WSACleanup();
@@ -134,7 +133,7 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
    // server.sin_addr.S_un.S_addr = inet_addr(host.c_str()); // server’s IP
     server.sin_port = htons(portNumber); // DNS port on server
     // server.sin_port = portNumber; // DNS port on server
-    long RTOsec = 1;
+    long RTOsec = 1.0000;
     long RTOusec = 0;
     DWORD recvReturn;
     this->startRTT = clock();
@@ -153,10 +152,10 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
             return FAILED_SEND;
 
         }
-        printf(" [%.3f] --> SYN 0 (attempt %d of 3, RTO %.3g) to %s\n",
+        printf(" [%.3f] --> SYN 0 (attempt %d of 3, RTO %.3f) to %s\n",
             (double)(clock() - time) / CLOCKS_PER_SEC,
             i,
-            (double)RTOsec + (double)RTOusec / 1e6
+            (double)( RTOsec + RTOusec / 1e6 ) 
             , inet_ntoa(server.sin_addr)
         );
 
@@ -201,8 +200,8 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
             printf(" [%.3f] <-- ",
                 (double)(clock() - time) / CLOCKS_PER_SEC);
 
-            this->RTT = (clock() - this->startRTT) / CLOCKS_PER_SEC;
-            printf("SYN-ACK 0 window 1; setting initial RTO to %.3g\n",
+            this->RTT = (double) (clock() - this->startRTT) / CLOCKS_PER_SEC;
+            printf("SYN-ACK 0 window 1; setting initial RTO to %.4g\n",
                // (double)RTOsec + (double)RTOusec / 1e6
                 this->RTT*3
             );
@@ -239,9 +238,7 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
             // packet->lp.RTT = (clock() - time) / CLOCKS_PER_SEC;
             printf(" [%.3f] <-- ",
                 (double)(clock() - time) / CLOCKS_PER_SEC);
-            printf("FIN-ACK 0 window 0\n",
-               3*RTT
-            );
+            printf("FIN-ACK 0 window 0\n");
             this->bytesRec = sizeof(rh.ackSeq) + sizeof(rh.recvWnd);
         }
         else if (available >= 0)
@@ -257,9 +254,9 @@ DWORD SenderSocket::Send(char* pointer, UINT64 bytes ) {
 }
 DWORD SenderSocket::Close() {
 
+    this->closeCalledTime = clock();
     int count = 0;
     DWORD recvReturn;
-    this->closeTime = (clock() - startRTT)/CLOCKS_PER_SEC;
     while (count < 5)
     {
         count++;
@@ -273,7 +270,7 @@ DWORD SenderSocket::Close() {
             // return GetLastError();
             return FAILED_SEND;
         }
-        printf(" [%.3f] --> FIN 0 (attempt %d of 5, RTO %.3g)\n",
+        printf(" [%.3f] --> FIN 0 (attempt %d of 5, RTO %.4g)\n",
             (double) (clock() - time) / CLOCKS_PER_SEC,
             count,
             3*RTT
@@ -282,7 +279,6 @@ DWORD SenderSocket::Close() {
         recvReturn = recvFrom(1, 0, false);
         if (recvReturn == STATUS_OK || recvReturn == FAILED_RECV)
         {
-            this->closeTransferTime = clock() - closeTime;
             break;
         }
     }
