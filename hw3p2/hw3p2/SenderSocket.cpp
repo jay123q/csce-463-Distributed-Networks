@@ -28,9 +28,12 @@ class SenderDataHeader;
 class ReceiverHeader;
 class SenderSynHeader;
 class SenderSocket;
+struct statsThread;
+#pragma comment(lib, "ws2_32.lib")
 
 SenderSocket::SenderSocket()
 {
+    st.statusEvent = CreateEvent(NULL, true, false, NULL);
     this->time = clock();
     memset(&remote, 0, sizeof(remote));
     memset(&server, 0, sizeof(server));
@@ -41,6 +44,21 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
     {
         return ALREADY_CONNECTED;
     }
+
+    // stats thread initialization
+    st.startTimer = clock();
+    st.bytesAcked = 0;
+    st.packetsToSend = 0;
+    st.nextSeqNum = 0;
+    st.timeoutCount = 0;
+    st.fastRetransmitCount = 0;
+    st.effectiveWindow = 0;
+    st.goodPut = 0;
+    st.estimateRtt = 0;
+
+
+
+
     WSADATA wsaData;
     WORD wVersionRequested = MAKEWORD(2, 2);
     if (WSAStartup(wVersionRequested, &wsaData) != 0) {
@@ -134,9 +152,7 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
 
 
     server.sin_family = AF_INET;
-   // server.sin_addr.S_un.S_addr = inet_addr(host.c_str()); // server’s IP
     server.sin_port = htons(portNumber); // DNS port on server
-    // server.sin_port = portNumber; // DNS port on server
     long RTOsec = 1.0000;
     long RTOusec = 0;
     DWORD recvReturn;
@@ -144,21 +160,17 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
     for (int i = 1; i < 4; i++)
     {
         // you saw cc cc cc cc showing that the packet waas on the heap due to & being used. 
-        printf(" [%.3f] --> SYN 0 (attempt %d of 3, RTO %.3f) to %s\n",
-            (double)(clock() - time) / CLOCKS_PER_SEC,
-            i,
-            (double)( RTOsec ) 
-            , inet_ntoa(server.sin_addr)
-        );
+       // printf(" [%.3f] --> SYN 0 (attempt %d of 3, RTO %.3f) to %s\n",
+
         if (sendto(sock, (char*) packetSyn, sizeof(SenderSynHeader), 0, (struct sockaddr*)&server, sizeof(server)) == SOCKET_ERROR)
-            // if (sendto(sock, pointer , bytes , 0, (struct sockaddr*)&server, sizeof(server)) == SOCKET_ERROR)
         {
+            
             printf(" [%.3f] --> failed sendto with %d\n",
                 (double)(clock() - time) / CLOCKS_PER_SEC,
                 WSAGetLastError());
+            
             closesocket(sock);
             WSACleanup();
-           // return GetLastError();
             return FAILED_SEND;
 
         }
@@ -190,8 +202,7 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
             ReceiverHeader rh;
             struct sockaddr_in response;
             int responseSize = sizeof(response);
-            printf(" [%.3f] <-- ",
-                (double)(clock() - time) / CLOCKS_PER_SEC);
+
             int bytes = recvfrom(sock, (char*)&rh, sizeof(ReceiverHeader), 0, (struct sockaddr*)&response, &responseSize);
             if (bytes == SOCKET_ERROR)
             {
@@ -206,10 +217,7 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
             this->bytesRec = sizeof(rh.ackSeq) + sizeof(rh.recvWnd);
 
             this->RTT = (double) (clock() - this->startRTT) / CLOCKS_PER_SEC;
-            printf("SYN-ACK 0 window 1; setting initial RTO to %.4g\n",
-               // (double)RTOsec + (double)RTOusec / 1e6
-                this->RTT*3
-            );
+
         }
         else if (available >= 0)
         {
@@ -230,8 +238,6 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
             ReceiverHeader rh;
             struct sockaddr_in response;
             int responseSize = sizeof(response);
-            printf(" [%.3f] <-- ",
-                (double)(clock() - time) / CLOCKS_PER_SEC);
             int bytes = recvfrom(sock, (char*)&rh, sizeof(ReceiverHeader), 0, (struct sockaddr*)&response, &responseSize);
             if (bytes == SOCKET_ERROR)
             {
@@ -242,7 +248,6 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
                 return FAILED_RECV;
                 // return GetLastError();
             }
-            printf("FIN-ACK 0 window 0\n");
             // packet->lp.RTT = (clock() - time) / CLOCKS_PER_SEC;
             this->bytesRec = sizeof(rh.ackSeq) + sizeof(rh.recvWnd);
         }
@@ -256,7 +261,56 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
 }
 
 DWORD SenderSocket::Send(char* pointer, UINT64 bytes ) {
-    return STATUS_OK;
+
+        SenderDataHeader * packet = new SenderDataHeader();
+        packet->flags.reserved = 0;
+        packet->flags.magic = MAGIC_PROTOCOL;
+        packet->flags.SYN = 1;
+        packet->flags.FIN = 0;
+        packet->flags.ACK = 0;
+
+        // potential crit section?
+        // stats theard packetsToSend
+        packet->seq = st.packetsToSend;
+        memcpy(packet, pointer, bytes);
+
+        DWORD recvReturn;
+        
+    for (int i = 1; i < 4; i++)
+    {
+        // you saw cc cc cc cc showing that the packet waas on the heap due to & being used. 
+       // printf(" [%.3f] --> SYN 0 (attempt %d of 3, RTO %.3f) to %s\n",
+
+        if (sendto(sock, (char*)packet, sizeof(SenderSynHeader), 0, (struct sockaddr*)&server, sizeof(server)) == SOCKET_ERROR)
+        {
+            
+            printf(" [%.3f] --> failed sendto with %d\n",
+                (double)(clock() - time) / CLOCKS_PER_SEC,
+                WSAGetLastError());
+            closesocket(sock);
+            WSACleanup();
+
+
+
+            printf(" deleting packet \n ");
+            delete  packet;
+
+
+
+
+            return FAILED_SEND;
+
+        }
+
+        recvReturn = recvFrom(1, 0, true);
+        if (recvReturn == STATUS_OK || recvReturn == FAILED_RECV)
+        {
+            break;
+        }
+    }
+    printf(" deleting packet \n ");
+    delete packet;
+    return recvReturn;
 }
 DWORD SenderSocket::Close() {
 
@@ -266,19 +320,16 @@ DWORD SenderSocket::Close() {
     while (count < 5)
     {
         count++;
-        printf(" [%.3f] --> FIN 0 (attempt %d of 5, RTO %.4g)\n",
-            (double) (clock() - time) / CLOCKS_PER_SEC,
-            count,
-            3*RTT
-        );
         if (sendto(sock, (char*) packetFin, sizeof(SenderDataHeader), 0, (struct sockaddr*)&server, sizeof(server)) == SOCKET_ERROR)
         {
             printf(" [%.3f] --> failed sendto with %d\n",
-                (double) (clock() - time) / CLOCKS_PER_SEC,
+                (double)(clock() - time) / CLOCKS_PER_SEC,
                 WSAGetLastError());
+
+
+
             closesocket(sock);
             WSACleanup();
-            // return GetLastError();
             return FAILED_SEND;
         }
 
@@ -289,4 +340,31 @@ DWORD SenderSocket::Close() {
         }
     }
     return recvReturn; // happy
+}
+
+
+
+DWORD SenderSocket::statusThread()
+{
+    bool printMe = false;
+    st.prevTimer = clock();
+    while ((WaitForSingleObject(st.statusEvent, 2000) == WAIT_TIMEOUT) || !printMe)
+    {
+
+        printMe = true;
+        printf("[ %d] B %d ( %.2f MB) N %d T %d F %d W %d S %.4f Mbps RTT %.4f\n",
+            (int)(double)(st.prevTimer - st.startTimer) / CLOCKS_PER_SEC,
+            st.packetsToSend,
+            st.bytesAcked,
+            st.nextSeqNum,
+            st.timeoutCount,
+            st.fastRetransmitCount,
+            st.effectiveWindow,
+            st.goodPut,
+            st.estimateRtt
+        );
+
+        ResetEvent(st.statusEvent);
+    }
+    return 0;
 }

@@ -7,6 +7,10 @@
 #include <iostream>
 using namespace std;
 
+#define MAGIC_PROTOCOL 0x8311AA
+#define MAX_PKT_SIZE (1500-28) // maximum UDP packet size accepted by receiver 
+
+
 
 #pragma pack(push,1) // restores old packing
 class LinkProperties {
@@ -19,7 +23,6 @@ public:
     LinkProperties() { memset(this, 0, sizeof(*this)); }
 };
 
-#define MAGIC_PROTOCOL 0x8311AA
 class Flags {
 public:
     DWORD reserved : 5; // must be zero
@@ -41,6 +44,7 @@ public:
     DWORD recvWnd; // receiver window for flow control (in pkts)
     DWORD ackSeq; // ack value = next expected sequence
 };
+
 class SenderSynHeader {
 public:
     SenderDataHeader sdh;
@@ -48,6 +52,25 @@ public:
 };
 
 #pragma pack(pop,1) // restores old packing
+
+
+
+
+struct statsThread {
+    HANDLE statusEvent;
+
+    clock_t startTimer;
+    clock_t prevTimer;
+    DWORD packetsToSend;
+    double bytesAcked;
+    DWORD nextSeqNum;
+    int timeoutCount;
+    int fastRetransmitCount;
+    int effectiveWindow; // min btwn sndWin and rcvWin
+    double goodPut; // speed reciever processes data from app
+    double estimateRtt;
+
+};
 
 
 class SenderSocket {
@@ -60,6 +83,7 @@ class SenderSocket {
     DWORD IP;
 
 public:
+    statsThread st;
     int bytesRec;
     bool opened;
     double RTT;
@@ -74,5 +98,6 @@ public:
     DWORD Send(char* pointer, UINT64 bytes );
     DWORD recvFrom(long RTOsec, long RTOusec, bool inOpen);
     DWORD Close();
+    DWORD statusThread();
 
 };
