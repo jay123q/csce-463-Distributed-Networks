@@ -7,6 +7,7 @@
 #include <iostream>
 #include "pch.h"
 #include "SenderSocket.h"
+#include "Checksum.h"
 
 
 #define STATUS_OK 0 // no error
@@ -120,7 +121,7 @@ void main(int argc, char** argv)
     UINT64 bytes = 0;
 
         UINT64 off = 0; // current position in buffer
-
+        printf(" in send, opened properly \n");
 
         while (off < byteBufferSize)
         {
@@ -141,7 +142,7 @@ void main(int argc, char** argv)
         }
     
 
-
+        double elapsedTime = (double)((clock() - OpenReturnTime) / CLOCKS_PER_SEC);
 
         WaitForSingleObject(ss.st.statusEvent, INFINITE);
         CloseHandle(ss.st.statusEvent);
@@ -159,8 +160,9 @@ void main(int argc, char** argv)
 
     }
 
+
     printf("Main:   transfer finished in %.3f sec\n",
-        (double)((ss.closeCalledTime - OpenReturnTime) / CLOCKS_PER_SEC)
+        elapsedTime
     );
 
 }

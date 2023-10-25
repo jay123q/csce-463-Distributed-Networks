@@ -86,7 +86,9 @@ class SenderSocket {
 
 public:
 
-
+    double RTO;
+    double estimateRTT;
+    double deviationRTT;
     statsThread st;
     int bytesRec;
     bool opened;
@@ -103,5 +105,9 @@ public:
     DWORD recvFrom(long RTOsec, long RTOusec, bool inOpen);
     DWORD Close();
     DWORD statusThread();
+
+    void estimateRTT();
+    void deviationRTT();
+    void findRTO();
 
 };
