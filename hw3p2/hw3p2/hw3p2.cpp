@@ -40,10 +40,10 @@ void main(int argc, char** argv)
 
 
    // std::string host("128.194.135.1");
-   std::string host("s3.irl.cs.tamu.edu");
    // std::string host("128.194.135.82");
    // std::string host("0.0.0.0");
    // std::string host("127.0.0.1");
+   std::string host("s3.irl.cs.tamu.edu");
 
     int power = 15;
     int sendingWindow = 1;
@@ -145,6 +145,12 @@ void main(int argc, char** argv)
                 off += bytes;
         }
     
+
+
+
+        WaitForSingleObject(ss.st.statusEvent, INFINITE);
+        CloseHandle(ss.st.statusEvent);
+
 
 
     // recieve from

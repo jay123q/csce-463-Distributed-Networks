@@ -292,8 +292,8 @@ DWORD SenderSocket::Send(char* pointer, UINT64 bytes ) {
 
 
 
-            printf(" deleting packet \n ");
-            delete  packet;
+           // printf(" deleting packet \n ");
+            // delete  packet;
 
 
 
@@ -308,8 +308,8 @@ DWORD SenderSocket::Send(char* pointer, UINT64 bytes ) {
             break;
         }
     }
-    printf(" deleting packet \n ");
-    delete packet;
+  //  printf(" deleting packet \n ");
+   // delete packet;
     return recvReturn;
 }
 DWORD SenderSocket::Close() {
