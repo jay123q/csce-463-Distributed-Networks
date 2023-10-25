@@ -136,11 +136,6 @@ void main(int argc, char** argv)
             }
 
 
-            // potential crit section?
-            // stats theard bytesAcked
-            ss.st.bytesAcked += bytes;
-
-
 
                 off += bytes;
         }

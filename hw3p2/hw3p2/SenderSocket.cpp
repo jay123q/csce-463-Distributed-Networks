@@ -46,15 +46,18 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
     }
 
     // stats thread initialization
-    st.startTimer = clock();
-    st.bytesAcked = 0;
-    st.packetsToSend = 0;
-    st.nextSeqNum = 0;
-    st.timeoutCount = 0;
-    st.fastRetransmitCount = 0;
-    st.effectiveWindow = 0;
-    st.goodPut = 0;
-    st.estimateRtt = 0;
+    st.startTimerStats = clock();
+    st.bytesAckedStats = 0;
+    st.packetsToSendStats = 0;
+    st.bytesAckedStats = 0;
+    st.nextSeqNumStats = 0;
+    st.timeoutCountStats = 0;
+    st.fastRetransmitCountStats = 0;
+    st.effectiveWindowStats = 0;
+    st.rcvWinStats = 0;
+    st.sndWinStats = 0;
+    st.goodPutStats = 0;
+    st.estimateRttStats = 0;
 
 
 
@@ -187,8 +190,10 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
 
 DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
 {
-        char* bufferOuttaOrder = new[sizeof(ReceiverHeader)];
+    /*
+        char* bufferOuttaOrder = new char[sizeof(ReceiverHeader)];
         memset(bufferOuttaOrder, 0, sizeof(ReceiverHeader));
+    */
 
 
         timeval timeout;
@@ -198,8 +203,16 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
         FD_ZERO(&fd); // clear the set
         FD_SET(sock, &fd); // add your socket to the set
         int available = select(0, &fd, NULL, NULL, &timeout);
-        if (available > 0)
+        if (available <= 0)
         {
+            // potential crit section
+            // stats theard packetsToSend
+            st.timeoutCountStats++;
+            return TIMEOUT;
+        }
+        else
+        {
+            // (available > 0)
             ReceiverHeader rh;
             struct sockaddr_in response;
             int responseSize = sizeof(response);
@@ -216,34 +229,31 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
             }
             // packet->lp.RTT = (clock() - time) / CLOCKS_PER_SEC;
 
+            if (inOpen)
+            {
+                // this is the rto setup
+                this->RTT = (double) (clock() - this->startRTT) / CLOCKS_PER_SEC;
+
+            }
+            else
+            {
+                // in close, handle snd && recieve more pkts, adjust buffer
+
+                // n == ackSeq, adjust, timer, move window, inc seq
+                // else buf in recvwin
+                if (rh.ackSeq == st.nextSeqNumStats)
+                {
+                    st.nextSeqNumStats++;
+                    st.rcvWinStats = rh.recvWnd;
+                    st.bytesAckedStats += MAX_PKT_SIZE;
+
+                }
+
+
+            }
 
         }
-        else if (available >= 0)
-        {
 
-
-            // potential crit section
-            // stats theard packetsToSend
-            st.timeoutCount++;
-            return TIMEOUT;
-        }
-
-        if (inOpen)
-        {
-            // this is the rto setup
-            this->RTT = (double) (clock() - this->startRTT) / CLOCKS_PER_SEC;
-
-        }
-        else
-        {
-            // in close, handle snd && recieve more pkts, adjust buffer
-
-            // n == ackSeq, adjust, timer, move window, inc seq
-            // else buf in recvwin
-
-
-
-        }
 
 
 

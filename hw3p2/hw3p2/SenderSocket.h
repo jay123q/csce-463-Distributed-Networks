@@ -59,16 +59,18 @@ public:
 struct statsThread {
     HANDLE statusEvent;
 
-    clock_t startTimer; // in open
-    clock_t prevTimer; // in stats
-    DWORD packetsToSend;
-    double bytesAcked; // in main send
-    DWORD nextSeqNum;
-    int timeoutCount; // in rcv
-    int fastRetransmitCount;
-    int effectiveWindow; // min btwn sndWin and rcvWin
-    double goodPut; // speed reciever processes data from app
-    double estimateRtt;
+    clock_t startTimerStats; // in open
+    clock_t prevTimerStats; // in stats
+    DWORD packetsToSendStats;
+    double bytesAckedStats;
+    DWORD nextSeqNumStats; // in recv
+    int timeoutCountStats; // in rcv
+    int fastRetransmitCountStats;
+    int effectiveWindowStats; // min btwn sndWin and rcvWin
+    DWORD rcvWinStats;
+    DWORD sndWinStats;
+    double goodPutStats; // speed reciever processes data from app
+    double estimateRttStats;
 
 };
 
@@ -83,6 +85,8 @@ class SenderSocket {
     DWORD IP;
 
 public:
+
+
     statsThread st;
     int bytesRec;
     bool opened;
