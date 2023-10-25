@@ -59,12 +59,12 @@ public:
 struct statsThread {
     HANDLE statusEvent;
 
-    clock_t startTimer;
-    clock_t prevTimer;
+    clock_t startTimer; // in open
+    clock_t prevTimer; // in stats
     DWORD packetsToSend;
-    double bytesAcked;
+    double bytesAcked; // in main send
     DWORD nextSeqNum;
-    int timeoutCount;
+    int timeoutCount; // in rcv
     int fastRetransmitCount;
     int effectiveWindow; // min btwn sndWin and rcvWin
     double goodPut; // speed reciever processes data from app

@@ -187,10 +187,11 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
 
 DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
 {
-    // send request to the server
-    timeval timeout;
-    if (inOpen)
-    {
+        char* bufferOuttaOrder = new[sizeof(ReceiverHeader)];
+        memset(bufferOuttaOrder, 0, sizeof(ReceiverHeader));
+
+
+        timeval timeout;
         timeout.tv_sec = RTOsec;
         timeout.tv_usec = RTOusec;
         fd_set fd;
@@ -214,49 +215,38 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
                 // return GetLastError();
             }
             // packet->lp.RTT = (clock() - time) / CLOCKS_PER_SEC;
-            this->bytesRec = sizeof(rh.ackSeq) + sizeof(rh.recvWnd);
 
+
+        }
+        else if (available >= 0)
+        {
+
+
+            // potential crit section
+            // stats theard packetsToSend
+            st.timeoutCount++;
+            return TIMEOUT;
+        }
+
+        if (inOpen)
+        {
+            // this is the rto setup
             this->RTT = (double) (clock() - this->startRTT) / CLOCKS_PER_SEC;
 
         }
-        else if (available >= 0)
+        else
         {
-            return TIMEOUT;
+            // in close, handle snd && recieve more pkts, adjust buffer
+
+            // n == ackSeq, adjust, timer, move window, inc seq
+            // else buf in recvwin
+
+
+
         }
 
-    }
-    else
-    {
-        timeout.tv_sec = RTOsec;
-        timeout.tv_usec = RTOusec;
-        fd_set fd;
-        FD_ZERO(&fd); // clear the set
-        FD_SET(sock, &fd); // add your socket to the set
-        int available = select(0, &fd, NULL, NULL, &timeout);
-        if (available > 0)
-        {
-            ReceiverHeader rh;
-            struct sockaddr_in response;
-            int responseSize = sizeof(response);
-            int bytes = recvfrom(sock, (char*)&rh, sizeof(ReceiverHeader), 0, (struct sockaddr*)&response, &responseSize);
-            if (bytes == SOCKET_ERROR)
-            {
-                printf("failed recvfrom with %d\n",
-                    WSAGetLastError());
-                closesocket(sock);
-                WSACleanup();
-                return FAILED_RECV;
-                // return GetLastError();
-            }
-            // packet->lp.RTT = (clock() - time) / CLOCKS_PER_SEC;
-            this->bytesRec = sizeof(rh.ackSeq) + sizeof(rh.recvWnd);
-        }
-        else if (available >= 0)
-        {
-            return TIMEOUT;
-        }
 
-    }
+
     return STATUS_OK;
 }
 
@@ -269,7 +259,7 @@ DWORD SenderSocket::Send(char* pointer, UINT64 bytes ) {
         packet->flags.FIN = 0;
         packet->flags.ACK = 0;
 
-        // potential crit section?
+        // potential crit section
         // stats theard packetsToSend
         packet->seq = st.packetsToSend;
         memcpy(packet, pointer, bytes);
@@ -292,12 +282,6 @@ DWORD SenderSocket::Send(char* pointer, UINT64 bytes ) {
 
 
 
-           // printf(" deleting packet \n ");
-            // delete  packet;
-
-
-
-
             return FAILED_SEND;
 
         }
@@ -308,8 +292,8 @@ DWORD SenderSocket::Send(char* pointer, UINT64 bytes ) {
             break;
         }
     }
-  //  printf(" deleting packet \n ");
-   // delete packet;
+
+
     return recvReturn;
 }
 DWORD SenderSocket::Close() {
