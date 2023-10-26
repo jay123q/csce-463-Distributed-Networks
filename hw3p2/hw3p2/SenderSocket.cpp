@@ -173,7 +173,7 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
 
         }
 
-        recvReturn = recvFrom(RTOsec, RTOusec, true);
+        recvReturn = recvFrom(RTOsec + 2*lp->RTT, RTOusec, true);
         if (recvReturn  == STATUS_OK || recvReturn == FAILED_RECV )
         {
 
@@ -322,7 +322,7 @@ DWORD SenderSocket::Send(char* pointer, UINT64 bytes ) {
     return recvReturn;
 }
 DWORD SenderSocket::Close() {
-
+    this->timeToAckforSampleRTT = clock();
 
     this->packetFin = new SenderSynHeader();
     memset(packetFin, 0, sizeof(SenderSynHeader));
@@ -331,10 +331,8 @@ DWORD SenderSocket::Close() {
     packetFin->lp.bufferSize = this->senderWindow + 3; // window size is 10 with retransmit it 3x
     packetFin->lp.pLoss[0] = pLossForwardFin;
     packetFin->lp.pLoss[1] = pLossBackwardFin;
-    packetFin->lp.RTT = RTTFin;
+    packetFin->lp.RTT = sampleRTT;
     packetFin->lp.speed = speedFin;
-
-
     packetFin->sdh.flags.reserved = 0;
     packetFin->sdh.flags.magic = MAGIC_PROTOCOL;
     packetFin->sdh.flags.SYN = 0;
@@ -371,6 +369,7 @@ DWORD SenderSocket::Close() {
         recvReturn = recvFrom(RTOsec, RTOusec, false);
         if (recvReturn == STATUS_OK || recvReturn == FAILED_RECV)
         {
+            timeAtClose = clock();
             break;
         }
     }
@@ -378,6 +377,10 @@ DWORD SenderSocket::Close() {
     
     // chcksum here
     this->hexDumpPost = checkValidity.CRC32( (unsigned char *) this->sendBufCheckSum, this->packetSizeSend );
+
+
+
+
 
     return recvReturn; // happy
 }
@@ -407,10 +410,10 @@ DWORD SenderSocket::statusThread()
         ResetEvent(st.statusEvent);
         if (st.breakThread == true)
         {
-            return 0;
+            return 20;
         }
     }
-    return 0;
+    return 20;
 }
 
 

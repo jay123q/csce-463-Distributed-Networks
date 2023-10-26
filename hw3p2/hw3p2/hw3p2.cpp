@@ -96,12 +96,7 @@ void main(int argc, char** argv)
 
 
     // stats theard start thread
-    ss.st.statusEvent = new HANDLE[0];
     ss.st.statusEvent = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)status_thread_run, &ss, 0, NULL);
-
-
-
-
 
 
     if ((status = ss.Open(targetHost, MAGIC_PORT, sendingWindow, &linkedProperties)) != STATUS_OK)
@@ -163,7 +158,11 @@ void main(int argc, char** argv)
         return;
 
     }
-
+    printf("[%.3f] <-- FIN-ACK %d window %x\n",
+        elapsedTime - ss.timeAtClose,
+        ss.st.nextSeqNumStats,
+        ss.hexDumpPost
+        );
 
     printf("Main:   transfer finished in %.3f sec, %.3f Kbps, checksum %X\n",
         elapsedTime,

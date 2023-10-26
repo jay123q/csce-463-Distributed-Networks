@@ -106,6 +106,7 @@ public:
     SenderSynHeader * packetSyn;
     SenderSynHeader * packetFin;
     DWORD senderWindow;
+    clock_t timeAtClose;
 
     // all check sum params
     Checksum checkValidity;
