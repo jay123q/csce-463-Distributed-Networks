@@ -159,7 +159,7 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
     long RTOsec = 1.0000;
     long RTOusec = 0;
     DWORD recvReturn;
-    this->startRTT = clock();
+    this->timeToAckforSampleRTT = clock();
     for (int i = 1; i < 4; i++)
     {
         // you saw cc cc cc cc showing that the packet waas on the heap due to & being used. 
@@ -185,6 +185,9 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
             break;
         }
     }
+
+
+    this->sampleRTT = (double)(clock() - this->timeToAckforSampleRTT) / CLOCKS_PER_SEC;
     return recvReturn; 
 }
 
@@ -228,18 +231,24 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
                 return FAILED_RECV;
                 // return GetLastError();
             }
-            // packet->lp.RTT = (clock() - time) / CLOCKS_PER_SEC;
+            
+
+            // packet had to be acked here
+            this->sampleRTT = (double)(clock() - timeToAckforSampleRTT) / CLOCKS_PER_SEC;
+            setEstimateRTT();
+            setDeviationRTT();
+            findRTO();
+
 
             if (inOpen)
             {
-                // this is the rto setup
-                this->RTT = (double) (clock() - this->startRTT) / CLOCKS_PER_SEC;
+
+
 
             }
             else
             {
                 // in close, handle snd && recieve more pkts, adjust buffer
-
                 // n == ackSeq, adjust, timer, move window, inc seq
                 // else buf in recvwin
                 if (rh.ackSeq == st.nextSeqNumStats)
@@ -248,7 +257,9 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
                     st.rcvWinStats = rh.recvWnd;
                     st.bytesAckedStats += MAX_PKT_SIZE;
 
+
                 }
+                // adjust RTT, RTO, ETC
 
 
             }
@@ -262,7 +273,7 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
 }
 
 DWORD SenderSocket::Send(char* pointer, UINT64 bytes ) {
-
+    this->timeToAckforSampleRTT = clock();
     SenderDataHeader * packet = new SenderDataHeader();
     packet->flags.reserved = 0;
     packet->flags.magic = MAGIC_PROTOCOL;
@@ -276,8 +287,8 @@ DWORD SenderSocket::Send(char* pointer, UINT64 bytes ) {
     memcpy(packet, pointer, bytes);
 
     DWORD recvReturn;
-    int RTOsec = floor(3 * this->RTT);
-    int RTOusec = (3 * this->RTT - RTOsec)*1e6;
+    int RTOsec = floor(3 * this->sampleRTT);
+    int RTOusec = (3 * this->sampleRTT - RTOsec)*1e6;
     for (int i = 1; i < 4; i++)
     {
         // you saw cc cc cc cc showing that the packet waas on the heap due to & being used. 
@@ -316,8 +327,8 @@ DWORD SenderSocket::Send(char* pointer, UINT64 bytes ) {
 DWORD SenderSocket::Close() {
 
 
-    int RTOsec = floor(3 * this->RTT);
-    int RTOusec = (3 * this->RTT - RTOsec) * 1e6;
+    int RTOsec = floor(3 * this->sampleRTT);
+    int RTOusec = (3 * this->sampleRTT - RTOsec) * 1e6;
 
 
     this->closeCalledTime = clock();
@@ -346,7 +357,7 @@ DWORD SenderSocket::Close() {
     
     
     // chcksum here
-
+    this->checkSum = checkValidity.CRC32( (unsigned char *) this->checkSumCharBuffer  , this->totalBytesTransferCheckSum );
 
     return recvReturn; // happy
 }
@@ -378,12 +389,17 @@ DWORD SenderSocket::statusThread()
     return 0;
 }
 
-void SenderSocket::estimateRTT() {
 
+void SenderSocket::setDeviationRTT() {
+    double b = 0.25;
+    this->deviationRTT = (1 - b) * this->deviationRTT + b * abs(this->sampleRTT - this->estimateRTT);
 }
-void SenderSocket::deviationRTT() {
-
+void SenderSocket::setEstimateRTT() {
+    double a = 0.125;
+    this->estimateRTT = (1 - a) * this->estimateRTT + a * this->sampleRTT;
+    st.estimateRttStats = this->estimateRTT;
+    // perhaps merg into one
 }
 void SenderSocket::findRTO() {
-
+    this->setRTO = 4 * max(this->deviationRTT, 0.01);
 }

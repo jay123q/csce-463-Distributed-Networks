@@ -7,7 +7,6 @@
 #include <iostream>
 #include "pch.h"
 #include "SenderSocket.h"
-#include "Checksum.h"
 
 
 #define STATUS_OK 0 // no error
@@ -120,6 +119,11 @@ void main(int argc, char** argv)
     UINT64 byteBufferSize = dwordBufSize << 2; // convert to bytes
     UINT64 bytes = 0;
 
+
+    memcpy(ss.checkSumCharBuffer, charBuf, byteBufferSize );
+    ss.totalBytesTransferCheckSum = byteBufferSize;
+
+
         UINT64 off = 0; // current position in buffer
         printf(" in send, opened properly \n");
 
@@ -161,9 +165,14 @@ void main(int argc, char** argv)
     }
 
 
-    printf("Main:   transfer finished in %.3f sec\n",
-        elapsedTime
+    printf("Main:   transfer finished in %.3f sec, %.3f Kbps, checksum %X\n",
+        elapsedTime,
+        ss.st.bytesAckedStats,
+        ss.checkSum
     );
-
+    printf("Main: estRTT %.3f, ideal rate %.3f Kbps \n",
+        ss.estimateRTT,
+        ss.st.effectiveWindowStats / ss.estimateRTT
+    );
 }
 

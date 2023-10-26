@@ -1,5 +1,6 @@
 #pragma once
 #include "pch.h"
+#include "Checksum.h"
 #include <ctype.h> 
 #include <stdio.h> 
 #include <windows.h>
@@ -74,7 +75,7 @@ struct statsThread {
 
 };
 
-
+class Checksum;
 class SenderSocket {
     struct sockaddr_in local;
     struct hostent* remote;
@@ -86,19 +87,30 @@ class SenderSocket {
 
 public:
 
-    double RTO;
+    statsThread st;
+
+    // handle finding RTT
+    double setRTO;
     double estimateRTT;
     double deviationRTT;
-    statsThread st;
+
+    // handle opening an closing
     int bytesRec;
     bool opened;
-    double RTT;
+    double sampleRTT;
     SOCKET sock;
     clock_t time;
     double closeCalledTime;
-    clock_t startRTT;
+    clock_t timeToAckforSampleRTT;
     SenderSynHeader * packetSyn;
     SenderSynHeader * packetFin;
+
+    // all check sum params
+    Checksum checkValidity;
+    DWORD checkSum;
+    char* checkSumCharBuffer;
+    int totalBytesTransferCheckSum;
+
     SenderSocket();
     DWORD Open(string host, int portNumber, int senderWindow, LinkProperties* lp);
     DWORD Send(char* pointer, UINT64 bytes );
@@ -106,8 +118,8 @@ public:
     DWORD Close();
     DWORD statusThread();
 
-    void estimateRTT();
-    void deviationRTT();
+    void setEstimateRTT();
+    void setDeviationRTT();
     void findRTO();
 
 };
