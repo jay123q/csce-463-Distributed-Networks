@@ -72,6 +72,7 @@ struct statsThread {
     DWORD sndWinStats;
     double goodPutStats; // speed reciever processes data from app
     double estimateRttStats;
+    bool breakThread;
 
 };
 
@@ -104,13 +105,19 @@ public:
     clock_t timeToAckforSampleRTT;
     SenderSynHeader * packetSyn;
     SenderSynHeader * packetFin;
+    DWORD senderWindow;
 
     // all check sum params
     Checksum checkValidity;
-    DWORD checkSum;
-    char* checkSumCharBuffer;
-    int totalBytesTransferCheckSum;
+    char* sendBufCheckSum;
+    int packetSizeSend;
+    DWORD hexDumpPost;
 
+    float pLossForwardFin;
+    float pLossBackwardFin;
+    float RTTFin;
+    float speedFin;
+    
     SenderSocket();
     DWORD Open(string host, int portNumber, int senderWindow, LinkProperties* lp);
     DWORD Send(char* pointer, UINT64 bytes );

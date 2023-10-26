@@ -34,9 +34,14 @@ struct statsThread;
 SenderSocket::SenderSocket()
 {
     st.statusEvent = CreateEvent(NULL, true, false, NULL);
+    st.breakThread = false;
+
+
     this->time = clock();
     memset(&remote, 0, sizeof(remote));
     memset(&server, 0, sizeof(server));
+
+
 }
 
 DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProperties* lp) {
@@ -59,7 +64,7 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
     st.goodPutStats = 0;
     st.estimateRttStats = 0;
 
-
+    this->senderWindow = senderWindow;
 
 
     WSADATA wsaData;
@@ -113,20 +118,10 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
     packetSyn->sdh.seq = 0;
 
 
-    this->packetFin = new SenderSynHeader();
-    memset(packetFin, 0, sizeof(SenderSynHeader));
-    packetFin->lp.bufferSize = senderWindow + 3; // window size is 10 with retransmit it 3x
-    packetFin->lp.pLoss[0] = lp->pLoss[0];
-    packetFin->lp.pLoss[1] = lp->pLoss[1];
-    packetFin->lp.RTT = lp->RTT;
-    packetFin->lp.speed = lp->speed;
-
-    packetFin->sdh.flags.reserved = 0;
-    packetFin->sdh.flags.magic = MAGIC_PROTOCOL;
-    packetFin->sdh.flags.SYN = 0;
-    packetFin->sdh.flags.FIN = 1;
-    packetFin->sdh.flags.ACK = 0;
-    packetFin->sdh.seq = 0;
+    pLossForwardFin = lp->pLoss[0];
+    pLossBackwardFin = lp->pLoss[1];
+    RTTFin = lp->RTT;
+    speedFin = lp->speed;
 
     this->host = host.c_str();
     DWORD IP = inet_addr(host.c_str());
@@ -238,24 +233,24 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
             setEstimateRTT();
             setDeviationRTT();
             findRTO();
-
-
             if (inOpen)
             {
 
-
-
+                return STATUS_OK;
             }
-            else
+
+            if (!inOpen)
             {
+
                 // in close, handle snd && recieve more pkts, adjust buffer
                 // n == ackSeq, adjust, timer, move window, inc seq
                 // else buf in recvwin
-                if (rh.ackSeq == st.nextSeqNumStats)
+                if (rh.ackSeq == st.nextSeqNumStats+1)
                 {
                     st.nextSeqNumStats++;
                     st.rcvWinStats = rh.recvWnd;
                     st.bytesAckedStats += MAX_PKT_SIZE;
+                    return STATUS_OK;
 
 
                 }
@@ -263,6 +258,8 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
 
 
             }
+
+            return -100;
 
         }
 
@@ -280,11 +277,11 @@ DWORD SenderSocket::Send(char* pointer, UINT64 bytes ) {
     packet->flags.SYN = 0;
     packet->flags.FIN = 0;
     packet->flags.ACK = 0;
+    packet->seq = st.nextSeqNumStats;
 
     // potential crit section
     // stats theard packetsToSend
-    packet->seq = st.packetsToSendStats;
-    memcpy(packet, pointer, bytes);
+    // memcpy(packet, pointer, bytes);
 
     DWORD recvReturn;
     int RTOsec = floor(3 * this->sampleRTT);
@@ -313,7 +310,7 @@ DWORD SenderSocket::Send(char* pointer, UINT64 bytes ) {
         // estimate RTT HERE
 
 
-        recvReturn = recvFrom(RTOsec, RTOusec, true);
+        recvReturn = recvFrom(RTOsec, RTOusec, false);
 
         if (recvReturn == STATUS_OK || recvReturn == FAILED_RECV)
         {
@@ -327,8 +324,31 @@ DWORD SenderSocket::Send(char* pointer, UINT64 bytes ) {
 DWORD SenderSocket::Close() {
 
 
+    this->packetFin = new SenderSynHeader();
+    memset(packetFin, 0, sizeof(SenderSynHeader));
+
+
+    packetFin->lp.bufferSize = this->senderWindow + 3; // window size is 10 with retransmit it 3x
+    packetFin->lp.pLoss[0] = pLossForwardFin;
+    packetFin->lp.pLoss[1] = pLossBackwardFin;
+    packetFin->lp.RTT = RTTFin;
+    packetFin->lp.speed = speedFin;
+
+
+    packetFin->sdh.flags.reserved = 0;
+    packetFin->sdh.flags.magic = MAGIC_PROTOCOL;
+    packetFin->sdh.flags.SYN = 0;
+    packetFin->sdh.flags.FIN = 1;
+    packetFin->sdh.flags.ACK = 0;
+    packetFin->sdh.seq = st.nextSeqNumStats;
+
+
     int RTOsec = floor(3 * this->sampleRTT);
     int RTOusec = (3 * this->sampleRTT - RTOsec) * 1e6;
+    /*
+    int RTOsec = 1;
+    int RTOusec = 0;
+    */
 
 
     this->closeCalledTime = clock();
@@ -357,7 +377,7 @@ DWORD SenderSocket::Close() {
     
     
     // chcksum here
-    this->checkSum = checkValidity.CRC32( (unsigned char *) this->checkSumCharBuffer  , this->totalBytesTransferCheckSum );
+    this->hexDumpPost = checkValidity.CRC32( (unsigned char *) this->sendBufCheckSum, this->packetSizeSend );
 
     return recvReturn; // happy
 }
@@ -385,6 +405,10 @@ DWORD SenderSocket::statusThread()
         );
 
         ResetEvent(st.statusEvent);
+        if (st.breakThread == true)
+        {
+            return 0;
+        }
     }
     return 0;
 }

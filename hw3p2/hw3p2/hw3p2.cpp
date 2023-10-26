@@ -119,9 +119,8 @@ void main(int argc, char** argv)
     UINT64 byteBufferSize = dwordBufSize << 2; // convert to bytes
     UINT64 bytes = 0;
 
-
-    memcpy(ss.checkSumCharBuffer, charBuf, byteBufferSize );
-    ss.totalBytesTransferCheckSum = byteBufferSize;
+    ss.packetSizeSend = byteBufferSize;
+    ss.sendBufCheckSum = charBuf;
 
 
         UINT64 off = 0; // current position in buffer
@@ -140,14 +139,15 @@ void main(int argc, char** argv)
 
             }
 
-
-
                 off += bytes;
         }
     
 
         double elapsedTime = (double)((clock() - OpenReturnTime) / CLOCKS_PER_SEC);
 
+
+
+        ss.st.breakThread = true;
         WaitForSingleObject(ss.st.statusEvent, INFINITE);
         CloseHandle(ss.st.statusEvent);
 
@@ -168,7 +168,7 @@ void main(int argc, char** argv)
     printf("Main:   transfer finished in %.3f sec, %.3f Kbps, checksum %X\n",
         elapsedTime,
         ss.st.bytesAckedStats,
-        ss.checkSum
+        ss.hexDumpPost
     );
     printf("Main: estRTT %.3f, ideal rate %.3f Kbps \n",
         ss.estimateRTT,
