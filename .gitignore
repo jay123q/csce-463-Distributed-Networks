@@ -20,3 +20,4 @@ hw1p2/hw1p2/x64/Debug/463-sample.log
 *.vsidx
 *.txt
 hw2/x64/Release/output.txt
+*.exe
