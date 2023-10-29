@@ -14,6 +14,7 @@ using namespace std;
 #define FAILED_SEND 4 // sendto() failed in kernel
 #define TIMEOUT 5 // timeout after all retx attempts are exhausted
 #define FAILED_RECV 6 // recvfrom() failed in kernel
+#define RETX_OCCURED 10 // recvfrom() failed in kernel
 
 #define FORWARD_PATH 0
 #define RETURN_PATH 1
@@ -44,6 +45,45 @@ SenderSocket::SenderSocket()
 
 }
 
+DWORD SenderSocket::statusThread()
+{
+    bool printMe = false;
+    
+    while ((WaitForSingleObject(st.statusEvent, 2000) == WAIT_TIMEOUT) || !printMe)
+    {
+        if (st.breakThread == true)
+        {
+            // avoid final erronous rpint
+            return 20;
+        }
+        st.effectiveWindowStats = min(st.rcvWinStats , st.sndWinStats);
+        // st.goodPutStats = (st.startTimerStats  - st.prevTimerStats) / st.nNumberPrints;
+        st.goodPutStats = ( (st.rcvWinStats - st.sndWinStats) / st.nNumberPrints * 8 * (MAX_PKT_SIZE - sizeof(SenderDataHeader)) ) / 1e6;
+        // st.goodPutStats = ( (st.sndWinStats - st.rcvWinStats) * 8 * (MAX_PKT_SIZE - sizeof(SenderDataHeader)) )  / st.nNumberPrints;
+        // st.goodPutStats /= 1e6;
+        printMe = true;
+        printf("[ %1d] B %d ( %.2f MB) N %d T %d F %d W %d S %.4f Mbps RTT %.3f\n",
+            // (int)(double)(st.prevTimerStats - st.startTimerStats) / CLOCKS_PER_SEC,
+            st.timerPrint2sec,
+            st.packetsSendBase,
+            st.bytesTotal / 8e6,
+            st.packetsSendBase+1,
+            st.timeoutCountStats,
+            st.fastRetransmitCountStats,
+            st.effectiveWindowStats,
+            st.goodPutStats,
+            st.estimateRttStats
+        );
+        st.timerPrint2sec += 2;
+        st.nNumberPrints++;
+        st.pastBytes = st.bytesTotal;
+       // st.prevTimerStats = st.startTimerStats;
+       // st.startTimerStats = clock();
+        ResetEvent(st.statusEvent);
+    }
+    return 20;
+}
+
 DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProperties* lp) {
     if (opened)
     {
@@ -52,10 +92,9 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
 
     // stats thread initialization
     st.startTimerStats = clock();
-    st.bytesAckedStats = 0;
-    st.packetsToSendStats = 0;
-    st.bytesAckedStats = 0;
-    st.nextSeqNumStats = 0;
+    st.timerPrint2sec = 2;
+    st.packetsSendBase = 0;
+    st.bytesTotal = 0;
     st.timeoutCountStats = 0;
     st.fastRetransmitCountStats = 0;
     st.effectiveWindowStats = 0;
@@ -63,6 +102,10 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
     st.sndWinStats = 0;
     st.goodPutStats = 0;
     st.estimateRttStats = 0;
+    st.pastBytes = 0;
+
+    st.nNumberPrints = 1;
+    st.prevTimerStats = 0.0;
 
     this->senderWindow = senderWindow;
 
@@ -122,6 +165,8 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
     pLossBackwardFin = lp->pLoss[1];
     RTTFin = lp->RTT;
     speedFin = lp->speed;
+
+    st.sndWinStats = senderWindow;
 
     this->host = host.c_str();
     DWORD IP = inet_addr(host.c_str());
@@ -227,6 +272,7 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
                 // return GetLastError();
             }
             
+            
 
             // packet had to be acked here
             this->sampleRTT = (double)(clock() - timeToAckforSampleRTT) / CLOCKS_PER_SEC;
@@ -245,21 +291,45 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
                 // in close, handle snd && recieve more pkts, adjust buffer
                 // n == ackSeq, adjust, timer, move window, inc seq
                 // else buf in recvwin
-                if (rh.ackSeq == st.nextSeqNumStats+1)
+
+
+                if (rh.ackSeq == st.packetsSendBase +1)
                 {
-                    st.nextSeqNumStats++;
+
+
+                    // potential crit section
+                    // stats theard packetsToSend
                     st.rcvWinStats = rh.recvWnd;
-                    st.bytesAckedStats += MAX_PKT_SIZE;
-                    return STATUS_OK;
+                    st.bytesTotal += MAX_PKT_SIZE;
+                    st.packetsSendBase++;
+
+
+
+                }
+                else if(rh.ackSeq > st.packetsSendBase +1 )
+                {
+
+
+                    // potential crit section
+                    // stats theard packetsToSend
+                    st.fastRetransmitCountStats++;
+
+
+                    st.packetsSendBase = rh.ackSeq;
+                    // if no currently ACKED segments, restart timer with latest RTO
+                    // else cancel
+                    timeToAckforSampleRTT = clock();
+                    return RETX_OCCURED;
 
 
                 }
                 // adjust RTT, RTO, ETC
+                // final ACK
 
 
             }
 
-            return -100;
+            return STATUS_OK;
 
         }
 
@@ -277,7 +347,7 @@ DWORD SenderSocket::Send(char* pointer, UINT64 bytes ) {
     packet->flags.SYN = 0;
     packet->flags.FIN = 0;
     packet->flags.ACK = 0;
-    packet->seq = st.nextSeqNumStats;
+    packet->seq = st.packetsSendBase;
 
     // potential crit section
     // stats theard packetsToSend
@@ -338,7 +408,7 @@ DWORD SenderSocket::Close() {
     packetFin->sdh.flags.SYN = 0;
     packetFin->sdh.flags.FIN = 1;
     packetFin->sdh.flags.ACK = 0;
-    packetFin->sdh.seq = st.nextSeqNumStats;
+    packetFin->sdh.seq = st.packetsSendBase;
 
 
     int RTOsec = floor(3 * this->sampleRTT);
@@ -387,34 +457,6 @@ DWORD SenderSocket::Close() {
 
 
 
-DWORD SenderSocket::statusThread()
-{
-    bool printMe = false;
-    st.prevTimerStats = clock();
-    while ((WaitForSingleObject(st.statusEvent, 2000) == WAIT_TIMEOUT) || !printMe)
-    {
-        st.effectiveWindowStats = st.rcvWinStats - st.sndWinStats;
-        printMe = true;
-        printf("[ %d] B %d ( %.2f MB) N %d T %d F %d W %d S %.4f Mbps RTT %.4f\n",
-            (int)(double)(st.prevTimerStats - st.startTimerStats) / CLOCKS_PER_SEC,
-            st.packetsToSendStats,
-            st.bytesAckedStats,
-            st.nextSeqNumStats,
-            st.timeoutCountStats,
-            st.fastRetransmitCountStats,
-            st.effectiveWindowStats,
-            st.goodPutStats,
-            st.estimateRttStats
-        );
-
-        ResetEvent(st.statusEvent);
-        if (st.breakThread == true)
-        {
-            return 20;
-        }
-    }
-    return 20;
-}
 
 
 void SenderSocket::setDeviationRTT() {

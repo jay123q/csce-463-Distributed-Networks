@@ -94,7 +94,6 @@ void main(int argc, char** argv)
 
     );
 
-
     // stats theard start thread
     ss.st.statusEvent = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)status_thread_run, &ss, 0, NULL);
 
@@ -107,8 +106,13 @@ void main(int argc, char** argv)
         return;
 
     }
-    clock_t OpenReturnTime = clock();
+    clock_t firstDataPacketSend = clock();
     
+    printf("Main:   connected to %s in %.3f sec, pkt size %d bytes\n",
+        host.c_str(),
+        ss.sampleRTT,
+        MAX_PKT_SIZE
+    );
 
     char* charBuf = (char*)dwordBuf; // this buffer goes into socket
     UINT64 byteBufferSize = dwordBufSize << 2; // convert to bytes
@@ -119,7 +123,6 @@ void main(int argc, char** argv)
 
 
         UINT64 off = 0; // current position in buffer
-        printf(" in send, opened properly \n");
 
         while (off < byteBufferSize)
         {
@@ -138,7 +141,7 @@ void main(int argc, char** argv)
         }
     
 
-        double elapsedTime = (double)((clock() - OpenReturnTime) / CLOCKS_PER_SEC);
+        double elapsedTime = (double)(clock() - firstDataPacketSend) / CLOCKS_PER_SEC;
 
 
 
@@ -159,19 +162,19 @@ void main(int argc, char** argv)
 
     }
     printf("[%.3f] <-- FIN-ACK %d window %x\n",
-        elapsedTime - ss.timeAtClose,
-        ss.st.nextSeqNumStats,
+        (double) (ss.timeAtClose - firstDataPacketSend ) /CLOCKS_PER_SEC,
+        ss.st.packetsSendBase,
         ss.hexDumpPost
         );
 
-    printf("Main:   transfer finished in %.3f sec, %.3f Kbps, checksum %X\n",
-        elapsedTime,
-        ss.st.bytesAckedStats,
+    printf("Main:   transfer finished in %.3f sec, %.2f Kbps, checksum %X\n",
+        (double) elapsedTime,
+        ss.st.bytesTotal / 1000,
         ss.hexDumpPost
     );
     printf("Main: estRTT %.3f, ideal rate %.3f Kbps \n",
         ss.estimateRTT,
-        ss.st.effectiveWindowStats / ss.estimateRTT
+        1 / ss.estimateRTT // windoq is always 1
     );
 }
 

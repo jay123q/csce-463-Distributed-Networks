@@ -61,18 +61,23 @@ struct statsThread {
     HANDLE statusEvent;
 
     clock_t startTimerStats; // in open
-    clock_t prevTimerStats; // in stats
-    DWORD packetsToSendStats;
-    double bytesAckedStats;
-    DWORD nextSeqNumStats; // in recv
+    DWORD packetsToSendStats; 
+    DWORD packetsSendBase;
     int timeoutCountStats; // in rcv
     int fastRetransmitCountStats;
     int effectiveWindowStats; // min btwn sndWin and rcvWin
-    DWORD rcvWinStats;
-    DWORD sndWinStats;
-    double goodPutStats; // speed reciever processes data from app
+    DWORD rcvWinStats; // set in from RCV pick snd or rcv
+    DWORD sndWinStats; // set in from open pick snd or rcv
     double estimateRttStats;
-    bool breakThread;
+    int timerPrint2sec;
+
+
+    clock_t prevTimerStats; // in stats good put?
+    double goodPutStats; // speed reciever processes data from app
+    double bytesTotal;
+    int nNumberPrints;
+    double pastBytes;
+    bool breakThread; // used in closae 
 
 };
 
