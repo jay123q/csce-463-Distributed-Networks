@@ -74,9 +74,11 @@ struct statsThread {
 
     clock_t prevTimerStats; // in stats good put?
     double goodPutStats; // speed reciever processes data from app
+    DWORD prevPrintBase;
+
+
     double bytesTotal;
     int nNumberPrints;
-    double pastBytes;
     bool breakThread; // used in closae 
 
 };

@@ -49,6 +49,7 @@ DWORD SenderSocket::statusThread()
 {
     bool printMe = false;
     
+    st.prevPrintBase = st.packetsSendBase;
     while ((WaitForSingleObject(st.statusEvent, 2000) == WAIT_TIMEOUT) || !printMe)
     {
         if (st.breakThread == true)
@@ -57,12 +58,16 @@ DWORD SenderSocket::statusThread()
             return 20;
         }
         st.effectiveWindowStats = min(st.rcvWinStats , st.sndWinStats);
-        // st.goodPutStats = (st.startTimerStats  - st.prevTimerStats) / st.nNumberPrints;
-        st.goodPutStats = ( (st.rcvWinStats - st.sndWinStats) / st.nNumberPrints * 8 * (MAX_PKT_SIZE - sizeof(SenderDataHeader)) ) / 1e6;
-        // st.goodPutStats = ( (st.sndWinStats - st.rcvWinStats) * 8 * (MAX_PKT_SIZE - sizeof(SenderDataHeader)) )  / st.nNumberPrints;
-        // st.goodPutStats /= 1e6;
+        
+        
+        
+            // help here TA ASK
+        st.goodPutStats = ( st.packetsSendBase - st.prevPrintBase ) / st.nNumberPrints * 8 * (MAX_PKT_SIZE - sizeof(SenderDataHeader));
+        
+        
+        
         printMe = true;
-        printf("[ %1d] B %d ( %.2f MB) N %d T %d F %d W %d S %.4f Mbps RTT %.3f\n",
+        printf("[ %1d] B %d ( %.2f MB) N %d T %d F %d W %d S %.3f Mbps RTT %.3f\n",
             // (int)(double)(st.prevTimerStats - st.startTimerStats) / CLOCKS_PER_SEC,
             st.timerPrint2sec,
             st.packetsSendBase,
@@ -71,12 +76,12 @@ DWORD SenderSocket::statusThread()
             st.timeoutCountStats,
             st.fastRetransmitCountStats,
             st.effectiveWindowStats,
-            st.goodPutStats,
+            st.goodPutStats / 2e6,
             st.estimateRttStats
         );
         st.timerPrint2sec += 2;
         st.nNumberPrints++;
-        st.pastBytes = st.bytesTotal;
+        // st.prevPrintBase = st.packetsSendBase;
        // st.prevTimerStats = st.startTimerStats;
        // st.startTimerStats = clock();
         ResetEvent(st.statusEvent);
@@ -102,12 +107,13 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
     st.sndWinStats = 0;
     st.goodPutStats = 0;
     st.estimateRttStats = 0;
-    st.pastBytes = 0;
 
     st.nNumberPrints = 1;
     st.prevTimerStats = 0.0;
 
     this->senderWindow = senderWindow;
+
+    st.prevPrintBase = st.packetsSendBase;
 
 
     WSADATA wsaData;
@@ -196,7 +202,7 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
 
     server.sin_family = AF_INET;
     server.sin_port = htons(portNumber); // DNS port on server
-    long RTOsec = 1.0000;
+    long RTOsec = 1.0000 + 2 * lp->RTT;
     long RTOusec = 0;
     DWORD recvReturn;
     this->timeToAckforSampleRTT = clock();
@@ -218,28 +224,23 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
 
         }
 
-        recvReturn = recvFrom(RTOsec + 2*lp->RTT, RTOusec, true);
+        recvReturn = recvFrom(RTOsec,  RTOusec, true);
         if (recvReturn  == STATUS_OK || recvReturn == FAILED_RECV )
         {
-
+            st.estimateRttStats = sampleRTT;
+            estimateRTT = st.estimateRttStats;
+            setRTO = st.estimateRttStats*3;
             break;
         }
     }
 
 
-    this->sampleRTT = (double)(clock() - this->timeToAckforSampleRTT) / CLOCKS_PER_SEC;
     return recvReturn; 
 }
 
 DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
 {
-    /*
-        char* recvBuffer = new char[sizeof(ReceiverHeader)];
-        memset(recvBuffer, 0, sizeof(ReceiverHeader));
-    */
-    
-
-
+  
         timeval timeout;
         timeout.tv_sec = RTOsec;
         timeout.tv_usec = RTOusec;
@@ -249,8 +250,6 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
         int available = select(0, &fd, NULL, NULL, &timeout);
         if (available <= 0)
         {
-            // potential crit section
-            // stats theard packetsToSend
             st.timeoutCountStats++;
             return TIMEOUT;
         }
@@ -272,9 +271,6 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
                 // return GetLastError();
             }
             
-            
-
-            // packet had to be acked here
             this->sampleRTT = (double)(clock() - timeToAckforSampleRTT) / CLOCKS_PER_SEC;
             setEstimateRTT();
             setDeviationRTT();
@@ -292,8 +288,11 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
                 // n == ackSeq, adjust, timer, move window, inc seq
                 // else buf in recvwin
 
-
-                if (rh.ackSeq == st.packetsSendBase +1)
+                if (rh.flags.FIN != 0 && rh.flags.SYN != 0)
+                {
+                    // do nuthing?? , hold seq numebr
+                }
+                else if (rh.ackSeq == st.packetsSendBase +1)
                 {
 
 
@@ -323,8 +322,6 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
 
 
                 }
-                // adjust RTT, RTO, ETC
-                // final ACK
 
 
             }
@@ -470,5 +467,5 @@ void SenderSocket::setEstimateRTT() {
     // perhaps merg into one
 }
 void SenderSocket::findRTO() {
-    this->setRTO = 4 * max(this->deviationRTT, 0.01);
+    this->setRTO = this->estimateRTT + 4 * max(this->deviationRTT, 0.01);
 }

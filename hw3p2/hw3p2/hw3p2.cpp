@@ -167,14 +167,23 @@ void main(int argc, char** argv)
         ss.hexDumpPost
         );
 
+
+    // help here TA ASK
+
     printf("Main:   transfer finished in %.3f sec, %.2f Kbps, checksum %X\n",
         (double) elapsedTime,
-        ss.st.bytesTotal / 1000,
+        (byteBufferSize * 8 / elapsedTime ) / 1000 ,
         ss.hexDumpPost
     );
+
+
+
+
     printf("Main: estRTT %.3f, ideal rate %.3f Kbps \n",
         ss.estimateRTT,
-        1 / ss.estimateRTT // windoq is always 1
+       ( ( MAX_PKT_SIZE - sizeof(SenderDataHeader) )  / ( 1000 * ss.estimateRTT ) )  * 8// windoq is always 1
     );
+
+
 }
 
