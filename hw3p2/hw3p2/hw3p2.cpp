@@ -42,13 +42,14 @@ void main(int argc, char** argv)
    // std::string host("128.194.135.1");
    // std::string host("128.194.135.82");
    // std::string host("0.0.0.0");
-   std::string host("127.0.0.1");
-   // std::string host("s3.irl.cs.tamu.edu");
+   // std::string host("127.0.0.1");
+   std::string host("s3.irl.cs.tamu.edu");
 
     int power = 15;
     int sendingWindow = 1;
     linkedProperties.RTT = 0.1;
-    linkedProperties.pLoss[FORWARD_PATH] = 0;
+    linkedProperties.pLoss[FORWARD_PATH] = 0.2;
+    // should converge to this loss rate per n packets
     linkedProperties.pLoss[RETURN_PATH] = 0;
     linkedProperties.speed = 14;
 
@@ -161,7 +162,7 @@ void main(int argc, char** argv)
         return;
 
     }
-    printf("[%.3f] <-- FIN-ACK %d window %x\n",
+    printf("[%.3f] <-- FIN-ACK %d window %X\n",
         (double) (ss.timeAtClose - firstDataPacketSend ) /CLOCKS_PER_SEC,
         ss.st.packetsSendBase,
         ss.hexDumpPost

@@ -103,7 +103,7 @@ public:
     double deviationRTT;
 
     // handle opening an closing
-    int bytesRec;
+    int dupAck;
     bool opened;
     double sampleRTT;
     SOCKET sock;

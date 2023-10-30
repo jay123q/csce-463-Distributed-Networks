@@ -23,6 +23,8 @@ using namespace std;
 #define MAGIC_PORT 22345 // receiver listens on this port
 #define MAX_PKT_SIZE (1500-28) // maximum UDP packet size accepted by receiver 
 
+#define REATTEMPTS_ALLOWED 50
+
 class LinkProperties;
 class Flags;
 class SenderDataHeader;
@@ -50,7 +52,7 @@ DWORD SenderSocket::statusThread()
     bool printMe = false;
     
     st.prevPrintBase = st.packetsSendBase;
-    while ((WaitForSingleObject(st.statusEvent, 2000) == WAIT_TIMEOUT) || !printMe)
+    while (((WaitForSingleObject(st.statusEvent, 2000) == WAIT_TIMEOUT) || !printMe) && opened )
     {
         if (st.breakThread == true)
         {
@@ -110,6 +112,7 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
 
     st.nNumberPrints = 1;
     st.prevTimerStats = 0.0;
+    dupAck = 0;
 
     this->senderWindow = senderWindow;
 
@@ -206,7 +209,7 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
     long RTOusec = 0;
     DWORD recvReturn;
     this->timeToAckforSampleRTT = clock();
-    for (int i = 1; i < 4; i++)
+    for (int i = 1; i < REATTEMPTS_ALLOWED ; i++)
     {
         // you saw cc cc cc cc showing that the packet waas on the heap due to & being used. 
        // printf(" [%.3f] --> SYN 0 (attempt %d of 3, RTO %.3f) to %s\n",
@@ -234,13 +237,13 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
         }
     }
 
-
+    opened = true;
     return recvReturn; 
 }
 
 DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
 {
-  
+        
         timeval timeout;
         timeout.tv_sec = RTOsec;
         timeout.tv_usec = RTOusec;
@@ -250,6 +253,8 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
         int available = select(0, &fd, NULL, NULL, &timeout);
         if (available <= 0)
         {
+            // restart clock
+            timeToAckforSampleRTT = clock();
             st.timeoutCountStats++;
             return TIMEOUT;
         }
@@ -272,8 +277,6 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
             }
             
             this->sampleRTT = (double)(clock() - timeToAckforSampleRTT) / CLOCKS_PER_SEC;
-            setEstimateRTT();
-            setDeviationRTT();
             findRTO();
             if (inOpen)
             {
@@ -292,35 +295,43 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
                 {
                     // do nuthing?? , hold seq numebr
                 }
-                else if (rh.ackSeq == st.packetsSendBase +1)
+                else if (rh.ackSeq >= st.packetsSendBase +1)
                 {
 
+                    dupAck = 0;
 
                     // potential crit section
                     // stats theard packetsToSend
-                    st.rcvWinStats = rh.recvWnd;
-                    st.bytesTotal += MAX_PKT_SIZE;
-                    st.packetsSendBase++;
+                    if (rh.ackSeq == st.packetsSendBase + 1)
+                    {
+
+                        st.rcvWinStats = rh.recvWnd;
+                        st.bytesTotal += MAX_PKT_SIZE;
+                        st.packetsSendBase++;
+                    }
+                    else
+                    {
+                        // out of order packets??
+                        timeToAckforSampleRTT = clock();
+                        printf(" pakcets out of order \n");
+                    }
 
 
 
                 }
-                else if(rh.ackSeq > st.packetsSendBase +1 )
+                else if (rh.ackSeq == st.packetsSendBase)
                 {
-
-
-                    // potential crit section
-                    // stats theard packetsToSend
-                    st.fastRetransmitCountStats++;
-
-
+                    dupAck++;
                     st.packetsSendBase = rh.ackSeq;
-                    // if no currently ACKED segments, restart timer with latest RTO
-                    // else cancel
-                    timeToAckforSampleRTT = clock();
-                    return RETX_OCCURED;
-
-
+                    if (dupAck == 3)
+                    {
+                        st.fastRetransmitCountStats++;
+                        return RETX_OCCURED;
+                    }
+                }
+                else
+                {
+                    printf(" I am concerned how you got here bud, recv acked a PKT < than snd \n");
                 }
 
 
@@ -353,12 +364,12 @@ DWORD SenderSocket::Send(char* pointer, UINT64 bytes ) {
     DWORD recvReturn;
     int RTOsec = floor(3 * this->sampleRTT);
     int RTOusec = (3 * this->sampleRTT - RTOsec)*1e6;
-    for (int i = 1; i < 4; i++)
+    for (int i = 1; i < REATTEMPTS_ALLOWED ; i++)
     {
         // you saw cc cc cc cc showing that the packet waas on the heap due to & being used. 
        // printf(" [%.3f] --> SYN 0 (attempt %d of 3, RTO %.3f) to %s\n",
 
-        if (sendto(sock, (char*)packet, sizeof(SenderSynHeader), 0, (struct sockaddr*)&server, sizeof(server)) == SOCKET_ERROR)
+        if (sendto(sock, (char*)packet, sizeof(*packet), 0, (struct sockaddr*)&server, sizeof(server)) == SOCKET_ERROR)
         {
             
             printf(" [%.3f] --> failed sendto with %d\n",
@@ -422,7 +433,7 @@ DWORD SenderSocket::Close() {
     while (count < 5)
     {
         count++;
-        if (sendto(sock, (char*) packetFin, sizeof(SenderDataHeader), 0, (struct sockaddr*)&server, sizeof(server)) == SOCKET_ERROR)
+        if (sendto(sock, (char*) packetFin, sizeof(*packetFin), 0, (struct sockaddr*)&server, sizeof(server)) == SOCKET_ERROR)
         {
             printf(" [%.3f] --> failed sendto with %d\n",
                 (double)(clock() - time) / CLOCKS_PER_SEC,
@@ -467,5 +478,7 @@ void SenderSocket::setEstimateRTT() {
     // perhaps merg into one
 }
 void SenderSocket::findRTO() {
+    setDeviationRTT();
+    setEstimateRTT();
     this->setRTO = this->estimateRTT + 4 * max(this->deviationRTT, 0.01);
 }
