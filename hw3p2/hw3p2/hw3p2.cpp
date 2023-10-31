@@ -39,11 +39,12 @@ void main(int argc, char** argv)
 
 
 
+    /*
    // std::string host("128.194.135.1");
    // std::string host("128.194.135.82");
    // std::string host("0.0.0.0");
    // std::string host("127.0.0.1");
-   std::string host("s3.irl.cs.tamu.edu");
+  // std::string host("s3.irl.cs.tamu.edu");
 
     int power = 15;
     int sendingWindow = 1;
@@ -52,8 +53,8 @@ void main(int argc, char** argv)
     // should converge to this loss rate per n packets
     linkedProperties.pLoss[RETURN_PATH] = 0;
     linkedProperties.speed = 14;
+    */
 
-    /*
     if (argc != 8)
     {
         printf(" Incorrect args, propper format is host, power, RTT, forward loss, backward loss, and speed \n");
@@ -66,7 +67,6 @@ void main(int argc, char** argv)
     linkedProperties.pLoss[FORWARD_PATH] = atof(argv[5]);
     linkedProperties.pLoss[RETURN_PATH] = atof(argv[6]);
     linkedProperties.speed = atof(argv[7]);
-    */
 
 
     clock_t timeOpen = clock();
