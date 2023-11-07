@@ -53,10 +53,12 @@ public:
 };
 
 class Packet {
+public:
     int type; // SYN, FIN, data
     int size; // bytes in packet data
     clock_t txTime; // transmission time
-    char pkt[MAX_PKT_SIZE]; // packet with header
+    char packetsPending[MAX_PKT_SIZE]; // packet with header
+    SenderDataHeader sdh;
 };
 
 #pragma pack(pop,1) // restores old packing
@@ -69,7 +71,7 @@ struct statsThread {
 
     clock_t startTimerStats; // in open
     DWORD packetsToSendStats; 
-    DWORD packetsSendBase;
+    DWORD packetsSendBaseStats;
     int timeoutCountStats; // in rcv
     int fastRetransmitCountStats;
     int effectiveWindowStats; // min btwn sndWin and rcvWin
@@ -101,18 +103,19 @@ class SenderSocket {
     DWORD IP;
 
 public:
-
     statsThread st;
-
+    Packet* packetsSharedQueue = NULL;
     // handle finding RTT
     double setRTO;
     double estimateRTT;
     double deviationRTT;
+    int packetsSendBase;
 
     // handle opening an closing
     int dupAck;
     bool opened;
     double sampleRTT;
+    int recvBufferLast;
     SOCKET sock;
     clock_t time;
     double closeCalledTime;
@@ -134,17 +137,29 @@ public:
     float speedFin;
 
     // sephamore variables
-    int eventQuit;
-    int full;
-    bool empty;
+    HANDLE emptyQuit;
+    HANDLE full;
     
+    // handlers
+    HANDLE stats;
+    HANDLE workers;
+    HANDLE full;
+
+
+    HANDLE closeConnection;
+    HANDLE receive;
+    HANDLE complete;
+    HANDLE socketReceiveReady;
+
     SenderSocket();
     DWORD Open(string host, int portNumber, int senderWindow, LinkProperties* lp);
     // DWORD Send(char* pointer, UINT64 bytes );
     int Send(char* data, int size);
     DWORD recvFrom(long RTOsec, long RTOusec, bool inOpen);
     DWORD Close();
-    DWORD statusThread();
+    DWORD statusThread(LPVOID tempPointer);
+
+    DWORD WINAPI Worker(LPVOID* tempPointer);
 
     void setEstimateRTT();
     void setDeviationRTT();
