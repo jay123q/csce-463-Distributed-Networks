@@ -31,6 +31,7 @@ class SenderDataHeader;
 class ReceiverHeader;
 class SenderSynHeader;
 class SenderSocket;
+class Packet;
 struct statsThread;
 #pragma comment(lib, "ws2_32.lib")
 
@@ -347,7 +348,33 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
     return STATUS_OK;
 }
 
-DWORD SenderSocket::Send(char* pointer, UINT64 bytes ) {
+    int SenderSocket::Send(char* data, int size)
+    {
+        HANDLE arr[] = { eventQuit, empty };
+        WaitForMultipleObjects(2, arr, false, INFINITE);
+        // old this->timeToAckforSampleRTT = clock();
+        
+        // no need for mutex as no shared variables are modified
+        slot = nextSeq % W;
+        Packet* p = pending_pkts + slot; // pointer to packet struct
+        SenderDataHeader* sdh = p->pkt;
+        sdh->seq = nextSeq;
+        sdh->flags.reserved = 0;
+        sdh->flags.magic = MAGIC_PROTOCOL;
+        sdh.flags.ACK = 0;
+        sdh.flags.SYN = 0;
+        sdh.flags.FIN = 0;
+        sdh->seq = st.packetsSendBase;
+        p->size = size;
+        p->txTime = clock();
+        memset(p->pkt, 0, MAX_PKT_SIZE);
+        p->pkt = (char*)sdh;
+        ... // set up remaining fields in sdh and p
+            memcpy(sdh + 1, data, size);
+        nextSeq++;
+        ReleaseSemaphore(full, 1);
+    }
+/*
     this->timeToAckforSampleRTT = clock();
     SenderDataHeader * packet = new SenderDataHeader();
     packet->flags.reserved = 0;
@@ -398,6 +425,7 @@ DWORD SenderSocket::Send(char* pointer, UINT64 bytes ) {
 
 
     return recvReturn;
+*/
 }
 DWORD SenderSocket::Close() {
     this->timeToAckforSampleRTT = clock();

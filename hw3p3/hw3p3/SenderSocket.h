@@ -52,6 +52,13 @@ public:
     LinkProperties lp;
 };
 
+class Packet {
+    int type; // SYN, FIN, data
+    int size; // bytes in packet data
+    clock_t txTime; // transmission time
+    char pkt[MAX_PKT_SIZE]; // packet with header
+};
+
 #pragma pack(pop,1) // restores old packing
 
 
@@ -125,10 +132,16 @@ public:
     float pLossBackwardFin;
     float RTTFin;
     float speedFin;
+
+    // sephamore variables
+    int eventQuit;
+    int full;
+    bool empty;
     
     SenderSocket();
     DWORD Open(string host, int portNumber, int senderWindow, LinkProperties* lp);
-    DWORD Send(char* pointer, UINT64 bytes );
+    // DWORD Send(char* pointer, UINT64 bytes );
+    int Send(char* data, int size);
     DWORD recvFrom(long RTOsec, long RTOusec, bool inOpen);
     DWORD Close();
     DWORD statusThread();
