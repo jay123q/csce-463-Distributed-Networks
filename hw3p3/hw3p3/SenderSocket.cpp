@@ -4,6 +4,7 @@
 #include <stdio.h> 
 #include <windows.h>
 #include <string>
+
 #include <iostream>
 using namespace std;
 
@@ -36,46 +37,47 @@ struct statsThread;
 #pragma comment(lib, "ws2_32.lib")
 
 
-DWORD SenderSocket::statusThread()
+DWORD WINAPI SenderSocket::statusThread(LPVOID * tempPointer)
 {
+    SenderSocket* stats = (SenderSocket*)tempPointer;
     bool printMe = false;
     
-    st.prevPrintBase = st.packetsSendBaseStats;
-    while (((WaitForSingleObject(st.statusEvent, 2000) == WAIT_TIMEOUT) || !printMe) && opened )
+    stats->st.prevPrintBase = stats->st.packetsSendBaseStats;
+    while (((WaitForSingleObject(stats->st.statusEvent, 2000) == WAIT_TIMEOUT) || !printMe) && stats->opened )
     {
-        if (st.breakThread == true)
+        if (stats->st.breakThread == true)
         {
             // avoid final erronous rpint
             return 20;
         }
-        st.effectiveWindowStats = min(st.rcvWinStats , st.sndWinStats);
+        stats->st.effectiveWindowStats = min(stats->st.rcvWinStats , stats->st.sndWinStats);
         
         
         
             // help here TA ASK
-        st.goodPutStats = ( st.packetsSendBaseStats - st.prevPrintBase ) / st.nNumberPrints * 8 * (MAX_PKT_SIZE - sizeof(SenderDataHeader));
+        stats->st.goodPutStats = (stats->st.packetsSendBaseStats - stats->st.prevPrintBase ) / stats->st.nNumberPrints * 8 * (MAX_PKT_SIZE - sizeof(SenderDataHeader));
         
         
         
         printMe = true;
         printf("[ %1d] B %d ( %.2f MB) N %d T %d F %d W %d S %.3f Mbps RTT %.3f\n",
             // (int)(double)(st.prevTimerStats - st.startTimerStats) / CLOCKS_PER_SEC,
-            st.timerPrint2sec,
-            st.packetsSendBaseStats,
-            st.bytesTotal / 8e6,
-            st.packetsSendBaseStats,
-            st.timeoutCountStats,
-            st.fastRetransmitCountStats,
-            st.effectiveWindowStats,
-            st.goodPutStats / 2e6,
-            st.estimateRttStats
+            stats->st.timerPrint2sec,
+            stats->st.packetsSendBaseStats,
+            stats->st.bytesTotal / 8e6,
+            stats->st.packetsSendBaseStats,
+            stats->st.timeoutCountStats,
+            stats->st.fastRetransmitCountStats,
+            stats->st.effectiveWindowStats,
+            stats->st.goodPutStats / 2e6,
+            stats->st.estimateRttStats
         );
-        st.timerPrint2sec += 2;
-        st.nNumberPrints++;
+        stats->st.timerPrint2sec += 2;
+        stats->st.nNumberPrints++;
         // st.prevPrintBase = st.packetsSendBase;
        // st.prevTimerStats = st.startTimerStats;
        // st.startTimerStats = clock();
-        ResetEvent(st.statusEvent);
+        ResetEvent(stats->st.statusEvent);
     }
     return 20;
 }
@@ -90,7 +92,7 @@ SenderSocket::SenderSocket()
     memset(&remote, 0, sizeof(remote));
     memset(&server, 0, sizeof(server));
 
-    emptyQuit = CreateEvent(NULL, false, false, NULL);
+    empty = CreateEvent(NULL, false, false, NULL);
     receive = CreateEvent(NULL, false, false, NULL);
     closeConnection = CreateEvent(NULL, true, false, NULL);
     full = CreateSemaphore(NULL, 0, this->senderWindow, NULL);
@@ -238,25 +240,54 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
 
         }
         
-        
-        
-        
-        
-        
-        recvReturn = recvFrom(RTOsec,  RTOusec, true);
-        if (recvReturn  == STATUS_OK || recvReturn == FAILED_RECV )
+        timeval timeout;
+        timeout.tv_sec = RTOsec;
+        timeout.tv_usec = RTOusec;
+        fd_set fd;
+        FD_ZERO(&fd); // clear the set
+        FD_SET(sock, &fd); // add your socket to the set
+        int available = select(0, &fd, NULL, NULL, &timeout);
+        if (available <= 0)
         {
+            // restart clock
+            timeToAckforSampleRTT = clock();
+            st.timeoutCountStats++;
+            return TIMEOUT;
+        }
+        else
+        {
+
+
+
+
+            ReceiverHeader rh;
+            struct sockaddr_in response;
+            int responseSize = sizeof(response);
+
+            int bytes = recvfrom(sock, (char*)&rh, sizeof(ReceiverHeader), 0, (struct sockaddr*)&response, &responseSize);
+            if (bytes == SOCKET_ERROR)
+            {
+                printf("failed recvfrom with %d\n",
+                    WSAGetLastError());
+                closesocket(sock);
+                WSACleanup();
+                return FAILED_RECV;
+                // return GetLastError();
+            }
+
+            this->sampleRTT = (double)(clock() - timeToAckforSampleRTT) / CLOCKS_PER_SEC;
+            // findRTO();
+
+
             st.estimateRttStats = sampleRTT;
             estimateRTT = st.estimateRttStats;
-            setRTO = st.estimateRttStats*3;
-            break;
+            setRTO = st.estimateRttStats * 3;
         }
-
-
+       
         recvBufferLast = min(senderWindow, rh.recvWnd);
         ReleaseSemaphore(empty, recvBufferLast, NULL);
 
-        WSAEventSelect(this->sock, this->receive, FD_READ);
+        // WSAEventSelect(this->sock, this->receive, FD_READ);
 
         workers = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&Worker, this, 0, NULL);
         
@@ -266,7 +297,7 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
     return recvReturn; 
 }
 
-DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
+DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec)
 {
         
         timeval timeout;
@@ -290,7 +321,7 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
             struct sockaddr_in response;
             int responseSize = sizeof(response);
 
-            int bytes = recvfrom(sock, (char *) &rh, sizeof(ReceiverHeader), 0, (struct sockaddr*)&response, &responseSize);
+            int bytes = recvfrom(sock, (char*)&rh, sizeof(ReceiverHeader), 0, (struct sockaddr*)&response, &responseSize);
             if (bytes == SOCKET_ERROR)
             {
                 printf("failed recvfrom with %d\n",
@@ -300,69 +331,59 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
                 return FAILED_RECV;
                 // return GetLastError();
             }
-            
+
             this->sampleRTT = (double)(clock() - timeToAckforSampleRTT) / CLOCKS_PER_SEC;
             findRTO();
-            if (inOpen)
-            {
 
-                return STATUS_OK;
+            // in close, handle snd && recieve more pkts, adjust buffer
+            // n == ackSeq, adjust, timer, move window, inc seq
+            // else buf in recvwin
+
+            if (rh.flags.FIN != 0 && rh.flags.SYN != 0)
+            {
+                // do nuthing?? , hold seq numebr
             }
-
-            if (!inOpen)
+            else if (rh.ackSeq >= st.packetsSendBaseStats + 1)
             {
 
-                // in close, handle snd && recieve more pkts, adjust buffer
-                // n == ackSeq, adjust, timer, move window, inc seq
-                // else buf in recvwin
+                dupAck = 0;
 
-                if (rh.flags.FIN != 0 && rh.flags.SYN != 0)
-                {
-                    // do nuthing?? , hold seq numebr
-                }
-                else if (rh.ackSeq >= st.packetsSendBaseStats +1)
+                // potential crit section
+                // stats theard packetsToSend
+                if (rh.ackSeq == st.packetsSendBaseStats + 1)
                 {
 
-                    dupAck = 0;
-
-                    // potential crit section
-                    // stats theard packetsToSend
-                    if (rh.ackSeq == st.packetsSendBaseStats + 1)
-                    {
-
-                        st.rcvWinStats = rh.recvWnd;
-                        st.bytesTotal += MAX_PKT_SIZE;
-                        st.packetsSendBaseStats++;
-                    }
-                    else
-                    {
-                        // out of order packets??
-                        timeToAckforSampleRTT = clock();
-                        printf(" pakcets out of order \n");
-                    }
-
-
-
-                }
-                else if (rh.ackSeq == st.packetsSendBaseStats)
-                {
-                    dupAck++;
-                    st.packetsSendBaseStats = rh.ackSeq;
-                    if (dupAck == 3)
-                    {
-                        st.fastRetransmitCountStats++;
-                        return RETX_OCCURED;
-                    }
+                    st.rcvWinStats = rh.recvWnd;
+                    st.bytesTotal += MAX_PKT_SIZE;
+                    st.packetsSendBaseStats++;
                 }
                 else
                 {
-                    printf(" I am concerned how you got here bud, recv acked a PKT < than snd \n");
+                    // out of order packets??
+                    timeToAckforSampleRTT = clock();
+                    printf(" pakcets out of order \n");
                 }
 
 
+
+            }
+            else if (rh.ackSeq == st.packetsSendBaseStats)
+            {
+                dupAck++;
+                st.packetsSendBaseStats = rh.ackSeq;
+                if (dupAck == 3)
+                {
+                    st.fastRetransmitCountStats++;
+                    return RETX_OCCURED;
+                }
+            }
+            else
+            {
+                printf(" I am concerned how you got here bud, recv acked a PKT < than snd \n");
             }
 
-            return STATUS_OK;
+
+
 
         }
 
@@ -374,7 +395,7 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec, bool inOpen)
 
     int SenderSocket::Send(char* data, int size)
     {
-        HANDLE arr[] = { eventQuit, empty };
+        HANDLE arr[] = { closeConnection, empty };
         WaitForMultipleObjects(2, arr, false, INFINITE);
         // old this->timeToAckforSampleRTT = clock();
         
@@ -492,13 +513,57 @@ DWORD SenderSocket::Close() {
             WSACleanup();
             return FAILED_SEND;
         }
+        
+        timeval timeout;
+        timeout.tv_sec = RTOsec;
+        timeout.tv_usec = RTOusec;
+        fd_set fd;
+        FD_ZERO(&fd); // clear the set
+        FD_SET(sock, &fd); // add your socket to the set
+        int available = select(0, &fd, NULL, NULL, &timeout);
+        if (available <= 0)
+        {
+            // restart clock
+            timeToAckforSampleRTT = clock();
+            st.timeoutCountStats++;
+            return TIMEOUT;
+        }
+        else
+        {
+            ReceiverHeader rh;
+            struct sockaddr_in response;
+            int responseSize = sizeof(response);
 
+            int bytes = recvfrom(sock, (char*)&rh, sizeof(ReceiverHeader), 0, (struct sockaddr*)&response, &responseSize);
+            if (bytes == SOCKET_ERROR)
+            {
+                printf("failed recvfrom with %d\n",
+                    WSAGetLastError());
+                closesocket(sock);
+                WSACleanup();
+                return FAILED_RECV;
+                // return GetLastError();
+            }
+
+            this->sampleRTT = (double)(clock() - timeToAckforSampleRTT) / CLOCKS_PER_SEC;
+            findRTO();
+
+        }
+        printf(" finsihed and closing \n");
+        WSAGetLastError());
+        closesocket(sock);
+        WSACleanup();
+        
+        
+        
+        /*
         recvReturn = recvFrom(RTOsec, RTOusec, false);
         if (recvReturn == STATUS_OK || recvReturn == FAILED_RECV)
         {
             timeAtClose = clock();
             break;
         }
+        */
     }
     
     
@@ -531,10 +596,11 @@ DWORD WINAPI Worker(LPVOID * tempPointer )
     SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
 
 
-    HANDLE events[] = { worker->socketReceiveReady, worker->full };
+    HANDLE events[] = { worker->socketReceiveReady, worker->full , worker->empty };
     while (true)
     {
-        if (pending packets)
+        double timeout = 0;
+        if (worker->packetsSharedQueue)
         {
             timeout = timerExpire - cur_time;
         }
@@ -545,19 +611,28 @@ DWORD WINAPI Worker(LPVOID * tempPointer )
         int ret = WaitForMultipleObjects(2, events, false, timeout);
         switch (ret)
         {
-        case timeout: sendto(worker->sock , 
-            (char * ) &worker->packetsSharedQueue[worker->st.packetsSendBaseStats % worker->st.effectiveWindowStats].sdh, 
-            worker->packetsSharedQueue[worker->st.packetsSendBaseStats % worker->st.effectiveWindowStats].size ,
-            0,
+        case WAIT_OBJECT_0:
+            sendto(worker->sock,
+                (char*)&worker->packetsSharedQueue[worker->st.packetsSendBaseStats % worker->st.effectiveWindowStats].sdh,
+                worker->packetsSharedQueue[worker->st.packetsSendBaseStats % worker->st.effectiveWindowStats].size,
+                0,
                 (struct sockaddr*)&worker->server, sizeof(worker->server)) == SOCKET_ERROR
-        ); // retx
+                );
+                break;
+        case WAIT_OBJECT_0+1: // move senderBase; update RTT; handle fast retx; do flow control
+            // ReceiveACK();
+            int RTOsec = floor(3 * worker->sampleRTT);
+            int RTOusec = (3 * worker->sampleRTT - RTOsec) * 1e6;
+            recvfrom(RTOsec, RTOusec)
             break;
-        case socket: // move senderBase; update RTT; handle fast retx; do flow control
-            ReceiveACK();
-            break;
-        case sender: sendto(packetsSharedQueue[nextToSend % W].sdh, ...);
-            nextToSend++;
-            3
+        case WAIT_OBJECT_0+2:
+            sendto(worker->sock,
+                (char*)&worker->packetsSharedQueue[worker->st.packetsSendBaseStats % worker->st.effectiveWindowStats].sdh,
+                worker->packetsSharedQueue[worker->st.packetsSendBaseStats % worker->st.effectiveWindowStats].size,
+                0,
+                (struct sockaddr*)&worker->server, sizeof(worker->server)) == SOCKET_ERROR
+                );
+                packetsSendBaseStats++;
                 break;
         default: handle failed wait;
         }
@@ -568,7 +643,7 @@ DWORD WINAPI Worker(LPVOID * tempPointer )
         }
 
 
-
+    }
     return STATUS_OK;
 }
 

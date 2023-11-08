@@ -164,7 +164,7 @@ void main(int argc, char** argv)
     }
     printf("[%.3f] <-- FIN-ACK %d window %X\n",
         (double) (ss.timeAtClose - firstDataPacketSend ) /CLOCKS_PER_SEC,
-        ss.st.packetsSendBase,
+        ss.st.packetsSendBaseStats,
         ss.hexDumpPost
         );
 

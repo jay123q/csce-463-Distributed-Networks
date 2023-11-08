@@ -1,5 +1,6 @@
 #pragma once
 #include "pch.h"
+#include "synchapi.h"
 #include "Checksum.h"
 #include <ctype.h> 
 #include <stdio.h> 
@@ -96,13 +97,13 @@ class Checksum;
 class SenderSocket {
     struct sockaddr_in local;
     struct hostent* remote;
-    struct sockaddr_in server;
     int bytes;
     LinkProperties* lp;
     string host;
     DWORD IP;
 
 public:
+    struct sockaddr_in server;
     statsThread st;
     Packet* packetsSharedQueue = NULL;
     // handle finding RTT
@@ -137,7 +138,7 @@ public:
     float speedFin;
 
     // sephamore variables
-    HANDLE emptyQuit;
+    HANDLE empty;
     HANDLE full;
     
     // handlers
@@ -155,9 +156,9 @@ public:
     DWORD Open(string host, int portNumber, int senderWindow, LinkProperties* lp);
     // DWORD Send(char* pointer, UINT64 bytes );
     int Send(char* data, int size);
-    DWORD recvFrom(long RTOsec, long RTOusec, bool inOpen);
+    DWORD recvFrom(long RTOsec, long RTOusec);
     DWORD Close();
-    DWORD statusThread(LPVOID tempPointer);
+    DWORD WINAPI statusThread(LPVOID* tempPointer);
 
     DWORD WINAPI Worker(LPVOID* tempPointer);
 
