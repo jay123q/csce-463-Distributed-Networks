@@ -8,7 +8,7 @@
 #include <string>
 #include <iostream>
 using namespace std;
-
+#include <queue>
 #define MAGIC_PROTOCOL 0x8311AA
 #define MAX_PKT_SIZE (1500-28) // maximum UDP packet size accepted by receiver 
 
@@ -105,7 +105,9 @@ class SenderSocket {
 public:
     struct sockaddr_in server;
     statsThread st;
-    Packet* packetsSharedQueue = NULL;
+    Packet * packetsSharedQueue;
+
+
     // handle finding RTT
     double setRTO;
     double estimateRTT;
@@ -156,11 +158,14 @@ public:
     DWORD Open(string host, int portNumber, int senderWindow, LinkProperties* lp);
     // DWORD Send(char* pointer, UINT64 bytes );
     int Send(char* data, int size);
+
     DWORD recvFrom(long RTOsec, long RTOusec);
     DWORD Close();
     DWORD WINAPI statusThread(LPVOID* tempPointer);
 
     DWORD WINAPI Worker(LPVOID* tempPointer);
+
+    DWORD ReceiveACK();
 
     void setEstimateRTT();
     void setDeviationRTT();
