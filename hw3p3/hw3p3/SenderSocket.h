@@ -1,10 +1,10 @@
 #pragma once
 #include "pch.h"
+#include <windows.h>
 #include "synchapi.h"
 #include "Checksum.h"
 #include <ctype.h> 
-#include <stdio.h> 
-#include <windows.h>
+#include <stdio.h>
 #include <string>
 #include <iostream>
 using namespace std;
@@ -146,7 +146,6 @@ public:
     // handlers
     HANDLE stats;
     HANDLE workers;
-    HANDLE full;
 
 
     HANDLE closeConnection;
@@ -155,15 +154,16 @@ public:
     HANDLE socketReceiveReady;
 
     SenderSocket();
+    ~SenderSocket();
     DWORD Open(string host, int portNumber, int senderWindow, LinkProperties* lp);
     // DWORD Send(char* pointer, UINT64 bytes );
     int Send(char* data, int size);
 
-    DWORD recvFrom(long RTOsec, long RTOusec);
+    // DWORD recvFrom(long RTOsec, long RTOusec);
     DWORD Close();
-    DWORD WINAPI statusThread(LPVOID* tempPointer);
 
-    DWORD WINAPI Worker(LPVOID* tempPointer);
+    static DWORD WINAPI Worker(LPVOID tempPointer);
+    static DWORD WINAPI runStats(LPVOID tempPointer);
 
     DWORD ReceiveACK();
 

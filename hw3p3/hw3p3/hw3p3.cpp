@@ -1,12 +1,12 @@
 // hw3p1.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
-#include <ctype.h> 
-#include <stdio.h> 
-#include <string>
+
+#include "pch.h"
 #include <windows.h>
 #include <iostream>
-#include "pch.h"
+#include <string>
 #include "SenderSocket.h"
+#include "Checksum.h"
 
 
 #define STATUS_OK 0 // no error
@@ -24,12 +24,7 @@
 #define MAX_PKT_SIZE (1500-28) // maximum UDP packet size accepted by receiver 
 using namespace std;
 
-DWORD WINAPI status_thread_run (LPVOID tempPointer)
-{
-    SenderSocket* tempSocket = (SenderSocket*)tempPointer;
-    return tempSocket->statusThread();
 
-}
 
 
 void main(int argc, char** argv)
@@ -96,7 +91,6 @@ void main(int argc, char** argv)
     );
 
     // stats theard start thread
-    ss.st.statusEvent = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)status_thread_run, &ss, 0, NULL);
 
 
     if ((status = ss.Open(targetHost, MAGIC_PORT, sendingWindow, &linkedProperties)) != STATUS_OK)

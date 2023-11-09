@@ -1,12 +1,7 @@
 #include "pch.h"
 #include "SenderSocket.h"
-#include <ctype.h> 
-#include <stdio.h> 
-#include <windows.h>
-#include <string>
 
-#include <iostream>
-using namespace std;
+
 
 #define STATUS_OK 0 // no error
 #define ALREADY_CONNECTED 1 // second call to ss.Open() without closing connection
@@ -34,10 +29,9 @@ class SenderSynHeader;
 class SenderSocket;
 class Packet;
 struct statsThread;
-#pragma comment(lib, "ws2_32.lib")
 
 
-DWORD WINAPI SenderSocket::statusThread(LPVOID * tempPointer)
+DWORD WINAPI SenderSocket::runStats(LPVOID tempPointer)
 {
     SenderSocket* stats = (SenderSocket*)tempPointer;
     bool printMe = false;
@@ -97,6 +91,22 @@ SenderSocket::SenderSocket()
     closeConnection = CreateEvent(NULL, true, false, NULL);
     full = CreateSemaphore(NULL, 0, this->senderWindow, NULL);
 
+}
+SenderSocket::~SenderSocket()
+{
+    DWORD areThreadsAlive;
+    GetExitCodeThread(workers, &areThreadsAlive);
+
+    if (areThreadsAlive == STILL_ACTIVE)
+    {
+        SetEvent(closeConnection);
+        // if therer are packets wait
+        WaitForSingleObject(workers, INFINITE);
+        CloseHandle(workers);
+
+        WaitForSingleObject(stats,INFINITE);
+        CloseHandle(stats);
+    }
 }
 DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProperties* lp) {
     if (opened)
@@ -241,24 +251,24 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
     long RTOusec = 0;
     DWORD recvReturn;
     this->timeToAckforSampleRTT = clock();
-    for (int i = 1; i < REATTEMPTS_ALLOWED ; i++)
+    for (int i = 1; i < REATTEMPTS_ALLOWED; i++)
     {
         // you saw cc cc cc cc showing that the packet waas on the heap due to & being used. 
        // printf(" [%.3f] --> SYN 0 (attempt %d of 3, RTO %.3f) to %s\n",
 
-        if (sendto(sock, (char*) packetSyn, sizeof(SenderSynHeader), 0, (struct sockaddr*)&server, sizeof(server)) == SOCKET_ERROR)
+        if (sendto(sock, (char*)packetSyn, sizeof(SenderSynHeader), 0, (struct sockaddr*)&server, sizeof(server)) == SOCKET_ERROR)
         {
-            
+
             printf(" [%.3f] --> failed sendto with %d\n",
                 (double)(clock() - time) / CLOCKS_PER_SEC,
                 WSAGetLastError());
-            
+
             closesocket(sock);
             WSACleanup();
             return FAILED_SEND;
 
         }
-        
+
         timeval timeout;
         timeout.tv_sec = RTOsec;
         timeout.tv_usec = RTOusec;
@@ -275,10 +285,6 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
         }
         else
         {
-
-
-
-
             ReceiverHeader rh;
             struct sockaddr_in response;
             int responseSize = sizeof(response);
@@ -302,21 +308,17 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
             estimateRTT = st.estimateRttStats;
             setRTO = st.estimateRttStats * 3;
             recvBufferLast = min(senderWindow, rh.recvWnd);
+
+            ReleaseSemaphore(empty, recvBufferLast, NULL);
+            // send the stats thread
+            stats = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)runStats, this, 0, NULL);
+            workers = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)Worker, this, 0, NULL);
         }
-       
-        ReleaseSemaphore(empty, recvBufferLast, NULL);
-        // send the stats thread
-
-
-
-        workers = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)&Worker, this, 0, NULL);
-        
     }
-
     opened = true;
     return recvReturn; 
 }
-
+/*
 DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec)
 {
         
@@ -413,6 +415,7 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec)
     return STATUS_OK;
 }
 
+*/
     int SenderSocket::Send(char* data, int size)
     {
         HANDLE arr[] = { closeConnection, empty };
@@ -434,7 +437,8 @@ DWORD SenderSocket::recvFrom(long RTOsec, long RTOusec)
         p->txTime = clock();
         memcpy(p->packetsPending , data, size);
         st.packetsSendBaseStats++;
-        ReleaseSemaphore(full, 1);
+        ReleaseSemaphore(full, 1, NULL);
+        return STATUS_OK;
     }
 /*
     this->timeToAckforSampleRTT = clock();
@@ -555,9 +559,9 @@ DWORD SenderSocket::Close() {
         printf(" finsihed and closing \n");
         closesocket(sock);
         WSACleanup();
-        
-        
-        
+
+
+
         /*
         recvReturn = recvFrom(RTOsec, RTOusec, false);
         if (recvReturn == STATUS_OK || recvReturn == FAILED_RECV)
@@ -567,10 +571,10 @@ DWORD SenderSocket::Close() {
         }
         */
     }
-    
-    
+
+
     // chcksum here
-    this->hexDumpPost = checkValidity.CRC32( (unsigned char *) this->sendBufCheckSum, this->packetSizeSend );
+    this->hexDumpPost = checkValidity.CRC32((unsigned char*)this->sendBufCheckSum, this->packetSizeSend);
 
 
 
@@ -579,22 +583,22 @@ DWORD SenderSocket::Close() {
     return recvReturn; // happy
 }
 
-DWORD WINAPI Worker(LPVOID * tempPointer )
+DWORD WINAPI Worker(LPVOID tempPointer)
 {
     SenderSocket* worker = (SenderSocket*)tempPointer;
     int kernelBuffer = 20e6; // 20 meg
-    if (setsockopt(worker->sock, SOL_SOCKET, SO_RCVBUF, (char *) & kernelBuffer, sizeof(int)) == SOCKET_ERROR)
+    if (setsockopt(worker->sock, SOL_SOCKET, SO_RCVBUF, (char*)&kernelBuffer, sizeof(int)) == SOCKET_ERROR)
     {
         return 0;
     }
 
 
     kernelBuffer = 20e6; // 20 meg
-    if (setsockopt(worker->sock, SOL_SOCKET, SO_SNDBUF, (char *) & kernelBuffer, sizeof(int)) == SOCKET_ERROR)
+    if (setsockopt(worker->sock, SOL_SOCKET, SO_SNDBUF, (char*)&kernelBuffer, sizeof(int)) == SOCKET_ERROR)
     {
         return 0;
     }
-    
+
     SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
 
 
@@ -602,7 +606,7 @@ DWORD WINAPI Worker(LPVOID * tempPointer )
     while (true)
     {
         double timeout = 0;
-        if (!worker->packetsSharedQueue.empty())
+        if (!worker->packetsSharedQueue != NULL)
         {
             // RTO - START
             timeout = worker->setRTO - worker->time;
@@ -619,13 +623,25 @@ DWORD WINAPI Worker(LPVOID * tempPointer )
         switch (ret)
         {
         case WAIT_TIMEOUT: // normal retransmit
-                sendto(worker->sock,
+            if (sendto(
+                worker->sock,
                 (char*)&worker->packetsSharedQueue[worker->st.packetsSendBaseStats % worker->st.effectiveWindowStats].sdh,
                 worker->packetsSharedQueue[worker->st.packetsSendBaseStats % worker->st.effectiveWindowStats].size,
                 0,
                 (struct sockaddr*)&worker->server, sizeof(worker->server)
-                ) != SOCKET_ERROR);
+            ) == SOCKET_ERROR)
+            {
+                printf(" socket error in condition 3 of the socket send, helpp \n");
+
+            }
+           
+                // recaclc transmit time
+// 
+                // adjust window?, or hold it?
+            worker->timeToAckforSampleRTT = clock();
                 break;
+
+           
         case WAIT_OBJECT_0: // move senderBase; update RTT; handle fast retx; do flow control
             DWORD status = worker->ReceiveACK();
             
@@ -641,12 +657,14 @@ DWORD WINAPI Worker(LPVOID * tempPointer )
 
             break;
         case WAIT_OBJECT_0+1:
-                sendto(worker->sock,
+            if (sendto(worker->sock,
                 (char*)&worker->packetsSharedQueue[worker->st.packetsSendBaseStats % worker->st.effectiveWindowStats].sdh,
                 worker->packetsSharedQueue[worker->st.packetsSendBaseStats % worker->st.effectiveWindowStats].size,
                 0,
                 (struct sockaddr*)&worker->server, sizeof(worker->server)) == SOCKET_ERROR
-                );
+                ) {
+                printf(" socket error in condition 3 of the socket send, helpp \n");
+                }
                 worker->st.packetsSendBaseStats++;
                 break;
         default: 
@@ -672,6 +690,90 @@ DWORD SenderSocket::ReceiveACK()
     int RTOsec = floor(3 * sampleRTT);
     int RTOusec = (3 * sampleRTT - RTOsec) * 1e6;
     // restart here timeToAckforSampleRTT
+
+    timeval timeout;
+    timeout.tv_sec = RTOsec;
+    timeout.tv_usec = RTOusec;
+    fd_set fd;
+    FD_ZERO(&fd); // clear the set
+    FD_SET(sock, &fd); // add your socket to the set
+    int available = select(0, &fd, NULL, NULL, &timeout);
+    if (available <= 0)
+    {
+        // restart clock
+        timeToAckforSampleRTT = clock();
+        st.timeoutCountStats++;
+        return TIMEOUT;
+    }
+    else
+    {
+        // (available > 0)
+        ReceiverHeader rh;
+        struct sockaddr_in response;
+        int responseSize = sizeof(response);
+
+        int bytes = recvfrom(sock, (char*)&rh, sizeof(ReceiverHeader), 0, (struct sockaddr*)&response, &responseSize);
+        if (bytes == SOCKET_ERROR)
+        {
+            printf("failed recvfrom with %d\n",
+                WSAGetLastError());
+            closesocket(sock);
+            WSACleanup();
+            return FAILED_RECV;
+            // return GetLastError();
+        }
+
+        this->sampleRTT = (double)(clock() - timeToAckforSampleRTT) / CLOCKS_PER_SEC;
+        findRTO();
+
+        // in close, handle snd && recieve more pkts, adjust buffer
+        // n == ackSeq, adjust, timer, move window, inc seq
+        // else buf in recvwin
+
+        if (rh.flags.FIN != 0 && rh.flags.SYN != 0)
+        {
+            // do nuthing?? , hold seq numebr
+        }
+        else if (rh.ackSeq >= st.packetsSendBaseStats + 1)
+        {
+
+            dupAck = 0;
+
+            // potential crit section
+            // stats theard packetsToSend
+            if (rh.ackSeq == st.packetsSendBaseStats + 1)
+            {
+
+                st.rcvWinStats = rh.recvWnd;
+                st.bytesTotal += MAX_PKT_SIZE;
+                st.packetsSendBaseStats++;
+            }
+            else
+            {
+                // out of order packets??
+                timeToAckforSampleRTT = clock();
+                printf(" pakcets out of order \n");
+            }
+
+
+
+        }
+        else if (rh.ackSeq == st.packetsSendBaseStats)
+        {
+            dupAck++;
+            st.packetsSendBaseStats = rh.ackSeq;
+            if (dupAck == 3)
+            {
+                st.fastRetransmitCountStats++;
+                return RETX_OCCURED;
+            }
+        }
+        else
+        {
+            printf(" I am concerned how you got here bud, recv acked a PKT < than snd \n");
+        }
+
+    }
 
 
 
