@@ -669,7 +669,7 @@ DWORD WINAPI Worker(LPVOID tempPointer)
                 break;
         default: 
             // handle failed wait;
-            printf(" bgger badder error occcured, sendersocket.cpp 641 \n")
+            printf(" bgger badder error occcured, sendersocket.cpp 641 \n");
             break;
         }
         if (first packet of window || just did a retx(timeout / 3 - dup ACK)
@@ -729,48 +729,34 @@ DWORD SenderSocket::ReceiveACK()
         // in close, handle snd && recieve more pkts, adjust buffer
         // n == ackSeq, adjust, timer, move window, inc seq
         // else buf in recvwin
-
-        if (rh.flags.FIN != 0 && rh.flags.SYN != 0)
+        int lastReleased = min(W, synack->window);
+        ReleaseSemaphore(empty, lastReleased);
+        // in the worker thread
+        int dupAck = 0;
+        while (not end of transfer)
         {
-            // do nuthing?? , hold seq numebr
-        }
-        else if (rh.ackSeq >= st.packetsSendBaseStats + 1)
-        {
 
-            dupAck = 0;
+            if ( rh.recvWnd > this->st.packetsSendBaseStats)
+            { // 
+                this->st.packetsSendBaseStats = rh.recvWnd;
+                            effectiveWin = min(W, ack->window)
 
-            // potential crit section
-            // stats theard packetsToSend
-            if (rh.ackSeq == st.packetsSendBaseStats + 1)
-            {
+                            // how much we can advance the semaphore
+                            newReleased = sndBase + effectiveWin - lastReleased
+                            ReleaseSemaphore(empty, newReleased)
+                            lastReleased += newReleased
 
-                st.rcvWinStats = rh.recvWnd;
-                st.bytesTotal += MAX_PKT_SIZE;
-                st.packetsSendBaseStats++;
-            }
+                // handing no packets acked as a thw switch
+              }
             else
             {
-                // out of order packets??
-                timeToAckforSampleRTT = clock();
-                printf(" pakcets out of order \n");
+                if (dupAck == 3)
+                {
+                    // retransmit
+                }
+                dupAck++;
             }
 
-
-
-        }
-        else if (rh.ackSeq == st.packetsSendBaseStats)
-        {
-            dupAck++;
-            st.packetsSendBaseStats = rh.ackSeq;
-            if (dupAck == 3)
-            {
-                st.fastRetransmitCountStats++;
-                return RETX_OCCURED;
-            }
-        }
-        else
-        {
-            printf(" I am concerned how you got here bud, recv acked a PKT < than snd \n");
         }
 
     }
