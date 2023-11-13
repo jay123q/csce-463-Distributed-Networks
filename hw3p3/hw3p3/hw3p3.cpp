@@ -2,7 +2,7 @@
 //
 
 #include "pch.h"
-#include <windows.h>
+
 #include <iostream>
 #include <string>
 #include "SenderSocket.h"
@@ -34,22 +34,21 @@ void main(int argc, char** argv)
 
 
 
-    /*
    // std::string host("128.194.135.1");
    // std::string host("128.194.135.82");
    // std::string host("0.0.0.0");
-   // std::string host("127.0.0.1");
+    std::string host("127.0.0.1");
   // std::string host("s3.irl.cs.tamu.edu");
 
-    int power = 15;
-    int sendingWindow = 1;
-    linkedProperties.RTT = 0.1;
-    linkedProperties.pLoss[FORWARD_PATH] = 0.2;
+    int power = 25;
+    int sendingWindow = 5000;
+    linkedProperties.RTT = 0.2;
+    linkedProperties.pLoss[FORWARD_PATH] = 0.001;
     // should converge to this loss rate per n packets
-    linkedProperties.pLoss[RETURN_PATH] = 0;
-    linkedProperties.speed = 14;
-    */
+    linkedProperties.pLoss[RETURN_PATH] = 0.0001;
+    linkedProperties.speed = 1000;
 
+    /*
     if (argc != 8)
     {
         printf(" Incorrect args, propper format is host, power, RTT, forward loss, backward loss, and speed \n");
@@ -62,6 +61,7 @@ void main(int argc, char** argv)
     linkedProperties.pLoss[FORWARD_PATH] = atof(argv[5]);
     linkedProperties.pLoss[RETURN_PATH] = atof(argv[6]);
     linkedProperties.speed = atof(argv[7]);
+    */
 
 
     clock_t timeOpen = clock();
@@ -92,7 +92,6 @@ void main(int argc, char** argv)
 
     // stats theard start thread
 
-
     if ((status = ss.Open(targetHost, MAGIC_PORT, sendingWindow, &linkedProperties)) != STATUS_OK)
     {
         // error handling: print status and quit
@@ -118,12 +117,13 @@ void main(int argc, char** argv)
 
 
         UINT64 off = 0; // current position in buffer
-
+        // sender is not producing? for the worker to consume properly? check sender and worker for fix
         while (off < byteBufferSize)
         {
             // decide the size of next chunk
             bytes = min(byteBufferSize - off, MAX_PKT_SIZE - sizeof(SenderDataHeader));
             // send chunk into socket
+            // ask if this popualtes send like it should and then creates the vector as needed
             if ((status = ss.Send(charBuf + off, bytes)) != STATUS_OK)
             {
                 printf("Main: connect failed with status %d\n", status);
@@ -144,6 +144,16 @@ void main(int argc, char** argv)
         WaitForSingleObject(ss.st.statusEvent, INFINITE);
         CloseHandle(ss.st.statusEvent);
 
+
+        SetEvent(ss.closeConnection);
+        WaitForSingleObject(ss.workers, INFINITE);
+        CloseHandle(ss.workers);
+
+        /*
+        SetEvent(st.statusEvent);
+        WaitForSingleObject(st.statusEvent, INFINITE);
+        CloseHandle(st.statusEvent);
+        */
 
 
     // recieve from

@@ -1,17 +1,22 @@
 #pragma once
 #include "pch.h"
+#include <stdio.h>
+#include <tchar.h>
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include "synchapi.h"
+#include <winsock2.h>
+
 #include "Checksum.h"
 #include <ctype.h> 
-#include <stdio.h>
 #include <string>
+#include <synchapi.h>
 #include <iostream>
 using namespace std;
 #include <queue>
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
 #define MAGIC_PROTOCOL 0x8311AA
 #define MAX_PKT_SIZE (1500-28) // maximum UDP packet size accepted by receiver 
-
+#pragma warning(disable:4996) 
 
 
 #pragma pack(push,1) // restores old packing
@@ -80,7 +85,7 @@ struct statsThread {
     DWORD sndWinStats; // set in from open pick snd or rcv
     double estimateRttStats;
     int timerPrint2sec;
-
+    int packetesSendBaseNextPacketStats;
 
     clock_t prevTimerStats; // in stats good put?
     double goodPutStats; // speed reciever processes data from app
@@ -127,6 +132,7 @@ public:
     SenderSynHeader * packetFin;
     DWORD senderWindow;
     clock_t timeAtClose;
+    bool closeCalled;
 
     // all check sum params
     Checksum checkValidity;
@@ -144,12 +150,10 @@ public:
     HANDLE full;
     
     // handlers
-    HANDLE stats;
     HANDLE workers;
-
+    HANDLE stats;
 
     HANDLE closeConnection;
-    HANDLE receive;
     HANDLE complete;
     HANDLE socketReceiveReady;
 
@@ -162,10 +166,10 @@ public:
     // DWORD recvFrom(long RTOsec, long RTOusec);
     DWORD Close();
 
-    static DWORD WINAPI Worker(LPVOID tempPointer);
+    static DWORD WINAPI workerThreads(LPVOID tempPointer);
     static DWORD WINAPI runStats(LPVOID tempPointer);
 
-    DWORD ReceiveACK();
+    DWORD ReceiveACK( int * dupCount );
 
     void setEstimateRTT();
     void setDeviationRTT();
