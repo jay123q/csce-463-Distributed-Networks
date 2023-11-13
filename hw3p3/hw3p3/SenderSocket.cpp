@@ -78,7 +78,7 @@ DWORD WINAPI SenderSocket::runStats(LPVOID tempPointer)
 
 SenderSocket::SenderSocket()
 {
-    st.statusEvent = CreateEvent(NULL, true, false, NULL);
+
     st.breakThread = false;
 
 
@@ -86,10 +86,6 @@ SenderSocket::SenderSocket()
     memset(&remote, 0, sizeof(remote));
     memset(&server, 0, sizeof(server));
 
-    empty = CreateEvent(NULL, false, false, NULL);
-    socketReceiveReady = CreateEvent(NULL, false, false, NULL);
-    closeConnection = CreateEvent(NULL, true, false, NULL);
-    full = CreateSemaphore(NULL, false, this->senderWindow, NULL);
 
 }
 SenderSocket::~SenderSocket()
@@ -128,7 +124,7 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
     st.bytesTotal = 0;
     st.timeoutCountStats = 0;
     st.fastRetransmitCountStats = 0;
-    st.effectiveWindowStats = 0;
+    st.effectiveWindowStats = senderWindow;
     st.rcvWinStats = 0;
     st.sndWinStats = 0;
     st.goodPutStats = 0;
@@ -142,6 +138,14 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
 
     st.prevPrintBase = st.packetsSendBaseStats;
 
+
+    empty = CreateSemaphore(NULL, false, this->senderWindow, NULL);
+    full = CreateSemaphore(NULL, false, this->senderWindow, NULL);
+
+
+    st.statusEvent = CreateEvent(NULL, true, false, NULL);
+    socketReceiveReady = CreateEvent(NULL, false, false, NULL);
+    closeConnection = CreateEvent(NULL, true, false, NULL);
 
 
     WSADATA wsaData;
@@ -303,7 +307,10 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
 
             this->sampleRTT = (double)(clock() - timeToAckforSampleRTT) / CLOCKS_PER_SEC;
             // findRTO();
-            WSAEventSelect(this->sock, this->socketReceiveReady, FD_READ);
+            if (WSAEventSelect(this->sock, this->socketReceiveReady, FD_READ) != 0)
+            {
+                printf(" intenal screaming aaaaaaaaaaaaaa \n");
+           }
 
             st.estimateRttStats = sampleRTT;
             estimateRTT = st.estimateRttStats;
@@ -312,8 +319,8 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
 
             ReleaseSemaphore(empty, recvBufferLast, NULL);
             
-            workers = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)workerThreads, this, 0, NULL);
-            stats = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)runStats, this, 0, NULL);
+            stats = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) runStats, this, 0, NULL);
+            workers = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) workerThreads, this, 0, NULL);
             // send the stats thread
             break;
         
@@ -421,7 +428,7 @@ int SenderSocket::Send(char* data, int size)
     p->size = size + sizeof(SenderDataHeader);
     p->txTime = clock();
     memcpy(p->packetsPending, data, size);
-    st.packetsSendBaseStats++;
+    // st.packetsSendBaseStats++;
     ReleaseSemaphore(full, 1, NULL);
     return STATUS_OK;
 }
@@ -446,14 +453,16 @@ DWORD WINAPI SenderSocket::workerThreads(LPVOID tempPointer)
 
     HANDLE events[] = { worker->socketReceiveReady , worker->full };
     // closeConnection to check if theres a quit message?
-
-    while ( !worker->closeCalled &&  worker->st.packetsSendBaseStats > worker->st.packetesSendBaseNextPacketStats)
+    // debug me later 
+    // main raises event, that then checks to say close annd hold to have acks
+    // and once workers clossed then close stats
+    while ( !worker->closeCalled &&  worker->st.packetsSendBaseStats < worker->st.packetesSendBaseNextPacketStats)
     {
         double timeout = 0;
         if ( worker->packetsSharedQueue != NULL)
         {
             // RTO - START
-            timeout = 1000 * ( worker->packetsSharedQueue[worker->st.packetsSendBaseStats % worker->st.effectiveWindowStats].txTime - clock())/ CLOCKS_PER_SEC - 1000*worker->setRTO;
+            timeout = 1000 * ( worker->packetsSharedQueue[worker->st.packetsSendBaseStats % worker->st.effectiveWindowStats].txTime - clock()) / CLOCKS_PER_SEC - 1000*worker->setRTO;
         }
         else
         {
@@ -468,6 +477,7 @@ DWORD WINAPI SenderSocket::workerThreads(LPVOID tempPointer)
         switch (ret)
         {
         case WAIT_TIMEOUT: // normal retransmit
+                worker->packetsSharedQueue[worker->st.packetsSendBaseStats % worker->st.effectiveWindowStats].txTime = clock();
             if (sendto(
                 worker->sock,
                 (char*)&worker->packetsSharedQueue[worker->st.packetsSendBaseStats % worker->st.effectiveWindowStats].sdh,
@@ -479,21 +489,24 @@ DWORD WINAPI SenderSocket::workerThreads(LPVOID tempPointer)
                 printf(" socket error in condition 3 of the socket send, helpp \n");
 
             }
-           
-                // recaclc transmit time
-// 
-                // adjust window?, or hold it?
+            worker->st.timeoutCountStats++;
+
+
+            // update stats thread for timeout
+
+
+
+
             worker->timeToAckforSampleRTT = clock();
                 break;
 
            
-        case WAIT_OBJECT_0: // move senderBase; update RTT; handle fast retx; do flow control
+        case WAIT_OBJECT_0+0: // move senderBase; update RTT; handle fast retx; do flow control
+            // recieve socketReady is true
+
             status = worker->ReceiveACK(&worker->dupAck);
             
-            if (status == TIMEOUT)
-            {
-                timeoutOccured = true;
-            }
+
             if (status == RETX_OCCURED)
             {
                 fastRetransmitOccured = true;
@@ -501,11 +514,17 @@ DWORD WINAPI SenderSocket::workerThreads(LPVOID tempPointer)
             else if (status == STATUS_OK)
             {
                 worker->dupAck = 0;
+                /*
+                worker->st.packetesSendBaseNextPacketStats++;
+                sendBaseMoveForward = true;
+                */
             }
+
     //            worker->recvFrom(RTOsec, RTOusec);
 
             break;
         case WAIT_OBJECT_0+1:
+            // full is true
             if (sendto(worker->sock,
                 (char*)&worker->packetsSharedQueue[worker->st.packetsSendBaseStats % worker->st.effectiveWindowStats].sdh,
                 worker->packetsSharedQueue[worker->st.packetsSendBaseStats % worker->st.effectiveWindowStats].size,
@@ -514,8 +533,12 @@ DWORD WINAPI SenderSocket::workerThreads(LPVOID tempPointer)
                 ) {
                 printf(" socket error in condition 3 of the socket send, helpp \n");
                 }
+            // set here seocketreadyHandler
+            SetEvent()
                 worker->st.packetesSendBaseNextPacketStats++;
                 sendBaseMoveForward = true;
+                /*
+                */
                 break;
         default: 
             // handle failed wait;
@@ -586,11 +609,7 @@ DWORD SenderSocket::ReceiveACK(int * dupCount )
                     return RETX_OCCURED;
 
                 }
-                else
-                {
 
-                    return TIMEOUT;
-                }
             }
 
         

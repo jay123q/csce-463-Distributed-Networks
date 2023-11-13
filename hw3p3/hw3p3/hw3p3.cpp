@@ -24,7 +24,35 @@
 #define MAX_PKT_SIZE (1500-28) // maximum UDP packet size accepted by receiver 
 using namespace std;
 
+DWORD WINAPI sendThreads(LPVOID tempPointer)
+{
 
+
+    SenderSocket* ss = (SenderSocket*)tempPointer;
+    char* charBuf = ss->sendBufCheckSum;
+    UINT64 byteBufferSize = ss->packetSizeSend;
+    DWORD status = STATUS_OK;
+    UINT64 off = 0; // current position in buffer
+    // sender is not producing? for the worker to consume properly? check sender and worker for fix
+
+    while (off < byteBufferSize)
+    {
+        // decide the size of next chunk
+        int bytes = min(byteBufferSize - off, MAX_PKT_SIZE - sizeof(SenderDataHeader));
+        // send chunk into socket
+        // ask if this popualtes send like it should and then creates the vector as needed
+        if ((status = ss->Send(charBuf + off, bytes)) != STATUS_OK)
+        {
+            printf("Main: connect failed with status %d\n", status);
+            return status;
+            // error handing: print status and quit
+
+        }
+
+        off += bytes;
+    }
+    return status;
+}
 
 
 void main(int argc, char** argv)
@@ -115,39 +143,48 @@ void main(int argc, char** argv)
     ss.packetSizeSend = byteBufferSize;
     ss.sendBufCheckSum = charBuf;
 
+    /*
+    UINT64 off = 0; // current position in buffer
+    // sender is not producing? for the worker to consume properly? check sender and worker for fix
 
-        UINT64 off = 0; // current position in buffer
-        // sender is not producing? for the worker to consume properly? check sender and worker for fix
-        while (off < byteBufferSize)
+
+    while (off < byteBufferSize)
+    {
+        // decide the size of next chunk
+        int bytes = min(byteBufferSize - off, MAX_PKT_SIZE - sizeof(SenderDataHeader));
+        // send chunk into socket
+        // ask if this popualtes send like it should and then creates the vector as needed
+        if ((status = ss.Send(charBuf + off, bytes)) != STATUS_OK)
         {
-            // decide the size of next chunk
-            bytes = min(byteBufferSize - off, MAX_PKT_SIZE - sizeof(SenderDataHeader));
-            // send chunk into socket
-            // ask if this popualtes send like it should and then creates the vector as needed
-            if ((status = ss.Send(charBuf + off, bytes)) != STATUS_OK)
-            {
-                printf("Main: connect failed with status %d\n", status);
-                return;
-                // error handing: print status and quit
+            printf("Main: connect failed with status %d\n", status);
+            return;
+            // error handing: print status and quit
 
-            }
-
-                off += bytes;
         }
-    
+
+        off += bytes;
+    }
+
+    */
+
+    HANDLE sendThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) sendThreads, &ss, 0, NULL);
+    WaitForSingleObject(sendThread, INFINITE);
+    CloseHandle(sendThread);
+    /*
+    */
 
         double elapsedTime = (double)(clock() - firstDataPacketSend) / CLOCKS_PER_SEC;
 
+
+        SetEvent(ss.closeConnection);
+        WaitForSingleObject(ss.workers, INFINITE);
+        CloseHandle(ss.workers);
 
 
         ss.st.breakThread = true;
         WaitForSingleObject(ss.st.statusEvent, INFINITE);
         CloseHandle(ss.st.statusEvent);
 
-
-        SetEvent(ss.closeConnection);
-        WaitForSingleObject(ss.workers, INFINITE);
-        CloseHandle(ss.workers);
 
         /*
         SetEvent(st.statusEvent);
