@@ -322,30 +322,6 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
     opened = true;
     return STATUS_OK; 
 }
-    int SenderSocket::Send(char* data, int size)
-    {
-        HANDLE arr[] = { closeConnection, empty };
-        WaitForMultipleObjects(2, arr, false, INFINITE);
-        // old this->timeToAckforSampleRTT = clock();
-        // timeToAckforSampleRTT
-        // no need for mutex as no shared variables are modified
-        int slot = st.packetsSendBaseStats % st.sndWinStats;
-        Packet* p = packetsSharedQueue + slot; // pointer to packet struct
-        // SenderDataHeader* sdh = p->pkt;
-        p->sdh.flags.reserved = 0;
-        p->sdh.flags.magic = MAGIC_PROTOCOL;
-        p->sdh.flags.ACK = 0;
-        p->sdh.flags.SYN = 0;
-        p->sdh.flags.FIN = 0;
-        p->sdh.seq = st.packetsSendBaseStats;
-        p->size = size + sizeof(SenderDataHeader);
-        p->txTime = clock();
-        memcpy(p->packetsPending , data, size);
-        st.packetsSendBaseStats++;
-        ReleaseSemaphore(full, 1, NULL);
-        return STATUS_OK;
-    }
-
 
 DWORD SenderSocket::Close() {
 
@@ -423,7 +399,32 @@ DWORD SenderSocket::Close() {
 
     return STATUS_OK; // happy
 }
+int SenderSocket::Send(char* data, int size)
+{
+    // worker waits on     HANDLE events[] = { worker->socketReceiveReady , worker->full };
 
+
+    HANDLE arr[] = { closeConnection, empty };
+    WaitForMultipleObjects(2, arr, false, INFINITE);
+    // old this->timeToAckforSampleRTT = clock();
+    // timeToAckforSampleRTT
+    // no need for mutex as no shared variables are modified
+    int slot = st.packetsSendBaseStats % st.sndWinStats;
+    Packet* p = packetsSharedQueue + slot; // pointer to packet struct
+    // SenderDataHeader* sdh = p->pkt;
+    p->sdh.flags.reserved = 0;
+    p->sdh.flags.magic = MAGIC_PROTOCOL;
+    p->sdh.flags.ACK = 0;
+    p->sdh.flags.SYN = 0;
+    p->sdh.flags.FIN = 0;
+    p->sdh.seq = st.packetsSendBaseStats;
+    p->size = size + sizeof(SenderDataHeader);
+    p->txTime = clock();
+    memcpy(p->packetsPending, data, size);
+    st.packetsSendBaseStats++;
+    ReleaseSemaphore(full, 1, NULL);
+    return STATUS_OK;
+}
 DWORD WINAPI SenderSocket::workerThreads(LPVOID tempPointer)
 {
     SenderSocket* worker = (SenderSocket*)tempPointer;
