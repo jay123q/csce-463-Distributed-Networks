@@ -65,11 +65,11 @@ void main(int argc, char** argv)
    // std::string host("128.194.135.1");
    // std::string host("128.194.135.82");
    // std::string host("0.0.0.0");
-    std::string host("127.0.0.1");
-  // std::string host("s3.irl.cs.tamu.edu");
+  //  std::string host("127.0.0.1");
+   std::string host("s3.irl.cs.tamu.edu");
 
     int power = 25;
-    int sendingWindow = 5000;
+    int sendingWindow = 4;
     linkedProperties.RTT = 0.2;
     linkedProperties.pLoss[FORWARD_PATH] = 0.001;
     // should converge to this loss rate per n packets
@@ -144,6 +144,7 @@ void main(int argc, char** argv)
     ss.sendBufCheckSum = charBuf;
 
     /*
+    */
     UINT64 off = 0; // current position in buffer
     // sender is not producing? for the worker to consume properly? check sender and worker for fix
 
@@ -165,12 +166,11 @@ void main(int argc, char** argv)
         off += bytes;
     }
 
-    */
 
+    /*
     HANDLE sendThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) sendThreads, &ss, 0, NULL);
     WaitForSingleObject(sendThread, INFINITE);
     CloseHandle(sendThread);
-    /*
     */
 
         double elapsedTime = (double)(clock() - firstDataPacketSend) / CLOCKS_PER_SEC;

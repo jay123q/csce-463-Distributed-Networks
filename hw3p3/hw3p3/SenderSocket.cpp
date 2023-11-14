@@ -11,6 +11,8 @@
 #define FAILED_RECV 6 // recvfrom() failed in kernel
 #define RETX_OCCURED 10 // recvfrom() failed in kernel
 #define DEFAULT_QUIET_COMPILER 50
+#define DO_NOTHING 100
+
 
 #define FORWARD_PATH 0
 #define RETURN_PATH 1
@@ -312,10 +314,10 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
                 printf(" intenal screaming aaaaaaaaaaaaaa \n");
            }
 
-            st.estimateRttStats = sampleRTT;
+            st.estimateRttStats = this->sampleRTT;
             estimateRTT = st.estimateRttStats;
             setRTO = st.estimateRttStats * 3;
-            recvBufferLast = min(senderWindow, rh.recvWnd);
+            recvBufferLast = min(this->senderWindow, rh.recvWnd);
 
             ReleaseSemaphore(empty, recvBufferLast, NULL);
             
@@ -424,10 +426,10 @@ int SenderSocket::Send(char* data, int size)
     p->sdh.flags.ACK = 0;
     p->sdh.flags.SYN = 0;
     p->sdh.flags.FIN = 0;
-    p->sdh.seq = st.packetsSendBaseStats;
+    p->sdh.seq = st.packetesSendBaseNextPacketStats;
     p->size = size + sizeof(SenderDataHeader);
     p->txTime = clock();
-    memcpy(p->packetsPending, data, size);
+    memcpy(p->packetContents, data, size);
     // st.packetsSendBaseStats++;
     ReleaseSemaphore(full, 1, NULL);
     return STATUS_OK;
@@ -454,9 +456,13 @@ DWORD WINAPI SenderSocket::workerThreads(LPVOID tempPointer)
     HANDLE events[] = { worker->socketReceiveReady , worker->full };
     // closeConnection to check if theres a quit message?
     // debug me later 
+    // 
+    // 
+    // 
+    // 
     // main raises event, that then checks to say close annd hold to have acks
     // and once workers clossed then close stats
-    while ( !worker->closeCalled &&  worker->st.packetsSendBaseStats < worker->st.packetesSendBaseNextPacketStats)
+    while ( !worker->closeCalled )
     {
         double timeout = 0;
         if ( worker->packetsSharedQueue != NULL)
@@ -513,11 +519,19 @@ DWORD WINAPI SenderSocket::workerThreads(LPVOID tempPointer)
             }
             else if (status == STATUS_OK)
             {
+                worker->st.packetesSendBaseNextPacketStats++;
+                sendBaseMoveForward = true;
                 worker->dupAck = 0;
                 /*
                 worker->st.packetesSendBaseNextPacketStats++;
                 sendBaseMoveForward = true;
                 */
+            }
+            else if (status == DO_NOTHING)
+            {
+                // this is if the dupACK != 3
+               ReleaseSemaphore(worker->full, 1, NULL);
+                // nuthin
             }
 
     //            worker->recvFrom(RTOsec, RTOusec);
@@ -534,9 +548,6 @@ DWORD WINAPI SenderSocket::workerThreads(LPVOID tempPointer)
                 printf(" socket error in condition 3 of the socket send, helpp \n");
                 }
             // set here seocketreadyHandler
-            SetEvent()
-                worker->st.packetesSendBaseNextPacketStats++;
-                sendBaseMoveForward = true;
                 /*
                 */
                 break;
@@ -551,6 +562,10 @@ DWORD WINAPI SenderSocket::workerThreads(LPVOID tempPointer)
             worker->findRTO();
             // recompute timerExpire;
             // handling this as recomputing 
+            movedBaseFwd = false;
+            timeoutOccured = false;
+            fastRetransmitOccured = false;
+            sendBaseMoveForward = false;
         }
 
 
@@ -581,15 +596,21 @@ DWORD SenderSocket::ReceiveACK(int * dupCount )
         // in close, handle snd && recieve more pkts, adjust buffer
         // n == ackSeq, adjust, timer, move window, inc seq
         // else buf in recvwin
-        int lastReleased = min(st.packetsSendBaseStats, rh.recvWnd);
         // in the worker thread
 
 
 
             if ( rh.recvWnd > this->st.packetsSendBaseStats)
             { // 
-                this->sampleRTT = (double)(clock() - timeToAckforSampleRTT) / CLOCKS_PER_SEC;
-                findRTO();
+                printf("\n \n NORMAL MODE \n \n ");
+                 int lastReleased = min(st.packetsSendBaseStats, rh.recvWnd);
+                this->st.bytesTotal += bytes;
+
+                    // if we have dun goofed, do not count the ack
+                    this->sampleRTT = (clock() - packetsSharedQueue[ ( rh.recvWnd -1 )% st.effectiveWindowStats].txTime) / CLOCKS_PER_SEC;
+                    findRTO();
+
+                
                 this->st.packetsSendBaseStats = rh.recvWnd;
                 this->st.effectiveWindowStats = min( this->st.effectiveWindowStats , rh.recvWnd);
 
@@ -602,13 +623,27 @@ DWORD SenderSocket::ReceiveACK(int * dupCount )
               }
             else
             {
+                printf("\n \n IN RETRANSMIT \n \n ");
                 this->dupAck++;
+                this->st.packetsSendBaseStats = rh.recvWnd;
                 if (dupAck == 3)
                 {
+                    st.fastRetransmitCountStats++;
+                    sendto(
+                        this->sock,
+                        (char*)&this->packetsSharedQueue[this->st.packetsSendBaseStats % this->st.effectiveWindowStats].sdh,
+                        this->packetsSharedQueue[this->st.packetsSendBaseStats % this->st.effectiveWindowStats].size,
+                        0,
+                        (struct sockaddr*)&this->server, sizeof(this->server)
+                    );
                     // retransmit
+                    this->packetsSharedQueue[this->st.packetsSendBaseStats % this->st.effectiveWindowStats].txTime = clock();
                     return RETX_OCCURED;
 
                 }
+                    
+                return DO_NOTHING;
+
 
             }
 
