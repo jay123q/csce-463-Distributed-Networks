@@ -144,11 +144,10 @@ void main(int argc, char** argv)
     ss.sendBufCheckSum = charBuf;
 
     /*
-    */
     UINT64 off = 0; // current position in buffer
     // sender is not producing? for the worker to consume properly? check sender and worker for fix
 
-
+    
     while (off < byteBufferSize)
     {
         // decide the size of next chunk
@@ -166,11 +165,12 @@ void main(int argc, char** argv)
         off += bytes;
     }
 
+    */
 
-    /*
     HANDLE sendThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) sendThreads, &ss, 0, NULL);
     WaitForSingleObject(sendThread, INFINITE);
     CloseHandle(sendThread);
+    /*
     */
 
         double elapsedTime = (double)(clock() - firstDataPacketSend) / CLOCKS_PER_SEC;
