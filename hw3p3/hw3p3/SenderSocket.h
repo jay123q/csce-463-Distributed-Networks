@@ -76,7 +76,7 @@ struct statsThread {
     HANDLE statusEvent;
 
     clock_t startTimerStats; // in open
-    DWORD packetsToSendStats; 
+    DWORD packetsToSendStats;
     DWORD packetsSendBaseStats;
     int timeoutCountStats; // in rcv
     int fastRetransmitCountStats;
@@ -110,7 +110,7 @@ class SenderSocket {
 public:
     struct sockaddr_in server;
     statsThread st;
-    Packet * packetsSharedQueue;
+    Packet* packetsSharedQueue;
 
 
     // handle finding RTT
@@ -128,12 +128,13 @@ public:
     clock_t time;
     double closeCalledTime;
     clock_t timeToAckforSampleRTT;
-    SenderSynHeader * packetSyn;
-    SenderSynHeader * packetFin;
+    SenderSynHeader* packetSyn;
+    SenderSynHeader* packetFin;
     DWORD senderWindow;
     clock_t timeAtClose;
     bool closeCalled;
-
+    bool triggerClosingonWokers;
+    bool breakConnection;
     // all check sum params
     Checksum checkValidity;
     char* sendBufCheckSum;
@@ -145,10 +146,13 @@ public:
     float RTTFin;
     float speedFin;
 
+    int countSentPkts;
+
+
     // sephamore variables
     HANDLE empty;
     HANDLE full;
-    
+
     // handlers
     HANDLE workers;
     HANDLE stats;
@@ -169,7 +173,7 @@ public:
     static DWORD WINAPI workerThreads(LPVOID tempPointer);
     static DWORD WINAPI runStats(LPVOID tempPointer);
 
-    DWORD ReceiveACK( int * dupCount );
+    DWORD ReceiveACK(int* dupCount);
 
     void setEstimateRTT();
     void setDeviationRTT();
