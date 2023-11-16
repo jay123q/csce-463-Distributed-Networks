@@ -181,7 +181,7 @@ void main(int argc, char** argv)
 
 
         // check this later, idea is to get the remaining packets
-        ReleaseSemaphore(ss.full, ss.countSentPkts, NULL);
+        // ReleaseSemaphore(ss.full, ss.countSentPkts, NULL);
 
 
 
@@ -190,12 +190,12 @@ void main(int argc, char** argv)
 
 
         ss.st.breakThread = true;
+        SetEvent(ss.st.statusEvent);
         WaitForSingleObject(ss.st.statusEvent, INFINITE);
         CloseHandle(ss.st.statusEvent);
 
 
         /*
-        SetEvent(st.statusEvent);
         WaitForSingleObject(st.statusEvent, INFINITE);
         CloseHandle(st.statusEvent);
         */

@@ -64,7 +64,6 @@ public:
     int size; // bytes in packet data
     clock_t txTime; // transmission time
     char packetContents[MAX_PKT_SIZE]; // packet with header
-    SenderDataHeader sdh;
 };
 
 #pragma pack(pop,1) // restores old packing
@@ -81,8 +80,6 @@ struct statsThread {
     int timeoutCountStats; // in rcv
     int fastRetransmitCountStats;
     int effectiveWindowStats; // min btwn sndWin and rcvWin
-    DWORD rcvWinStats; // set in from RCV pick snd or rcv
-    DWORD sndWinStats; // set in from open pick snd or rcv
     double estimateRttStats;
     int timerPrint2sec;
     int packetesSendBaseNextPacketStats;
@@ -112,18 +109,18 @@ public:
     statsThread st;
     Packet* packetsSharedQueue;
 
-
+    int nextToSend;
     // handle finding RTT
     double setRTO;
     double estimateRTT;
     double deviationRTT;
     int packetsSendBase;
-
+    
     // handle opening an closing
     int dupAck;
     bool opened;
     double sampleRTT;
-    int recvBufferLast;
+    int lastReleased;
     SOCKET sock;
     clock_t time;
     double closeCalledTime;
@@ -173,7 +170,7 @@ public:
     static DWORD WINAPI workerThreads(LPVOID tempPointer);
     static DWORD WINAPI runStats(LPVOID tempPointer);
 
-    DWORD ReceiveACK(int* dupCount);
+    DWORD ReceiveACK();
 
     void setEstimateRTT();
     void setDeviationRTT();

@@ -47,7 +47,6 @@ DWORD WINAPI SenderSocket::runStats(LPVOID tempPointer)
             // avoid final erronous rpint
             return 20;
         }
-        // stats->st.effectiveWindowStats = min(stats->st.rcvWinStats , stats->st.sndWinStats);
         
         
         
@@ -128,21 +127,21 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
     st.timeoutCountStats = 0;
     st.fastRetransmitCountStats = 0;
     st.effectiveWindowStats = senderWindow;
-    st.rcvWinStats = 0;
-    st.sndWinStats = 0;
     st.goodPutStats = 0;
     st.estimateRttStats = 0;
     st.packetesSendBaseNextPacketStats = 0;
     st.nNumberPrints = 1;
     st.prevTimerStats = 0.0;
+    this->lastReleased = 0;
     dupAck = 0;
     closeCalled = false;
     this->senderWindow = senderWindow;
-
+    nextToSend = 0;
     st.prevPrintBase = st.packetsSendBaseStats;
 
 
-    empty = CreateSemaphore(NULL, 0,this->senderWindow, NULL);
+    empty = CreateSemaphore(NULL, this->senderWindow , this->senderWindow, NULL);
+    // empty = CreateSemaphore(NULL, 0 , this->senderWindow, NULL);
     full = CreateSemaphore(NULL,  0 , this->senderWindow, NULL);
 
 
@@ -226,7 +225,6 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
     RTTFin = lp->RTT;
     speedFin = lp->speed;
     st.packetesSendBaseNextPacketStats = 0;
-    st.sndWinStats = senderWindow;
 
     this->host = host.c_str();
     DWORD IP = inet_addr(host.c_str());
@@ -315,8 +313,9 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
             st.estimateRttStats = this->sampleRTT;
             estimateRTT = st.estimateRttStats;
             setRTO = st.estimateRttStats * 3;
-            recvBufferLast = min(this->senderWindow, rh.recvWnd);
-           ReleaseSemaphore(empty, recvBufferLast, NULL);
+            // this->lastReleased = min(this->senderWindow, rh.recvWnd);
+
+          // ReleaseSemaphore(empty, lastReleased, NULL);
 
 
 
@@ -396,7 +395,7 @@ DWORD SenderSocket::Close() {
             findRTO();
 
         }
-        printf(" finsihed and closing \n");
+        // printf(" finsihed and closing \n");
         closesocket(sock);
         WSACleanup();
 
@@ -422,21 +421,23 @@ int SenderSocket::Send(char* data, int size)
     // old this->timeToAckforSampleRTT = clock();
     // timeToAckforSampleRTT
     // no need for mutex as no shared variables are modified
-    int slot = st.packetesSendBaseNextPacketStats % st.sndWinStats;
+    int slot = st.packetesSendBaseNextPacketStats % this->senderWindow;
     Packet* p = packetsSharedQueue + slot; // pointer to packet struct
-    // SenderDataHeader* sdh = p->pkt;
-    this->countSentPkts++;
-    p->sdh.flags.reserved = 0;
-    p->sdh.flags.magic = MAGIC_PROTOCOL;
-    p->sdh.flags.ACK = 0;
-    p->sdh.flags.SYN = 0;
-    p->sdh.flags.FIN = 0;
-    p->sdh.seq = st.packetesSendBaseNextPacketStats;
+    // no need for mutex as no shared variables are modified
+    SenderDataHeader* sdh = (SenderDataHeader *) p->packetContents;
+    // this->countSentPkts++;
+    sdh->flags.reserved = 0;
+    sdh->flags.magic = MAGIC_PROTOCOL;
+    sdh->flags.ACK = 0;
+    sdh->flags.SYN = 0;
+    sdh->flags.FIN = 0;
+    sdh->seq = st.packetesSendBaseNextPacketStats;
     p->size = size + sizeof(SenderDataHeader);
     p->txTime = clock();
-   // printf(" send seq numebr %d \n", st.packetesSendBaseNextPacketStats);
-    memcpy(p->packetContents, data, size);
+    // printf(" send seq numebr %d \n", st.packetesSendBaseNextPacketStats);
+    memcpy(sdh+1, data, size);
     st.packetesSendBaseNextPacketStats++;
+
     ReleaseSemaphore(full, 1, NULL);
     return STATUS_OK;
 }
@@ -469,46 +470,50 @@ DWORD WINAPI SenderSocket::workerThreads(LPVOID tempPointer)
     // and once workers clossed then close stats
     int index = 0;
     int countRemainingThreads = 0;
-    while ( !worker->closeCalled || worker->countSentPkts  )
+        double timeExpire = worker->setRTO + clock();
+    while ( true  )
     {
         // check this lter
+            if ( worker->closeCalled && ( worker->st.packetsSendBaseStats == worker->st.packetesSendBaseNextPacketStats) ) 
+            {
+                printf(" broke properly \n");
+                break;
+            }
+                //printf(" send base %d, send next base %d \n", worker->st.packetsSendBaseStats, worker->st.packetesSendBaseNextPacketStats);
 
         // int indexOfCircularArray = index % worker->st.effectiveWindowStats;
-         
-        int indexOfCircularArray = worker->st.packetsSendBaseStats % worker->st.sndWinStats;
         double timeout = 0;
         if ( worker->packetsSharedQueue != NULL)
         {
             // RTO - START
-            timeout = 1000 * ( worker->packetsSharedQueue[indexOfCircularArray].txTime - clock()) / CLOCKS_PER_SEC - 1000*worker->setRTO;
+            timeout = abs( timeExpire - clock() );
+            //    timeExpire = worker->setRTO + clock();
+            
         }
         else
         {
             timeout = INFINITE;
         }
 
-
+           // timeout = INFINITE;
         // while to end all remaining threads
-        
-     
- 
-
+            int indexOfCircularArray = 0;
             int ret = WaitForMultipleObjects(2, events, false, timeout);
-        
             bool movedBaseFwd = false;
             bool timeoutOccured = false;
             bool fastRetransmitOccured = false;
             bool sendBaseMoveForward = false;
             DWORD status = DEFAULT_QUIET_COMPILER;
+                   //  printf(" timeout is %f \n", timeout);
             switch (ret)
             {
             case WAIT_TIMEOUT: // normal retransmit
-                    worker->packetsSharedQueue[indexOfCircularArray].txTime = clock();
-                    printf(" timeout send packet %d \n", indexOfCircularArray);
+                    // orker->packetsSharedQueue[].txTime = clock();
+                   //  printf(" timeout occured send packet %d \n",worker->st.packetsSendBaseStats );
                 if (sendto(
                     worker->sock,
-                    (char*)&worker->packetsSharedQueue[indexOfCircularArray].sdh,
-                    worker->packetsSharedQueue[indexOfCircularArray].size,
+                    worker->packetsSharedQueue[worker->st.packetsSendBaseStats % worker->senderWindow].packetContents,
+                    worker->packetsSharedQueue[worker->st.packetsSendBaseStats % worker->senderWindow].size,
                     0,
                     (struct sockaddr*)&worker->server, sizeof(worker->server)
                 ) == SOCKET_ERROR)
@@ -517,9 +522,8 @@ DWORD WINAPI SenderSocket::workerThreads(LPVOID tempPointer)
 
                 }
                 worker->st.timeoutCountStats++;
-
+                 timeoutOccured = true;
                 // update stats thread for timeout
-                worker->timeToAckforSampleRTT = clock();
                 /*
                 */
                     break;
@@ -531,7 +535,7 @@ DWORD WINAPI SenderSocket::workerThreads(LPVOID tempPointer)
                 ReleaseSemaphore(worker->empty, 1, NULL);
                 */
                 // recieve socketReady is true
-                status = worker->ReceiveACK(&worker->dupAck);
+                status = worker->ReceiveACK();
             
 
                 if (status == RETX_OCCURED)
@@ -541,7 +545,6 @@ DWORD WINAPI SenderSocket::workerThreads(LPVOID tempPointer)
                 }
                 else if (status == STATUS_OK)
                 {
-                    // worker->st.packetsSendBaseStats++;
                     sendBaseMoveForward = true;
                     worker->dupAck = 0;
     
@@ -550,31 +553,28 @@ DWORD WINAPI SenderSocket::workerThreads(LPVOID tempPointer)
                 {
                     // this is if the dupACK != 3
                     // nuthin
+                  //  printf(" timeout is %f \n", timeout);
                 }
 
-        //            worker->recvFrom(RTOsec, RTOusec);
                 index = 0;
                 break;
             case WAIT_OBJECT_0+1:
-                /*
-                printf(" worker send packet %d \n", indexOfCircularArray);
-                worker->st.packetsSendBaseStats++;
-                ReleaseSemaphore(worker->empty, 1, NULL);
-                // full is true
-                */
+  
                // printf(" worker send packet %d \n", indexOfCircularArray);
-            printf(" packet send base %d \n", worker->packetsSharedQueue[indexOfCircularArray].sdh.seq);
 
-            if (sendto(worker->sock,
-                    (char*)&worker->packetsSharedQueue[indexOfCircularArray].sdh,
-                    worker->packetsSharedQueue[indexOfCircularArray].size,
-                    0,
-                    (struct sockaddr*)&worker->server, sizeof(worker->server)) == SOCKET_ERROR
-                    ) {
-                    printf(" socket error in condition 3 of the socket send, helpp \n");
-                    }
-                worker->st.packetsSendBaseStats++;
-                worker->countSentPkts--;
+                indexOfCircularArray = worker->nextToSend % worker->senderWindow;
+                 worker->packetsSharedQueue[indexOfCircularArray].txTime = clock();
+                 // printf(" packet nubmbered is %d sent \n", worker->nextToSend );
+                if (sendto(worker->sock,
+                        worker->packetsSharedQueue[indexOfCircularArray].packetContents,
+                        worker->packetsSharedQueue[indexOfCircularArray].size,
+                        0,
+                        (struct sockaddr*)&worker->server, sizeof(worker->server)) == SOCKET_ERROR
+                        ) {
+                        printf(" socket error in condition 3 of the socket send, helpp \n");
+                        }
+               worker->nextToSend++;
+               // worker->countSentPkts--;
                 // set here seocketreadyHandler
                     break;
             default: 
@@ -584,10 +584,12 @@ DWORD WINAPI SenderSocket::workerThreads(LPVOID tempPointer)
             }
             if ( worker->st.packetsSendBaseStats == 1 || timeoutOccured || fastRetransmitOccured || movedBaseFwd || sendBaseMoveForward )
             {
-                worker->packetsSharedQueue[indexOfCircularArray].txTime = clock();
-                worker->findRTO();
                 // recompute timerExpire;
                 // handling this as recomputing 
+                // worker->sampleRTT = (clock() - worker->packetsSharedQueue[(worker->st.packetsSendBaseStats) % worker->senderWindow].txTime) / CLOCKS_PER_SEC;
+                // worker->findRTO();
+                // printf(" worker RTO is %f \n", worker->setRTO );
+                timeExpire = worker->setRTO + clock();
                 movedBaseFwd = false;
                 timeoutOccured = false;
                 fastRetransmitOccured = false;
@@ -613,7 +615,7 @@ DWORD WINAPI SenderSocket::workerThreads(LPVOID tempPointer)
 
 
 
-DWORD SenderSocket::ReceiveACK( int * dupCount )
+DWORD SenderSocket::ReceiveACK( )
 {
 
         // (available > 0)
@@ -638,54 +640,74 @@ DWORD SenderSocket::ReceiveACK( int * dupCount )
         // n == ackSeq, adjust, timer, move window, inc seq
         // else buf in recvwin
         // in the worker thread
-           int lastReleased = min(st.effectiveWindowStats, rh.recvWnd);
-           ReleaseSemaphore(empty, lastReleased, NULL);
+        /*
+        */
+        // printf(" senderBase is %d | rh.ack is %d | time is %3f \n", st.packetsSendBaseStats, rh.ackSeq, (double) (clock() - packetsSharedQueue[packetsSendBase%this->senderWindow].txTime) /CLOCKS_PER_SEC );
 
 
             if ( rh.ackSeq > this->st.packetsSendBaseStats)
             { // 
-                int debugSendBase = st.packetsSendBaseStats;
                 this->st.bytesTotal += bytes;
 
                     // if we have dun goofed, do not count the ack
-                this->sampleRTT = (clock() - packetsSharedQueue[ ( rh.ackSeq -1 )% st.effectiveWindowStats ].txTime) / CLOCKS_PER_SEC;
-                findRTO();
+                if (this->dupAck == 0)
+                {
+                    this->sampleRTT = (clock() - packetsSharedQueue[ (this->st.packetsSendBaseStats )% this->senderWindow].txTime) / CLOCKS_PER_SEC;
+                    findRTO();
+                }
+                
+                /*
+                if (this->st.packetesSendBaseNextPacketStats != this->st.packetsSendBaseStats)
+                {
+                    this->packetsSharedQueue[this->st.packetsSendBaseStats % this->senderWindow ].txTime = clock();
+                }
+                */
 
-                printf(" \n ack number %d \n", rh.ackSeq);
+                if (rh.ackSeq == 2864)
+                {
+                    printf(" asdfdsaf \n");
+                }
+                int release = rh.ackSeq - this->st.packetsSendBaseStats;
                 this->st.packetsSendBaseStats = rh.ackSeq;
-                this->st.effectiveWindowStats = min( this->st.effectiveWindowStats , rh.recvWnd);
+               // this->st.effectiveWindowStats = min( this->senderWindow , rh.recvWnd);
+                ReleaseSemaphore(this->empty, release , NULL);
 
+                /*
                     // how much we can advance the semaphore
-                int newReleased = st.packetsSendBaseStats + st.effectiveWindowStats - lastReleased;
-                this->dupAck = 0;
-
+                    int newReleased = st.packetsSendBaseStats + st.effectiveWindowStats - lastReleased;
+                    this->dupAck = 0;
+                    ReleaseSemaphore(this->empty, newReleased,NULL);
+                    this->lastReleased += newReleased;
+                */
                 // not deallocating 8 bits on empty here
                // printf(" send packet number %d acked number %d \n ", debugSendBase, rh.recvWnd );
-                ReleaseSemaphore(this->empty, newReleased,NULL);
                 return STATUS_OK;
                 // handing no packets acked as a thw switch
               }
             else
             {
                 this->dupAck++;
-                this->st.packetsSendBaseStats = rh.recvWnd;
+                /*
+               this->st.packetsSendBaseStats = rh.ackSeq;
+                // this->nextToSend = rh.ackSeq;
                 if (dupAck == 3)
                 {
                     dupAck = 0;
                     st.fastRetransmitCountStats++;
-                //    printf(" retransmited packet's seq number %d \n", ( this->st.packetsSendBaseStats % this->st.effectiveWindowStats ));
+                //  printf(" retransmited packet's seq number %d \n", ( this->st.packetsSendBaseStats % this->st.effectiveWindowStats ));
                     sendto(
                         this->sock,
-                        (char*)&this->packetsSharedQueue[this->st.packetsSendBaseStats % this->st.effectiveWindowStats].sdh,
-                        this->packetsSharedQueue[this->st.packetsSendBaseStats % this->st.effectiveWindowStats].size,
+                        (char*)&this->packetsSharedQueue[st.packetsSendBaseStats % this->senderWindow ].sdh,
+                        this->packetsSharedQueue[st.packetsSendBaseStats % this->senderWindow ].size,
                         0,
                         (struct sockaddr*)&this->server, sizeof(this->server)
                     );
                     // retransmit
-                    this->packetsSharedQueue[this->st.packetsSendBaseStats % this->st.effectiveWindowStats].txTime = clock();
+                    this->packetsSharedQueue[st.packetsSendBaseStats % this->senderWindow ].txTime = clock();
                     return RETX_OCCURED;
 
                 }
+                */
                     
                 return DO_NOTHING;
 
