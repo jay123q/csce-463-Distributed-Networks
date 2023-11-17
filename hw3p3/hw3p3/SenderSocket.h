@@ -82,7 +82,6 @@ struct statsThread {
     int effectiveWindowStats; // min btwn sndWin and rcvWin
     double estimateRttStats;
     int timerPrint2sec;
-    int packetesSendBaseNextPacketStats;
 
     clock_t prevTimerStats; // in stats good put?
     double goodPutStats; // speed reciever processes data from app
@@ -109,13 +108,14 @@ public:
     statsThread st;
     Packet* packetsSharedQueue;
 
+    int sendSequenceNumber;
     int nextToSend;
     // handle finding RTT
     double setRTO;
     double estimateRTT;
     double deviationRTT;
     int packetsSendBase;
-    
+
     // handle opening an closing
     int dupAck;
     bool opened;

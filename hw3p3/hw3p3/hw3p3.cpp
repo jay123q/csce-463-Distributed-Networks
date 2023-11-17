@@ -30,6 +30,7 @@ DWORD WINAPI sendThreads(LPVOID tempPointer)
 
     SenderSocket* ss = (SenderSocket*)tempPointer;
     char* charBuf = ss->sendBufCheckSum;
+    cout << " char buf " << charBuf << endl;
     UINT64 byteBufferSize = ss->packetSizeSend;
     DWORD status = STATUS_OK;
     UINT64 off = 0; // current position in buffer
@@ -62,11 +63,11 @@ void main(int argc, char** argv)
 
 
 
-   // std::string host("128.194.135.1");
-   // std::string host("128.194.135.82");
-   // std::string host("0.0.0.0");
-  //  std::string host("127.0.0.1");
-   std::string host("s3.irl.cs.tamu.edu");
+    // std::string host("128.194.135.1");
+    // std::string host("128.194.135.82");
+    // std::string host("0.0.0.0");
+   //  std::string host("127.0.0.1");
+    std::string host("s3.irl.cs.tamu.edu");
 
     int power = 20;
     int sendingWindow = 10;
@@ -109,12 +110,16 @@ void main(int argc, char** argv)
     UINT64 dwordBufSize = (UINT64)1 << power;
     DWORD* dwordBuf = new DWORD[dwordBufSize]; // user-requested buffer
     for (UINT64 i = 0; i < dwordBufSize; i++) // required initialization
+    {
+
         dwordBuf[i] = i;
+        //  cout <<" char values " << dwordBuf[i] << endl;
+    }
     SenderSocket ss; // instance of your class
     DWORD status;
     printf("Main:   initializing DWORD array with 2^%d elements... done in %d ms\n",
         power,
-        ((clock() - timeOpen) * 1000) / CLOCKS_PER_SEC
+        ((clock() - timeOpen)) / CLOCKS_PER_SEC
 
     );
 
@@ -129,7 +134,7 @@ void main(int argc, char** argv)
 
     }
     clock_t firstDataPacketSend = clock();
-    
+
     printf("Main:   connected to %s in %.3f sec, pkt size %d bytes\n",
         host.c_str(),
         ss.sampleRTT,
@@ -141,13 +146,13 @@ void main(int argc, char** argv)
     UINT64 bytes = 0;
 
     ss.packetSizeSend = byteBufferSize;
+    // memcpy(ss.sendBufCheckSum, &charBuf, byteBufferSize);
     ss.sendBufCheckSum = charBuf;
 
-    /*
     UINT64 off = 0; // current position in buffer
     // sender is not producing? for the worker to consume properly? check sender and worker for fix
 
-    
+
     while (off < byteBufferSize)
     {
         // decide the size of next chunk
@@ -164,41 +169,38 @@ void main(int argc, char** argv)
 
         off += bytes;
     }
-
-    */
-
-    HANDLE sendThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) sendThreads, &ss, 0, NULL);
-    WaitForSingleObject(sendThread, INFINITE);
-    CloseHandle(sendThread);
     /*
     */
 
-        double elapsedTime = (double)(clock() - firstDataPacketSend) / CLOCKS_PER_SEC;
 
-        printf("\n \n \n  waiting on ACKS back baby \n \n \n");
-        SetEvent(ss.closeConnection);
-        ss.closeCalled = true;
+    /*
+    HANDLE sendThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)sendThreads, &ss, 0, NULL);
+   // ss.workers = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ss.workerThreads, &ss, 0, NULL);
+    WaitForSingleObject(sendThread, INFINITE);
+    CloseHandle(sendThread);
+    */
+    double elapsedTime = (double)(clock() - firstDataPacketSend) / CLOCKS_PER_SEC;
+
+    printf("\n \n \n  waiting on ACKS back baby \n \n \n");
+    SetEvent(ss.closeConnection);
+    ss.closeCalled = true;
+
+    ss.st.breakThread = true;
+    SetEvent(ss.st.statusEvent);
+    WaitForSingleObject(ss.st.statusEvent, INFINITE);
+    CloseHandle(ss.st.statusEvent);
+
+    WaitForSingleObject(ss.workers, INFINITE);
+    CloseHandle(ss.workers);
+    // check this later, idea is to get the remaining packets
+    // ReleaseSemaphore(ss.full, ss.countSentPkts, NULL);
 
 
-        // check this later, idea is to get the remaining packets
-        // ReleaseSemaphore(ss.full, ss.countSentPkts, NULL);
 
-
-
-        WaitForSingleObject(ss.workers, INFINITE);
-        CloseHandle(ss.workers);
-
-
-        ss.st.breakThread = true;
-        SetEvent(ss.st.statusEvent);
-        WaitForSingleObject(ss.st.statusEvent, INFINITE);
-        CloseHandle(ss.st.statusEvent);
-
-
-        /*
-        WaitForSingleObject(st.statusEvent, INFINITE);
-        CloseHandle(st.statusEvent);
-        */
+    /*
+    WaitForSingleObject(st.statusEvent, INFINITE);
+    CloseHandle(st.statusEvent);
+    */
 
 
     // recieve from
@@ -212,17 +214,19 @@ void main(int argc, char** argv)
 
     }
     printf("[%.3f] <-- FIN-ACK %d window %X\n",
-        (double) (ss.timeAtClose - firstDataPacketSend ) /CLOCKS_PER_SEC,
+        (double)(ss.timeAtClose - firstDataPacketSend) / CLOCKS_PER_SEC,
         ss.st.packetsSendBaseStats,
         ss.hexDumpPost
-        );
+    );
+
+
 
 
     // help here TA ASK
 
     printf("Main:   transfer finished in %.3f sec, %.2f Kbps, checksum %X\n",
-        (double) elapsedTime,
-        (byteBufferSize * 8 / elapsedTime ) / 1000 ,
+        (double)elapsedTime,
+        (ss.st.bytesTotal * 8) / (1000 * elapsedTime),
         ss.hexDumpPost
     );
 
@@ -230,8 +234,8 @@ void main(int argc, char** argv)
 
 
     printf("Main: estRTT %.3f, ideal rate %.3f Kbps \n",
-        ss.estimateRTT,
-       ( ( MAX_PKT_SIZE - sizeof(SenderDataHeader) )  / ( 1000 * ss.estimateRTT ) )  * 8// windoq is always 1
+        ss.estimateRTT / 1000,
+        ((MAX_PKT_SIZE * ss.senderWindow * 8)) / (ss.estimateRTT)// windoq is always 1
     );
 
 

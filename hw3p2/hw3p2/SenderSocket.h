@@ -61,7 +61,7 @@ struct statsThread {
     HANDLE statusEvent;
 
     clock_t startTimerStats; // in open
-    DWORD packetsToSendStats; 
+    DWORD packetsToSendStats;
     DWORD packetsSendBase;
     int timeoutCountStats; // in rcv
     int fastRetransmitCountStats;
@@ -110,8 +110,8 @@ public:
     clock_t time;
     double closeCalledTime;
     clock_t timeToAckforSampleRTT;
-    SenderSynHeader * packetSyn;
-    SenderSynHeader * packetFin;
+    SenderSynHeader* packetSyn;
+    SenderSynHeader* packetFin;
     DWORD senderWindow;
     clock_t timeAtClose;
 
@@ -125,10 +125,10 @@ public:
     float pLossBackwardFin;
     float RTTFin;
     float speedFin;
-    
+
     SenderSocket();
     DWORD Open(string host, int portNumber, int senderWindow, LinkProperties* lp);
-    DWORD Send(char* pointer, UINT64 bytes );
+    DWORD Send(char* pointer, UINT64 bytes);
     DWORD recvFrom(long RTOsec, long RTOusec, bool inOpen);
     DWORD Close();
     DWORD statusThread();
