@@ -75,7 +75,6 @@ struct statsThread {
     HANDLE statusEvent;
 
     clock_t startTimerStats; // in open
-    DWORD packetsToSendStats;
     DWORD packetsSendBaseStats;
     int timeoutCountStats; // in rcv
     int fastRetransmitCountStats;
@@ -114,7 +113,7 @@ public:
     double setRTO;
     double estimateRTT;
     double deviationRTT;
-    int packetsSendBase;
+    int duplicateAckCheck;
 
     // handle opening an closing
     int dupAck;
@@ -144,7 +143,8 @@ public:
     float speedFin;
 
     int countSentPkts;
-
+    int numRTX;
+    int pastAckedPkt;
 
     // sephamore variables
     HANDLE empty;

@@ -24,36 +24,6 @@
 #define MAX_PKT_SIZE (1500-28) // maximum UDP packet size accepted by receiver 
 using namespace std;
 
-DWORD WINAPI sendThreads(LPVOID tempPointer)
-{
-
-
-    SenderSocket* ss = (SenderSocket*)tempPointer;
-    char* charBuf = ss->sendBufCheckSum;
-    cout << " char buf " << charBuf << endl;
-    UINT64 byteBufferSize = ss->packetSizeSend;
-    DWORD status = STATUS_OK;
-    UINT64 off = 0; // current position in buffer
-    // sender is not producing? for the worker to consume properly? check sender and worker for fix
-
-    while (off < byteBufferSize)
-    {
-        // decide the size of next chunk
-        int bytes = min(byteBufferSize - off, MAX_PKT_SIZE - sizeof(SenderDataHeader));
-        // send chunk into socket
-        // ask if this popualtes send like it should and then creates the vector as needed
-        if ((status = ss->Send(charBuf + off, bytes)) != STATUS_OK)
-        {
-            printf("Main: connect failed with status %d\n", status);
-            return status;
-            // error handing: print status and quit
-
-        }
-
-        off += bytes;
-    }
-    return status;
-}
 
 
 void main(int argc, char** argv)
@@ -69,13 +39,13 @@ void main(int argc, char** argv)
    //  std::string host("127.0.0.1");
     std::string host("s3.irl.cs.tamu.edu");
 
-    int power = 20;
+    int power = 15;
     int sendingWindow = 10;
-    linkedProperties.RTT = 0.1;
-    linkedProperties.pLoss[FORWARD_PATH] = 0;
+    linkedProperties.RTT = 0.01;
+    linkedProperties.pLoss[FORWARD_PATH] = 0.5;
     // should converge to this loss rate per n packets
     linkedProperties.pLoss[RETURN_PATH] = 0;
-    linkedProperties.speed = 1000;
+    linkedProperties.speed = 14;
 
     /*
     if (argc != 8)
@@ -137,7 +107,7 @@ void main(int argc, char** argv)
 
     printf("Main:   connected to %s in %.3f sec, pkt size %d bytes\n",
         host.c_str(),
-        ss.sampleRTT,
+        ss.sampleRTT / 1000,
         MAX_PKT_SIZE
     );
 
@@ -234,8 +204,8 @@ void main(int argc, char** argv)
 
 
     printf("Main: estRTT %.3f, ideal rate %.3f Kbps \n",
-        ss.estimateRTT / 1000,
-        ((MAX_PKT_SIZE * ss.senderWindow * 8)) / (ss.estimateRTT)// windoq is always 1
+        ss.st.estimateRttStats / 1000,
+        ((MAX_PKT_SIZE * ss.senderWindow * 8)) / (ss.st.estimateRttStats)// windoq is always 1
     );
 
 
