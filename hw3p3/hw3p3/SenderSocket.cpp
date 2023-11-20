@@ -33,7 +33,7 @@ class SenderSocket;
 class Packet;
 struct statsThread;
 
-// #define debug
+ // #define debug
  #define sephamore
 
 
@@ -250,9 +250,9 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
     server.sin_port = htons(portNumber); // DNS port on server
     long RTOsec = max(1.0000,  2 * lp->RTT);
     long RTOusec = 0;
-    this->timeToAckforSampleRTT = clock();
     for (int i = 1; i < REATTEMPTS_ALLOWED; i++)
     {
+    this->timeToAckforSampleRTT = clock();
         // you saw cc cc cc cc showing that the packet waas on the heap due to & being used. 
        // printf(" [%.3f] --> SYN 0 (attempt %d of 3, RTO %.3f) to %s\n",
 
@@ -346,26 +346,26 @@ DWORD SenderSocket::Close() {
     {
         this->timeToAckforSampleRTT = clock();
         count++;
-        printf(" Close Transmit #%d \n", count);
+       // printf(" Close Transmit #%d \n", count);
         if (sendto(sock, (char*)packetFin, sizeof(*packetFin), 0, (struct sockaddr*)&server, sizeof(server)) == SOCKET_ERROR)
         {
             printf(" close sendto error %d \n", WSAGetLastError());
         }
-        printf(" passed send in close \n");
+     //   printf(" passed send in close \n");
         timeval timeout;
-        timeout.tv_sec = this->setRTO;
+        timeout.tv_sec = this->setRTO/1000;
         timeout.tv_usec = (3 * this->sampleRTT - setRTO) * 1e6;;
         fd_set fd;
         FD_ZERO(&fd); // clear the set
         FD_SET(sock, &fd); // add your socket to the set
         int available = select(0, &fd, NULL, NULL, &timeout);
-        printf(" passed select in close \n");
+       // printf(" passed select in close \n");
         if (available <= 0)
         {
             // restart clock
             this->setRTO *= 2; // dont timeout again
-            printf(" available failed with %d \n", available);
-                printf(" close select error %d \n", WSAGetLastError());
+         //   printf(" available failed with %d \n", available);
+        //        printf(" close select error %d \n", WSAGetLastError());
                 continue;
         }
         else
@@ -375,10 +375,10 @@ DWORD SenderSocket::Close() {
             int responseSize = sizeof(response);
 
             int bytes = recvfrom(sock, (char*)&rh, sizeof(ReceiverHeader), 0, (struct sockaddr*)&response, &responseSize);
-        printf(" passed recv from in close \n");
+       // printf(" passed recv from in close \n");
             if (bytes == SOCKET_ERROR)
             {
-             printf(" close recvfrom error %d \n", WSAGetLastError());
+     //        printf(" close recvfrom error %d \n", WSAGetLastError());
                 break;
                 // return GetLastError();
             }
@@ -388,9 +388,8 @@ DWORD SenderSocket::Close() {
             */
 
         }
-        printf(" finsihed and closing \n");
+     //   printf(" finsihed and closing \n");
         
-        timeAtClose = clock();
         closesocket(sock);
         WSACleanup();
         break;
@@ -399,6 +398,7 @@ DWORD SenderSocket::Close() {
 
     // chcksum here
     this->hexDumpPost = checkValidity.CRC32((unsigned char*)this->sendBufCheckSum, this->packetSizeSend);
+        timeAtClose = clock();
     return STATUS_OK;
 
 
@@ -471,7 +471,7 @@ DWORD WINAPI SenderSocket::workerThreads(LPVOID tempPointer)
         // check this lter
         if (worker->closeCalled && (worker->st.packetsSendBaseStats == worker->sendSequenceNumber))
         {
-            printf(" broke properly \n");
+          //  printf(" broke properly \n");
             break;
         }
 
@@ -511,7 +511,7 @@ DWORD WINAPI SenderSocket::workerThreads(LPVOID tempPointer)
         case WAIT_TIMEOUT: // normal retransmit
 #ifdef debug
 
-            printf(" Timeout: sendbase %d | dup Ack send base %d | dup ack count %d | num RTX count %d | timeout time is %f | Estimated RTT is %f | \n", worker->st.packetsSendBaseStats, worker->duplicateAckCheck, worker->dupAck, worker->numRTX, timeout/1000 , (double)worker->st.estimateRttStats / 1000);
+           // printf(" Timeout: sendbase %d | dup Ack send base %d | dup ack count %d | num RTX count %d | timeout time is %f | Estimated RTT is %f | \n", worker->st.packetsSendBaseStats, worker->duplicateAckCheck, worker->dupAck, worker->numRTX, timeout/1000 , (double)worker->st.estimateRttStats / 1000);
 #endif 
             worker->packetsSharedQueue[worker->st.packetsSendBaseStats % worker->senderWindow].txTime = (double) clock();
             if (sendto(
@@ -573,7 +573,7 @@ DWORD WINAPI SenderSocket::workerThreads(LPVOID tempPointer)
             */
             #ifdef debug
 
-           printf(" send pkt: worker sends base %d | sendbase %d | dup Ack send base %d | dup ack count %d | Estimated RTT is %f | \n", worker->nextToSend, worker->st.packetsSendBaseStats, worker->duplicateAckCheck, worker->dupAck ,(double) worker->st.estimateRttStats/1000 );
+          // printf(" send pkt: worker sends base %d | sendbase %d | dup Ack send base %d | dup ack count %d | Estimated RTT is %f | \n", worker->nextToSend, worker->st.packetsSendBaseStats, worker->duplicateAckCheck, worker->dupAck ,(double) worker->st.estimateRttStats/1000 );
             #endif 
             if (sendto(worker->sock,
                 worker->packetsSharedQueue[indexOfCircularArray].packetContents,
@@ -631,7 +631,11 @@ DWORD SenderSocket::ReceiveACK()
     {
         return DO_NOTHING;
     }
-   // printf("RECIEVE ACK NORMAL: numberRTX %d | ack check %d | ackSeq %d | send base %d | last pkt sent %d | estimated RTT is %f \n", numRTX, dupAck, rh.ackSeq, this->st.packetsSendBaseStats, this->nextToSend, this->st.estimateRttStats);
+    if (dupAck > 0)
+    {
+      //  printf("RECIEVE ACK NORMAL: numberRTX %d | ack check %d | ackSeq %d | send base %d | last pkt sent %d | estimated RTT is %f \n", numRTX, dupAck, rh.ackSeq, this->st.packetsSendBaseStats, this->nextToSend, this->st.estimateRttStats);
+
+   }
     DWORD returnValue;
     this->numRTX++;
     if (rh.ackSeq > this->st.packetsSendBaseStats)

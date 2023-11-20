@@ -18,12 +18,21 @@ Checksum::Checksum()
 		crc_table[i] = c;
 	}
 }
-DWORD Checksum::CRC32(unsigned char* buf, size_t len)
+DWORD Checksum::CRC32(unsigned char* buf, UINT64 len)
 {
 
 	DWORD c = 0xFFFFFFFF;
 	for (size_t i = 0; i < len; i++)
 		c = crc_table[(c ^ buf[i]) & 0xFF] ^ (c >> 8);
+
+	if ((c ^ 0xFFFFFFFF )== 0)
+	{
+
+	}
+	else
+	{
+		// return 
+	}
 	return c ^ 0xFFFFFFFF;
 }
 

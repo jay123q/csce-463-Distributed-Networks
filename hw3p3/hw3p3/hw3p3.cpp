@@ -28,6 +28,9 @@ using namespace std;
 
 void main(int argc, char** argv)
 {
+
+
+
     LinkProperties linkedProperties;
 
 
@@ -39,13 +42,13 @@ void main(int argc, char** argv)
    //  std::string host("127.0.0.1");
     std::string host("s3.irl.cs.tamu.edu");
 
-    int power = 15;
-    int sendingWindow = 10;
-    linkedProperties.RTT = 0.01;
-    linkedProperties.pLoss[FORWARD_PATH] = 0.5;
+    int power = 28;
+    int sendingWindow = 12000;
+    linkedProperties.RTT = 0.1;
+    linkedProperties.pLoss[FORWARD_PATH] = 0.0001;
     // should converge to this loss rate per n packets
     linkedProperties.pLoss[RETURN_PATH] = 0;
-    linkedProperties.speed = 14;
+    linkedProperties.speed = 1000;
 
     /*
     if (argc != 8)
@@ -63,7 +66,6 @@ void main(int argc, char** argv)
     */
 
 
-    clock_t timeOpen = clock();
     printf("Main:   sender W = %d, RTT %.3f sec, loss %g / %g, link %g Mbps\n",
         sendingWindow,
         linkedProperties.RTT,
@@ -77,19 +79,24 @@ void main(int argc, char** argv)
     linkedProperties.speed *= 1e6;
     // parse command-line parameters
     char* targetHost = (char*)host.c_str();
+
+
+
+    clock_t timeOpen = clock();
     UINT64 dwordBufSize = (UINT64)1 << power;
     DWORD* dwordBuf = new DWORD[dwordBufSize]; // user-requested buffer
     for (UINT64 i = 0; i < dwordBufSize; i++) // required initialization
     {
 
         dwordBuf[i] = i;
+        // cout << "check for 0 " << dwordBuf[i] << endl;
         //  cout <<" char values " << dwordBuf[i] << endl;
     }
     SenderSocket ss; // instance of your class
     DWORD status;
-    printf("Main:   initializing DWORD array with 2^%d elements... done in %d ms\n",
+    printf("Main:   initializing DWORD array with 2^%d elements... done in %0.3f ms\n",
         power,
-        ((clock() - timeOpen)) / CLOCKS_PER_SEC
+        (double) ((clock() - timeOpen)) / CLOCKS_PER_SEC
 
     );
 
@@ -149,23 +156,23 @@ void main(int argc, char** argv)
     WaitForSingleObject(sendThread, INFINITE);
     CloseHandle(sendThread);
     */
-    double elapsedTime = (double)(clock() - firstDataPacketSend) / CLOCKS_PER_SEC;
 
-    printf("\n \n \n  waiting on ACKS back baby \n \n \n");
+   // printf("\n \n \n  waiting on ACKS back baby \n \n \n");
     SetEvent(ss.closeConnection);
     ss.closeCalled = true;
+
+    WaitForSingleObject(ss.workers, INFINITE);
+    CloseHandle(ss.workers);
 
     ss.st.breakThread = true;
     SetEvent(ss.st.statusEvent);
     WaitForSingleObject(ss.st.statusEvent, INFINITE);
     CloseHandle(ss.st.statusEvent);
-
-    WaitForSingleObject(ss.workers, INFINITE);
-    CloseHandle(ss.workers);
     // check this later, idea is to get the remaining packets
     // ReleaseSemaphore(ss.full, ss.countSentPkts, NULL);
 
 
+    double elapsedTime = (double)(clock() - firstDataPacketSend) / CLOCKS_PER_SEC;
 
     /*
     WaitForSingleObject(st.statusEvent, INFINITE);
@@ -205,7 +212,7 @@ void main(int argc, char** argv)
 
     printf("Main: estRTT %.3f, ideal rate %.3f Kbps \n",
         ss.st.estimateRttStats / 1000,
-        ((MAX_PKT_SIZE * ss.senderWindow * 8)) / (ss.st.estimateRttStats)// windoq is always 1
+        (((MAX_PKT_SIZE )* ss.senderWindow * 8)) / (ss.st.estimateRttStats)// windoq is always 1
     );
 
 
