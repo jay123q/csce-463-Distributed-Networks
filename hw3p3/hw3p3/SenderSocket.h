@@ -15,6 +15,7 @@ using namespace std;
 #include <queue>
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 #define MAGIC_PROTOCOL 0x8311AA
+#define MAX_PKT_SIZE (9000) // maximum UDP packet size accepted by receiver 
 #define MAX_PKT_SIZE (1500-28) // maximum UDP packet size accepted by receiver 
 #pragma warning(disable:4996) 
 
@@ -73,7 +74,7 @@ public:
 
 struct statsThread {
     HANDLE statusEvent;
-
+    int averageRTT;
     clock_t startTimerStats; // in open
     DWORD packetsSendBaseStats;
     int timeoutCountStats; // in rcv
@@ -86,10 +87,13 @@ struct statsThread {
     double goodPutStats; // speed reciever processes data from app
     DWORD prevPrintBase;
 
+    int rhWindow;
+    int rhSeqNum;
 
     double bytesTotal;
     int nNumberPrints;
     bool breakThread; // used in closae 
+    int countRTTs;
 
 };
 

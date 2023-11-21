@@ -35,7 +35,7 @@ struct statsThread;
 
  // #define debug
  #define sephamore
-
+// #define ackWindow
 
 DWORD WINAPI SenderSocket::runStats(LPVOID tempPointer)
 {
@@ -57,7 +57,7 @@ DWORD WINAPI SenderSocket::runStats(LPVOID tempPointer)
         // help here TA ASK
         stats->st.goodPutStats = (stats->st.packetsSendBaseStats - stats->st.prevPrintBase) / stats->st.nNumberPrints * 8 * (MAX_PKT_SIZE - sizeof(SenderDataHeader));
 
-
+        stats->st.countRTTs += 1;
 
         printMe = true;
         printf("[ %1d] B %d ( %.1f MB) N %d T %d F %d W %d S %.3f Mbps RTT %.3f\n",
@@ -72,12 +72,17 @@ DWORD WINAPI SenderSocket::runStats(LPVOID tempPointer)
             stats->st.goodPutStats / 2e6,
             stats->st.estimateRttStats / 1000
         );
+        stats->st.averageRTT += (stats->st.estimateRttStats);
         stats->st.timerPrint2sec += 2;
         stats->st.nNumberPrints++;
         // st.prevPrintBase = st.packetsSendBase;
        // st.prevTimerStats = st.startTimerStats;
        // st.startTimerStats = clock();
         ResetEvent(stats->st.statusEvent);
+#ifdef ackWindow
+        printf(" the ack winddow of the reciver is %d | the ack sequence is %d | the most recently sentpkt is %d |\n", stats->st.rhWindow, stats->st.rhSeqNum, stats->st.packetsSendBaseStats);
+#endif // ackWindow
+
     }
     return 20;
 }
@@ -86,7 +91,10 @@ SenderSocket::SenderSocket()
 {
 
     st.breakThread = false;
-
+#ifdef ackWindow
+    st.rhWindow = 0;
+    st.rhSeqNum = 0;
+#endif // ackWindow
 
     this->time = clock();
     memset(&remote, 0, sizeof(remote));
@@ -203,7 +211,8 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
     packetSyn->lp.pLoss[1] = lp->pLoss[1];
     packetSyn->lp.RTT = lp->RTT;
     packetSyn->lp.speed = lp->speed;
-
+    this->st.averageRTT = 0;
+    this->st.countRTTs = 0;
     packetSyn->sdh.flags.reserved = 0;
     packetSyn->sdh.flags.magic = MAGIC_PROTOCOL;
     packetSyn->sdh.flags.SYN = 1;
@@ -224,7 +233,7 @@ DWORD SenderSocket::Open(string host, int portNumber, int senderWindow, LinkProp
     pLossBackwardFin = lp->pLoss[1];
     RTTFin = lp->RTT;
     speedFin = lp->speed;
-    sendSequenceNumber = 0;
+    this->sendSequenceNumber = 0;
 
     this->host = host.c_str();
     DWORD IP = inet_addr(host.c_str());
@@ -337,7 +346,7 @@ DWORD SenderSocket::Close() {
     packetFin->sdh.flags.SYN = 0;
     packetFin->sdh.flags.FIN = 1;
     packetFin->sdh.flags.ACK = 0;
-    packetFin->sdh.seq = sendSequenceNumber;
+    packetFin->sdh.seq = this->sendSequenceNumber;
     pastAckedPkt = 0;
     this->closeCalledTime = clock();
     int count = 0;
@@ -420,7 +429,7 @@ int SenderSocket::Send(char* data, int size)
      Packet* p = packetsSharedQueue + slot; // pointer to packet struct
     // Packet* p; // pointer to packet struct
     
-    
+     // cout << " the sequence number is " << sendSequenceNumber << endl;
     //SenderDataHeader* sdh = (SenderDataHeader*)p->packetContents;
     SenderDataHeader sdh;
     // this->countSentPkts++;
@@ -429,14 +438,14 @@ int SenderSocket::Send(char* data, int size)
     sdh.flags.ACK = 0;
     sdh.flags.SYN = 0;
     sdh.flags.FIN = 0;
-    sdh.seq = sendSequenceNumber;
+    sdh.seq = this->sendSequenceNumber;
     p->size = size + sizeof(SenderDataHeader);
     p->txTime = clock();
     // printf(" send seq numebr %d \n", st.packetesSendBaseNextPacketStats);
-    memcpy(p->packetContents, (char*) &sdh, sizeof(SenderDataHeader));
+    memcpy_s(p->packetContents, p->size, (char*) &sdh, sizeof(SenderDataHeader));
     // printf("asdfafaf %s",a);
-    memcpy(p->packetContents + sizeof(SenderDataHeader), data, size);
-    sendSequenceNumber++;
+    memcpy_s(p->packetContents + sizeof(SenderDataHeader), p->size, data, size);
+    this->sendSequenceNumber++;
     // packetsSharedQueue[ slot ] = p;
     ReleaseSemaphore(full, 1, NULL);
     return STATUS_OK;
@@ -484,7 +493,6 @@ DWORD WINAPI SenderSocket::workerThreads(LPVOID tempPointer)
             // RTO - START
             timeout = ((double) (timerExpire - clock()) /  CLOCKS_PER_SEC);
             timeout *= 1000;
-            //    timeExpire = worker->setRTO + clock();
 
         }
         else
@@ -643,6 +651,19 @@ DWORD SenderSocket::ReceiveACK()
         returnValue = STATUS_OK;
         int numberOfPacketsRecieved = rh.ackSeq - this->st.packetsSendBaseStats;
         int packetSize = packetsSharedQueue[(rh.ackSeq - 1) % this->senderWindow].size - sizeof(SenderDataHeader);
+        /*
+        if (packetSize != 1464)
+        {
+            printf(" aaaaaaaaaaaaaaa \n");
+            string a (packetsSharedQueue[(rh.ackSeq - 1) % this->senderWindow].packetContents);
+            int b = this->st.packetsSendBaseStats;
+            
+            printf(" base is %d \n", b);
+            //2933720 
+            printf(" aaaaaaaaaaaaaaa \n");
+
+        }
+        */
         this->st.bytesTotal += packetSize +(numberOfPacketsRecieved-1)*(MAX_PKT_SIZE-sizeof(SenderDataHeader));
 
         // if we have dun goofed, do not count the ack
@@ -661,6 +682,11 @@ DWORD SenderSocket::ReceiveACK()
              printf("IN Recv: numberRTX %d | ack check %d | ackSeq %d | send base %d | last pkt sent %d | estimated RTT is %f \n", numRTX, dupAck, rh.ackSeq, this->st.packetsSendBaseStats, this->nextToSend,this->st.estimateRttStats );
             #endif 
             this->setRTO = this->estimateRTT + 4 * max(this->deviationRTT, 10);
+            st.effectiveWindowStats = min(this->senderWindow, rh.recvWnd);
+#ifdef ackWindow
+            st.rhWindow =rh.recvWnd;
+            st.rhSeqNum = rh.ackSeq;
+#endif // ackWindow
            // printf(" sample RTT %f | estimate RTT %f | deviation RTT %f | RTO %f \n", this->sampleRTT, this->estimateRTT, this->deviationRTT, this->setRTO);
         }
 

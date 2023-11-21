@@ -7,7 +7,7 @@
 #include <string>
 #include "SenderSocket.h"
 #include "Checksum.h"
-
+#include <time.h>
 
 #define STATUS_OK 0 // no error
 #define ALREADY_CONNECTED 1 // second call to ss.Open() without closing connection
@@ -22,35 +22,45 @@
 
 #define MAGIC_PORT 22345 // receiver listens on this port
 #define MAX_PKT_SIZE (1500-28) // maximum UDP packet size accepted by receiver 
-using namespace std;
+// #define MAX_PKT_SIZE (9000) // maximum UDP packet size accepted by receiver 
 
+using namespace std;
 
 
 void main(int argc, char** argv)
 {
 
 
-
     LinkProperties linkedProperties;
-
-
-
 
     // std::string host("128.194.135.1");
     // std::string host("128.194.135.82");
     // std::string host("0.0.0.0");
-   //  std::string host("127.0.0.1");
+    /*
     std::string host("s3.irl.cs.tamu.edu");
 
+    int power = 30;
+    int sendingWindow = 3000;
+    linkedProperties.RTT = 0.01;
+    linkedProperties.pLoss[FORWARD_PATH] = 0;
+    // should converge to this loss rate per n packets
+    linkedProperties.pLoss[RETURN_PATH] = 0;
+    linkedProperties.speed = 10000;
+    */
+
+
+  //  std::string host("127.0.0.1");
+    /*
+    std::string host("s3.irl.cs.tamu.edu");
     int power = 28;
     int sendingWindow = 12000;
     linkedProperties.RTT = 0.1;
-    linkedProperties.pLoss[FORWARD_PATH] = 0.0001;
+    linkedProperties.pLoss[FORWARD_PATH] = 0.5;
     // should converge to this loss rate per n packets
     linkedProperties.pLoss[RETURN_PATH] = 0;
     linkedProperties.speed = 1000;
+    */
 
-    /*
     if (argc != 8)
     {
         printf(" Incorrect args, propper format is host, power, RTT, forward loss, backward loss, and speed \n");
@@ -63,6 +73,7 @@ void main(int argc, char** argv)
     linkedProperties.pLoss[FORWARD_PATH] = atof(argv[5]);
     linkedProperties.pLoss[RETURN_PATH] = atof(argv[6]);
     linkedProperties.speed = atof(argv[7]);
+    /*
     */
 
 
@@ -80,23 +91,18 @@ void main(int argc, char** argv)
     // parse command-line parameters
     char* targetHost = (char*)host.c_str();
 
-
-
     clock_t timeOpen = clock();
     UINT64 dwordBufSize = (UINT64)1 << power;
     DWORD* dwordBuf = new DWORD[dwordBufSize]; // user-requested buffer
     for (UINT64 i = 0; i < dwordBufSize; i++) // required initialization
     {
-
         dwordBuf[i] = i;
-        // cout << "check for 0 " << dwordBuf[i] << endl;
-        //  cout <<" char values " << dwordBuf[i] << endl;
     }
     SenderSocket ss; // instance of your class
     DWORD status;
-    printf("Main:   initializing DWORD array with 2^%d elements... done in %0.3f ms\n",
+    printf("Main:   initializing DWORD array with 2^%d elements... done in %d ms\n",
         power,
-        (double) ((clock() - timeOpen)) / CLOCKS_PER_SEC
+        ((clock() - timeOpen) * 1000) / CLOCKS_PER_SEC
 
     );
 
@@ -134,8 +140,9 @@ void main(int argc, char** argv)
     {
         // decide the size of next chunk
         int bytes = min(byteBufferSize - off, MAX_PKT_SIZE - sizeof(SenderDataHeader));
-        // send chunk into socket
+        // send chunk into socket\
         // ask if this popualtes send like it should and then creates the vector as needed
+       // cout << " char " << *(charBuf + off) << endl;
         if ((status = ss.Send(charBuf + off, bytes)) != STATUS_OK)
         {
             printf("Main: connect failed with status %d\n", status);
@@ -146,8 +153,6 @@ void main(int argc, char** argv)
 
         off += bytes;
     }
-    /*
-    */
 
 
     /*
@@ -157,7 +162,7 @@ void main(int argc, char** argv)
     CloseHandle(sendThread);
     */
 
-   // printf("\n \n \n  waiting on ACKS back baby \n \n \n");
+    // printf("\n \n \n  waiting on ACKS back baby \n \n \n");
     SetEvent(ss.closeConnection);
     ss.closeCalled = true;
 
@@ -212,9 +217,10 @@ void main(int argc, char** argv)
 
     printf("Main: estRTT %.3f, ideal rate %.3f Kbps \n",
         ss.st.estimateRttStats / 1000,
-        (((MAX_PKT_SIZE )* ss.senderWindow * 8)) / (ss.st.estimateRttStats)// windoq is always 1
+        (((MAX_PKT_SIZE)*ss.senderWindow * 8)) / (ss.st.estimateRttStats)// windoq is always 1
     );
 
 
+   // cout << " average rtt " << (ss.st.averageRTT / ss.st.countRTTs) << endl;
 }
 
