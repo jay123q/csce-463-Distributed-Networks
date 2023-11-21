@@ -1,7 +1,10 @@
 {
   "ExpandedNodes": [
-    ""
+    "",
+    "\\Debug",
+    "\\hw1p2",
+    "\\hw1p2\\Debug"
   ],
-  "SelectedNode": "\\hw1p2.vcxproj",
+  "SelectedNode": "\\hw1p2\\main.cpp",
   "PreviewInSolutionExplorer": false
 }

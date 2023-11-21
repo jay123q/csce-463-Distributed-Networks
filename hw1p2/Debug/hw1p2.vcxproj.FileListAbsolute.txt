@@ -1,1 +1,2 @@
 C:\Users\Joshua\Documents\Github\csce-463-Distributed-Networks\hw1p2\Debug\hw1p2.exe
+C:\Users\Joshua\Documents\github\PersonalGit\csce-463-Distributed-Networks\hw1p2\Debug\hw1p2.exe
