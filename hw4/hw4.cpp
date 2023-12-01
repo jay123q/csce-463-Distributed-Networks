@@ -2,15 +2,11 @@
 // csce 463 500
 // Dr Loguinov
 // fall 2023
-#include <ctype.h> 
-#include <stdio.h> 
+
 #include "pch.h"
-#include <string>
-#include <windows.h>
+
 #include <iostream>
-#include <vector>
-#pragma comment(lib, "Ws2_32.lib")
-#include "checksum.h"
+
 // Get current flag
 
 using namespace std;
@@ -59,56 +55,43 @@ public:
 /* now restore the previous packing state */
 #pragma pack (pop) 
 
+struct sockaddr_in remote;
 
 
 
 
-
-int runMainFunction(string queryReplace)
+int runMainFunction(string host)
 {
-	string query = queryReplace;
+	int seqNumber = 0;
+	string query = host;
 	printf("Lookup  : %s\n", query.c_str());
 
 	int ttlCounter = 1;
 
-	DWORD IP = inet_addr((char*)query.c_str());
-	bool amI1or12 = true;
+	DWORD IP = inet_addr(host.c_str());
+
 	if (IP == INADDR_NONE)
 	{
-		// if not a valid IP, then do a DNS lookup
-		amI1or12 = true;
+		struct hostent* r;
+			r = gethostbyname(host.c_str());
+		if ( r == NULL)
+		{
+			// printf("Connection error: %d\n", WSAGetLastError());
+			return false;
+		}
+		else // take the first IP address and copy into sin_addr
+		{
+
+			memcpy((char*)&(remote.sin_addr), r->h_addr, r->h_length);
+		}
+		// debugging! 
+		// 
+		//	printf ("Connection error: %d\n", WSAGetLastError ());
 
 	}
 	else
 	{
-		amI1or12 = false;
-		// here parse the query and remove the .com adding .in-addr.arpa
-		int findPeriod = query.find('.');
-		string copyQuery = query;
-		string periodString = ".";
-		string subQuery = "";
-		subQuery.insert(0, copyQuery.substr(0, findPeriod).c_str());
-		subQuery.insert(0, periodString.c_str());
-		copyQuery = copyQuery.substr(findPeriod + 1);
-		findPeriod = copyQuery.find('.');
-
-		subQuery.insert(0, copyQuery.substr(0, findPeriod).c_str());
-		subQuery.insert(0, periodString.c_str());
-		copyQuery = copyQuery.substr(findPeriod + 1);
-		findPeriod = copyQuery.find('.');
-
-		subQuery.insert(0, copyQuery.substr(0, findPeriod).c_str());
-		subQuery.insert(0, periodString.c_str());
-		copyQuery = copyQuery.substr(findPeriod + 1);
-		findPeriod = copyQuery.find('.');
-
-		subQuery.insert(0, copyQuery.substr(0, findPeriod).c_str());
-
-
-
-		query = subQuery + ".in-addr.arpa";
-
-
+		remote.sin_addr.S_un.S_addr = IP;
 	}
 
 	//handle socket creation and connection 
@@ -135,17 +118,25 @@ int runMainFunction(string queryReplace)
 	ICMPHeader* icmp = (ICMPHeader*)send_buf;
 	icmp->type = ICMP_ECHO_REQUEST;
 	icmp->code = 0;
-	// set up ID/SEQ fields as needed
-
-
-	// TODO
-
-
+	icmp->id = GetCurrentProcessId();
+	icmp->seq = htons(seqNumber++);;
 	icmp->checksum = 0;
-	int packet_size = sizeof(ICMPHeader);
+	int packet_size = sizeof(IPHeader)+sizeof(ICMPHeader);
 	checksum cc;
 	icmp->checksum = cc.ip_checksum((u_short*)send_buf, packet_size);
-	
+	memcpy(send_buf, icmp, sizeof(ICMPHeader));
+
+
+	IPHeader* ip = (IPHeader*)send_buf;
+	ip->checksum = 0;
+	ip->proto = 6; // UDP
+	ip->dest_ip = IP;
+	// ip->source_ip = gethostbyaddr((char*)&(ip->dest_ip), 4, AF_INET);;
+	// memcpy(send_buf + sizeof(ICMPHeader), icmp, sizeof(IPHeader));
+
+
+
+
 	/* calculate the checksum */
 	// int packet_size = sizeof(ICMPHeader); // 8 bytes
 		// set proper TTL
@@ -168,8 +159,12 @@ int runMainFunction(string queryReplace)
 
 //	printf("Server  : %s\n", DNS.c_str());
 	printf("********************************\n");
+	char buffer[sizeof(IPHeader) + sizeof(ICMPHeader)];
+	memset(buffer, 0, sizeof(IPHeader) + sizeof(ICMPHeader));
 
-	if (sendto(sock, send_buf, packet_size, 0, (struct sockaddr*)&remote, sizeof(remote)) == SOCKET_ERROR)
+
+
+	if (sendto(sock, buffer, sizeof(ICMPHeader), 0, (struct sockaddr*)&remote, sizeof(remote)) == SOCKET_ERROR)
 	{
 		printf(" send to error %d\n", WSAGetLastError());
 		closesocket(sock);
@@ -207,7 +202,7 @@ int runMainFunction(string queryReplace)
 
 				
 
-				
+				cout << "  recieved properly \n";
 			}
 			else
 			{

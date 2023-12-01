@@ -9,10 +9,24 @@
 
 // add headers that you want to pre-compile here
 
-#include <stdio.h>
-#include <windows.h>
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
 
+typedef unsigned char u_char;
+typedef unsigned short u_short;
+typedef unsigned long u_long;
+#undef UNICODE
+#define UNICODE
+#undef _WINSOCKAPI_
+#define _WINSOCKAPI_
+#pragma comment(lib, "Ws2_32.lib")
+#include <WinSock2.h>
+#include <string.h>
+#include <string>
+#include <ws2tcpip.h>
+#include <ctime>
+#include <vector>
 
+#include "checksum.h"
 
 
 #endif //PCH_H

@@ -6,11 +6,7 @@
 *
 * ======================================================================
 */
-#include <ctype.h> 
-#include <stdio.h> 
-#include <windows.h>
-#include <string>
-#include <iostream>
+
 #include "pch.h"
 #include "checksum.h"
 
