@@ -62,40 +62,8 @@ struct sockaddr_in remote;
 
 int runMainFunction(string host)
 {
-	int seqNumber = 0;
-	string query = host;
-	printf("Lookup  : %s\n", query.c_str());
-
-	int ttlCounter = 1;
-
-	DWORD IP = inet_addr(host.c_str());
-
-	if (IP == INADDR_NONE)
-	{
-		struct hostent* r;
-			r = gethostbyname(host.c_str());
-		if ( r == NULL)
-		{
-			// printf("Connection error: %d\n", WSAGetLastError());
-			return false;
-		}
-		else // take the first IP address and copy into sin_addr
-		{
-
-			memcpy((char*)&(remote.sin_addr), r->h_addr, r->h_length);
-		}
-		// debugging! 
-		// 
-		//	printf ("Connection error: %d\n", WSAGetLastError ());
-
-	}
-	else
-	{
-		remote.sin_addr.S_un.S_addr = IP;
-	}
 
 	//handle socket creation and connection 
-
 	WSADATA wsaData;
 
 	//Initialize WinSock; once per program run
@@ -112,13 +80,49 @@ int runMainFunction(string host)
 	{
 		printf(" unable to create a raw socket: error %d \n", WSAGetLastError());
 	}
+	int seqNumber = 0;
+	string query = host;
+	printf("Lookup  : %s\n", query.c_str());
+
+	int ttlCounter = 1;
+
+	DWORD IP = inet_addr(host.c_str());
+
+
+
+
+	cout << " IP " << gethostbyname(host.c_str()) << std::endl;
+	cout << " IP " << IP << std::endl;
+	memset(&remote, 0, sizeof(sockaddr_in));
+	remote.sin_family = AF_INET;
+
+	if (IP == INADDR_NONE)
+	{
+		struct hostent* r;
+		r = gethostbyname(host.c_str());
+		if ( r == NULL)
+		{
+			printf("Connection error: %d\n", WSAGetLastError());
+			return false;
+		}
+		else // take the first IP address and copy into sin_addr
+		{
+			memcpy((char*)&(remote.sin_addr), r->h_addr, r->h_length);
+		}
+
+	}
+	else
+	{
+		remote.sin_addr.S_un.S_addr = IP;
+	}
+
 	// handle errors
 
 	 char send_buf[MAX_ICMP_SIZE]; /* IP header is not present here */
 	ICMPHeader* icmp = (ICMPHeader*)send_buf;
 	icmp->type = ICMP_ECHO_REQUEST;
 	icmp->code = 0;
-	icmp->id = GetCurrentProcessId();
+	icmp->id = htons(GetCurrentProcessId());
 	icmp->seq = htons(seqNumber++);;
 	icmp->checksum = 0;
 	int packet_size = sizeof(IPHeader)+sizeof(ICMPHeader);
@@ -151,20 +155,13 @@ int runMainFunction(string host)
 			exit(-1);
 		}
 
-	struct sockaddr_in remote;
-	memset(&remote, 0, sizeof(remote));
-	remote.sin_family = AF_INET;
-	remote.sin_addr.S_un.S_addr = inet_addr(query.c_str()); // server’s IP
-	remote.sin_port = htons(53); // DNS port on server
-
-//	printf("Server  : %s\n", DNS.c_str());
-	printf("********************************\n");
+		// we need to take to send the ICMP, and the IPheader part the server will take car of
 	char buffer[sizeof(IPHeader) + sizeof(ICMPHeader)];
-	memset(buffer, 0, sizeof(IPHeader) + sizeof(ICMPHeader));
+	memset(buffer, 0, sizeof(IPHeader)+ sizeof(ICMPHeader));
+	memcpy(buffer, &icmp, sizeof(ICMPHeader));
 
 
-
-	if (sendto(sock, buffer, sizeof(ICMPHeader), 0, (struct sockaddr*)&remote, sizeof(remote)) == SOCKET_ERROR)
+	if (sendto(sock, send_buf, sizeof(ICMPHeader), 0, (struct sockaddr*)&remote, sizeof(remote)) == SOCKET_ERROR)
 	{
 		printf(" send to error %d\n", WSAGetLastError());
 		closesocket(sock);
@@ -199,8 +196,8 @@ int runMainFunction(string host)
 				// error processing
 				// check if this packet came from the server to which we sent the query earlier
 
-
-				
+				IPHeader* firsthead = (IPHeader*)buf;
+				printf("received a packet with size %d\n", ntohs(firsthead->len));
 
 				cout << "  recieved properly \n";
 			}
@@ -244,7 +241,7 @@ int main(int argc, char* argv[])
 	}
 	*/
 
-	 string query("yahoo.com" );
+	 string query("www.yahoo.com" );
 	runMainFunction(query);
 
 	/*
