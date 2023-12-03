@@ -8,8 +8,8 @@
 #include <iostream>
 
 // Get current flag
-
-using namespace std;
+#define MAX_RETRIES 3
+#define N 30
 #define IP_HDR_SIZE 20 /* RFC 791 */
 #define ICMP_HDR_SIZE 8 /* RFC 792 */
 /* max payload size of an ICMP message originated in the program */
@@ -24,62 +24,13 @@ using namespace std;
 #define ICMP_ECHO_REPLY 0
 #define ICMP_DEST_UNREACH 3
 #define ICMP_TTL_EXPIRED 11
-#define ICMP_ECHO_REQUEST 8
-/* remember the current packing state */
-#pragma pack (push)
-#pragma pack (1)
-/* define the IP header (20 bytes) */
-class IPHeader {
-public:
-	u_char h_len : 4; /* lower 4 bits: length of the header in dwords */
-	u_char version : 4; /* upper 4 bits: version of IP, i.e., 4 */
-	u_char tos; /* type of service (TOS), ignore */
-	u_short len; /* length of packet */
-	u_short ident; /* unique identifier */
-	u_short flags; /* flags together with fragment offset - 16 bits */
-	u_char ttl; /* time to live */
-	u_char proto; /* protocol number (6=TCP, 17=UDP, etc.) */
-	u_short checksum; /* IP header checksum */
-	u_long source_ip;
-	u_long dest_ip;
-};
-/* define the ICMP header (8 bytes) */
-class ICMPHeader {
-public:
-	u_char type; /* ICMP packet type */
-	u_char code; /* type subcode */
-	u_short checksum; /* checksum of the ICMP */
-	u_short id; /* application-specific ID */
-	u_short seq; /* application-specific sequence */
-};
-/* now restore the previous packing state */
-#pragma pack (pop) 
-
-struct sockaddr_in remote;
-
-
+#define ICMP_ECHO_REQUEST 8 
+using namespace std;
 
 
 int runMainFunction(string host)
 {
 
-	//handle socket creation and connection 
-	WSADATA wsaData;
-
-	//Initialize WinSock; once per program run
-	WORD wVersionRequested = MAKEWORD(2, 2);
-	if (WSAStartup(wVersionRequested, &wsaData) != 0) {
-		printf("WSAStartup error sart up %d\n", WSAGetLastError());
-		WSACleanup();
-		return 0;
-	}
-
-	// open a TCP socket
-	SOCKET sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
-	if (sock == INVALID_SOCKET)
-	{
-		printf(" unable to create a raw socket: error %d \n", WSAGetLastError());
-	}
 	int seqNumber = 0;
 	string query = host;
 	printf("Lookup  : %s\n", query.c_str());
@@ -93,138 +44,98 @@ int runMainFunction(string host)
 
 	cout << " IP " << gethostbyname(host.c_str()) << std::endl;
 	cout << " IP " << IP << std::endl;
-	memset(&remote, 0, sizeof(sockaddr_in));
-	remote.sin_family = AF_INET;
 
-	if (IP == INADDR_NONE)
-	{
-		struct hostent* r;
-		r = gethostbyname(host.c_str());
-		if ( r == NULL)
-		{
-			printf("Connection error: %d\n", WSAGetLastError());
-			return false;
-		}
-		else // take the first IP address and copy into sin_addr
-		{
-			memcpy((char*)&(remote.sin_addr), r->h_addr, r->h_length);
-		}
-
-	}
-	else
-	{
-		remote.sin_addr.S_un.S_addr = IP;
-	}
 
 	// handle errors
 
-	 char send_buf[MAX_ICMP_SIZE]; /* IP header is not present here */
-	ICMPHeader* icmp = (ICMPHeader*)send_buf;
-	icmp->type = ICMP_ECHO_REQUEST;
-	icmp->code = 0;
-	icmp->id = htons(GetCurrentProcessId());
-	icmp->seq = htons(seqNumber++);;
-	icmp->checksum = 0;
-	int packet_size = sizeof(IPHeader)+sizeof(ICMPHeader);
-	checksum cc;
-	icmp->checksum = cc.ip_checksum((u_short*)send_buf, packet_size);
-	memcpy(send_buf, icmp, sizeof(ICMPHeader));
+	packetHelper* pk  = new packetHelper(IP, host);
 
 
-	IPHeader* ip = (IPHeader*)send_buf;
-	ip->checksum = 0;
-	ip->proto = 6; // UDP
-	ip->dest_ip = IP;
+	// IPHeader* ip = (IPHeader*)send_buf;
+	// ip->checksum = 0;
+	// ip->proto = 6; // UDP
+	// ip->dest_ip = IP;
 	// ip->source_ip = gethostbyaddr((char*)&(ip->dest_ip), 4, AF_INET);;
 	// memcpy(send_buf + sizeof(ICMPHeader), icmp, sizeof(IPHeader));
-
-
+	HANDLE sendPackets[N+1];
+	for (int i = 0; i < N ; i++)
+	{
+		pk->createPacket(i);
+	}	
+	
+	for (int i = 0; i < N ; i++)
+	{
+		pk->sendPacket(i);
+	}
 
 
 	/* calculate the checksum */
 	// int packet_size = sizeof(ICMPHeader); // 8 bytes
 		// set proper TTL
-	int ttl = ttlCounter;
 		// need Ws2tcpip.h for IP_TTL, which is equal to 4; there is another constant with the same
 		// name in multicast headers – do not use it!
-		if (setsockopt(sock, IPPROTO_IP, IP_TTL, (const char*)&ttl, sizeof(ttl)) == SOCKET_ERROR)
-		{
-			printf("setsockopt failed with %d\n", WSAGetLastError());
-				closesocket(sock);
-			// some cleanup
-			exit(-1);
-		}
 
-		// we need to take to send the ICMP, and the IPheader part the server will take car of
+	// handle errors 
+	/*
 	char buffer[sizeof(IPHeader) + sizeof(ICMPHeader)];
 	memset(buffer, 0, sizeof(IPHeader)+ sizeof(ICMPHeader));
 	memcpy(buffer, &icmp, sizeof(ICMPHeader));
-
-
-	if (sendto(sock, send_buf, sizeof(ICMPHeader), 0, (struct sockaddr*)&remote, sizeof(remote)) == SOCKET_ERROR)
+	*/
+	for (int i = 0; i < N; i++)
 	{
-		printf(" send to error %d\n", WSAGetLastError());
-		closesocket(sock);
-		WSACleanup();
-		return 0;
-
+		sendPackets[i] = pk->pd[i].complete;
 	}
-	// handle errors 
 
+	sendPackets[N] = pk->socketReceiveReady;
+	while (true)
+	{
+		int waitSocket = WaitForMultipleObjects(N + 1, sendPackets, false, INFINITE);
+		if (waitSocket == 30)
+		{
+			break;
+		}
+	}
 
 	int count = 0;
-	bool TerminateRun = false;
 	while (true)
 	{
 		// send request to the server
-		clock_t start = clock();
-		timeval timeout;
-		timeout.tv_sec = 5;
-		timeout.tv_usec = 0;
-		fd_set fd;
-		FD_ZERO(&fd); // clear the set
-		FD_SET(sock, &fd); // add your socket to the set
-		int available = select(0, &fd, NULL, NULL, &timeout);
-		if (available > 0)
-		{
+
 			char buf[MAX_REPLY_SIZE];
+			memset(buf, 0, MAX_REPLY_SIZE);
 			struct sockaddr_in response;
 			int responseSize = sizeof(response);
-			int bytes = recvfrom(sock, buf, MAX_REPLY_SIZE, 0, (struct sockaddr*)&response, &responseSize);
-			if (bytes != SOCKET_ERROR)
+			int bytes = recvfrom(pk->sock, buf, MAX_REPLY_SIZE, 0, (struct sockaddr*)&response, &responseSize);
+			if (bytes >= 56)
 			{
 				// error processing
 				// check if this packet came from the server to which we sent the query earlier
 
-				IPHeader* firsthead = (IPHeader*)buf;
-				printf("received a packet with size %d\n", ntohs(firsthead->len));
+				IPHeader* routerIpHeader = (IPHeader*)buf;
+				ICMPHeader* routerIcmpHead = (ICMPHeader*)(buf + 1);
+				printf("received a packet with size %d\n", ntohs(routerIpHeader->len));
+				printf(" router type %d | router code %d \n", routerIcmpHead->type, routerIcmpHead->code);
+				if (routerIcmpHead->type == ICMP_TTL_EXPIRED && routerIcmpHead->code == 0)
+				{
+					IPHeader* packetIpHeader = (IPHeader*)(routerIcmpHead + 1);
+					ICMPHeader* packetIcmpHeader = (ICMPHeader*)(packetIpHeader + 1);
+					printf(" r source ip %d | r dest ip %d | p source ip %d | p dest %d |\n",
+						routerIpHeader->source_ip, routerIpHeader->dest_ip, packetIpHeader->source_ip, packetIpHeader->dest_ip);
 
-				cout << "  recieved properly \n";
+				}
+				break;
 			}
 			else
 			{
-				printf(" recfrom error %d\n", WSAGetLastError());
-				break;
+				IPHeader* routerIpHeader = (IPHeader*)buf;
+				printf(" recived unwanted packet source ip %d | destination ip %d \n", routerIpHeader->source_ip, routerIpHeader->dest_ip);
 			}
-
-		}
-		else if (available == 0)
-		{
-			printf("timeout in %d ms\n", (int)(1000 * ((double)(clock() - start)) / CLOCKS_PER_SEC));
-		}
-		else
-		{
-			printf("select error %d\n", WSAGetLastError());
-			// closesocket(sock);
-			// WSACleanup();
-			//return 0;
-		}
 
 
 	}
 
 	WSACleanup();
-	closesocket(sock);
+	closesocket(pk->sock);
 
 	return 0;
 }
