@@ -129,10 +129,13 @@
   <ItemGroup>
     <ClCompile Include="checksum.cpp" />
     <ClCompile Include="hw4.cpp" />
+    <ClCompile Include="packetHelper.cpp" />
+    <ClCompile Include="packetHelper.h" />
     <ClCompile Include="pch.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="checksum.h" />
+    <ClInclude Include="helpers.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
