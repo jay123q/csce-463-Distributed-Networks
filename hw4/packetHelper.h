@@ -1,5 +1,4 @@
 #pragma once
-
 #include "pch.h"
 
 struct packetDetails {
@@ -8,9 +7,10 @@ struct packetDetails {
 	int probe;
 	double startTimer;
 	bool icmpComplete;
+	bool giveUp;
 	DWORD dnsIp;
 	std::string dnsHost;
-	HANDLE complete;
+	double RTT;
 };
 
 
@@ -23,8 +23,9 @@ public:
 	packetDetails* pd;
 	checksum cc;
 	int packet_size;
-	double RTT;
 	SOCKET sock;
+	// array size of 30  string, 
+	std::string print[30];
 	packetHelper(DWORD IP, std::string host);
 	~packetHelper();
 	void createPacket( int seq);
@@ -32,4 +33,6 @@ public:
 	void resendPacket(int seq);
 	void retransmitPackets();
 	void recvPackets();
+	std::string DNSlookup(std::string IP);
+	void handleError(int error);
 };

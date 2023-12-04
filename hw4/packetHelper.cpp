@@ -1,6 +1,6 @@
 
 #include "pch.h"
-
+#include "packetHelper.h"
 
 packetHelper::packetHelper(DWORD IP, std::string host) {
 	//handle socket creation and connection 
@@ -70,22 +70,13 @@ void packetHelper::createPacket( int seq)
 	pd[seq].probe = 1;
 	
 	pd[seq].icmpComplete = false;
+	pd[seq].giveUp = false;
 	dnsComplete = false;
 	pd[seq].dnsIp = 0;
 	RTO = 500;
 	pd[seq].dnsHost = "";
-	pd[seq].complete = CreateEvent(NULL, false, false, NULL);
-	/*
-	ICMPHeader* icmp = (ICMPHeader*)send_buf;
-	icmp->type = ICMP_ECHO_REQUEST;
-	icmp->code = 0;
-	icmp->id = htons(GetCurrentProcessId());
-	icmp->seq = htons(seq);
-	icmp->checksum = 0;
-	int packet_size = sizeof(IPHeader) + sizeof(ICMPHeader);
-	checksum cc;
-	icmp->checksum = cc.ip_checksum((u_short*)send_buf, packet_size);
-	*/
+
+
 }
 void packetHelper::sendPacket( int seq )
 {
@@ -128,21 +119,58 @@ void packetHelper::retransmitPackets() {
 	{
 		if (pd[i].icmpComplete != true)
 		{
-			pd[i].probe += 1;
-			resendPacket(i);
+			if (pd[i].giveUp == false)
+			{
+				if (pd[i].probe <= 3)
+				{
+					pd[i].giveUp = true;
+					resendPacket(i);
+				}
+				pd[i].probe += 1;
+				
+
+			}
+			else
+			{
+				printf(" empty  domain failed to reach edit me later in retransmist \n");
+			}
 
 		}
 	}
 
 }
 
+std::string packetHelper::DNSlookup(std::string IP) {
+	struct hostent* r;
+	r = gethostbyaddr(IP.c_str(), sizeof(remote), AF_INET);
+	std::string ipAddy(r->h_name);
+	return ipAddy;
+}
 
 
 void packetHelper::recvPackets()
 {
-	while (true)
+
+	fd_set readFds;
+	timeval timeout;
+	FD_ZERO(&readFds); // this sets the file descriptor 
+	FD_SET(sock, &readFds); // assign a socket to a descriptor
+
+
+
+	// set / RESET RTT HERE
+
+
+
+	timeout.tv_sec = 5;
+	timeout.tv_usec = 0;
+	int ret = select(0, &readFds, NULL, NULL, &timeout);
+	if (ret > 0)
 	{
 
+
+	while (true)
+	{
 			u_char buf[MAX_REPLY_SIZE];
 			memset(buf, 0, MAX_REPLY_SIZE);
 			struct sockaddr_in response;
@@ -152,38 +180,62 @@ void packetHelper::recvPackets()
 			ICMPHeader* routerIcmpHead = (ICMPHeader*)(routerIpHeader + 1);
 			IPHeader* originalIpHeader = (IPHeader*)(routerIcmpHead + 1);
 			ICMPHeader* originalIcmpHeader = (ICMPHeader*)(originalIpHeader + 1);
-
 			int bytes = recvfrom(sock, (char*)&buf, MAX_REPLY_SIZE, 0, (struct sockaddr*)&response, &responseSize);
 			if (bytes >= 56 && routerIcmpHead->type == ICMP_TTL_EXPIRED && routerIcmpHead->code == 0)
 			{
-				// this should be the final thing occuring
-				// error processing
-				// check if this packet came from the server to which we sent the query earlier
-
-				printf("received a packet with size %d\n", htons(routerIpHeader->len));
-				printf(" router type %d | router code %d \n", routerIcmpHead->type, routerIcmpHead->code);
-				printf(" r source ip %d | r dest ip %d | original source ip %d | original dest %d |\n",
-					routerIpHeader->source_ip, routerIpHeader->dest_ip, originalIpHeader->source_ip, originalIpHeader->dest_ip);
+				pd[originalIcmpHeader->seq].icmpComplete == true;
 
 
+				// DNS RESPONSE HERE 
+				// thread
+				// gethostbyname
+				std::string temp = "";
+				u_char* IPArray = (u_char*)&temp;
+				std::string IP((char*)IPArray);
+				std::string dnsString = DNSlookup(IP);
+
+				pd[originalIcmpHeader->seq].RTT = (double)(pd[originalIcmpHeader->seq].startTimer - clock()) / CLOCKS_PER_SEC;
+				u_long temp = (routerIpHeader->source_ip);
+				u_char* IPArray = (u_char*)&temp;
+				printf(" (%d.%d.%d.%d)", IPArray[0], IPArray[1], IPArray[2], IPArray[3]);
+				printf(" %3f", pd[originalIcmpHeader->seq].RTT);
+				printf(" (%d)\n", pd[originalIcmpHeader->seq].probe);
 				//	break;
 			}
 			else if (bytes >= 28 && routerIcmpHead->type == ICMP_ECHO_REPLY && routerIcmpHead->code == 0)
 			{
+				pd[originalIcmpHeader->seq].icmpComplete == true;
+				u_long temp = (routerIpHeader->source_ip);
+				// this reply is my orginal destination
+				u_char* IPArray = (u_char*)&temp;
+				std::string IP ((char*) IPArray);
 
+
+				printf("hopNumber %d %d.%d.%d.%d \n", routerIcmpHead->seq + 1, IPArray[0], IPArray[1], IPArray[2], IPArray[3]);
 				printf(" router type %d | router code %d \n", routerIcmpHead->type, routerIcmpHead->code);
 				printf(" icmp seq %d | icmp id %d \n", htons(routerIcmpHead->seq), htons(routerIcmpHead->id));
 				//		pk->pd[routerIcmpHead->seq].icmpComplete = true;
 
 			}
-			else if (bytes < 56 && routerIcmpHead->type == ICMP_ECHO_REPLY && routerIcmpHead->code == 0)
-			{
-				// call DNS lookup
-				printf(" arrived successfully breaking \n");
-				
-				break;
-			}
 
 
+	}
+	}
+	else if (ret == 0)
+	{
+		printf(" timed out \n");
+	}
+	else
+	{
+		printf(" no packets recieved \n");
+	}
+}
+
+void packetHelper::handleError(int error)
+{
+	if (error == 0)
+	{
+		
+		printf(" error timeout \n");
 	}
 }

@@ -34,7 +34,6 @@ int runMainFunction(string host)
 	string query = host;
 	printf("Lookup  : %s\n", query.c_str());
 
-	int ttlCounter = 1;
 
 	DWORD IP = inet_addr(host.c_str());
 
@@ -42,26 +41,31 @@ int runMainFunction(string host)
 
 	packetHelper* pk  = new packetHelper(IP, host);
 
-	HANDLE sendPackets[N+1];
-	for (int i = 0; i < 1 ; i++)
+
+	// remove handles later
+	// single socket, send all on that one
+	// send all icmp packets 30
+	// handle all 30
+	// manage and recieve all 30 timeouts
+	// no mulithreads
+	// print from heap for all
+	// 
+
+
+	for (int i = 0; i < N ; i++)
 	{
 		pk->createPacket(i);
 	}	
 	
-	for (int i = 0; i < 1; i++)
+	for (int i = 0; i < N ; i++)
 	{
 		pk->sendPacket(i);
 	}
 
 
-	for (int i = 0; i < N; i++)
-	{
-		sendPackets[i] = pk->pd[i].complete;
-	}
 
-	sendPackets[N] = pk->socketReceiveReady;
 
-	WaitForMultipleObjects(N + 1, sendPackets, true, INFINITE);
+
 
 	pk->recvPackets();
 
