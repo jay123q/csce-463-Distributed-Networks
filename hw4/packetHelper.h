@@ -4,12 +4,10 @@
 
 struct packetDetails {
 	ICMPHeader icmpPacket;
-	char send_buf[MAX_ICMP_SIZE];
+	u_char send_buf[MAX_ICMP_SIZE];
 	int probe;
 	double startTimer;
-	double RTO;
 	bool icmpComplete;
-	bool dnsComplete;
 	DWORD dnsIp;
 	std::string dnsHost;
 	HANDLE complete;
@@ -18,6 +16,8 @@ struct packetDetails {
 
 class packetHelper {
 public:
+	double RTO;
+	bool dnsComplete;
 	HANDLE socketReceiveReady;
 	struct sockaddr_in remote;
 	packetDetails* pd;
@@ -27,7 +27,9 @@ public:
 	SOCKET sock;
 	packetHelper(DWORD IP, std::string host);
 	~packetHelper();
-	void createPacket(int seq, int ttl);
-	void sendPacket(int seq, int ttl);
-
+	void createPacket( int seq);
+	void sendPacket( int seq);
+	void resendPacket(int seq);
+	void retransmitPackets();
+	void recvPackets();
 };

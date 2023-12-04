@@ -9,7 +9,6 @@
 
 // Get current flag
 #define MAX_RETRIES 3
-#define N 30
 #define IP_HDR_SIZE 20 /* RFC 791 */
 #define ICMP_HDR_SIZE 8 /* RFC 792 */
 /* max payload size of an ICMP message originated in the program */
@@ -39,104 +38,32 @@ int runMainFunction(string host)
 
 	DWORD IP = inet_addr(host.c_str());
 
-
-
-
-	cout << " IP " << gethostbyname(host.c_str()) << std::endl;
-	cout << " IP " << IP << std::endl;
-
-
 	// handle errors
 
 	packetHelper* pk  = new packetHelper(IP, host);
 
-
-	// IPHeader* ip = (IPHeader*)send_buf;
-	// ip->checksum = 0;
-	// ip->proto = 6; // UDP
-	// ip->dest_ip = IP;
-	// ip->source_ip = gethostbyaddr((char*)&(ip->dest_ip), 4, AF_INET);;
-	// memcpy(send_buf + sizeof(ICMPHeader), icmp, sizeof(IPHeader));
 	HANDLE sendPackets[N+1];
-	for (int i = 0; i < N ; i++)
+	for (int i = 0; i < 1 ; i++)
 	{
-		pk->createPacket(i,i);
+		pk->createPacket(i);
 	}	
 	
-	for (int i = 0; i < N ; i++)
+	for (int i = 0; i < 1; i++)
 	{
-		pk->sendPacket(i,i);
+		pk->sendPacket(i);
 	}
 
 
-	/* calculate the checksum */
-	// int packet_size = sizeof(ICMPHeader); // 8 bytes
-		// set proper TTL
-		// need Ws2tcpip.h for IP_TTL, which is equal to 4; there is another constant with the same
-		// name in multicast headers – do not use it!
-
-	// handle errors 
-	/*
-	char buffer[sizeof(IPHeader) + sizeof(ICMPHeader)];
-	memset(buffer, 0, sizeof(IPHeader)+ sizeof(ICMPHeader));
-	memcpy(buffer, &icmp, sizeof(ICMPHeader));
-	*/
 	for (int i = 0; i < N; i++)
 	{
 		sendPackets[i] = pk->pd[i].complete;
 	}
 
 	sendPackets[N] = pk->socketReceiveReady;
-	while (true)
-	{
-		int waitSocket = WaitForMultipleObjects(N + 1, sendPackets, false, INFINITE);
-		if (waitSocket == 30)
-		{
-			break;
-		}
-	}
 
-	int count = 0;
-	while (true)
-	{
-		// send request to the server
+	WaitForMultipleObjects(N + 1, sendPackets, true, INFINITE);
 
-			char buf[MAX_REPLY_SIZE];
-			memset(buf, 0, MAX_REPLY_SIZE);
-			struct sockaddr_in response;
-			int responseSize = sizeof(response);
-			int bytes = recvfrom(pk->sock, buf, MAX_REPLY_SIZE, 0, (struct sockaddr*)&response, &responseSize);
-
-			IPHeader* routerIpHeader = (IPHeader*)buf;
-			ICMPHeader* routerIcmpHead = (ICMPHeader*)(buf + 1);
-			if (bytes >= 56)
-			{
-				// error processing
-				// check if this packet came from the server to which we sent the query earlier
-
-				printf("received a packet with size %d\n", htons(routerIpHeader->len));
-				printf(" router type %d | router code %d \n", routerIcmpHead->type, routerIcmpHead->code);
-				if (routerIcmpHead->type == ICMP_TTL_EXPIRED && routerIcmpHead->code == 0 )
-				{
-					IPHeader* packetIpHeader = (IPHeader*)(routerIcmpHead + 1);
-					ICMPHeader* packetIcmpHeader = (ICMPHeader*)(packetIpHeader + 1);
-					printf(" r source ip %d | r dest ip %d | original source ip %d | original dest %d |\n",
-					routerIpHeader->source_ip, routerIpHeader->dest_ip, packetIpHeader->source_ip, packetIpHeader->dest_ip);
-
-				}
-
-			//	break;
-			}
-			else if (bytes == 28 && routerIcmpHead->type == ICMP_ECHO_REPLY )
-			{
-				printf(" router type %d | router code %d \n", routerIcmpHead->type, routerIcmpHead->code);
-				printf(" icmp seq %d | icmp id %d \n", routerIcmpHead->seq, routerIcmpHead->id);
-
-			}
-
-
-
-	}
+	pk->recvPackets();
 
 	WSACleanup();
 	closesocket(pk->sock);
@@ -155,8 +82,7 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 	*/
-
-	 string query("www.yahoo.com" );
+	string query("www.yahoo.com");
 	runMainFunction(query);
 
 	/*
