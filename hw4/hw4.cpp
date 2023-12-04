@@ -60,12 +60,12 @@ int runMainFunction(string host)
 	HANDLE sendPackets[N+1];
 	for (int i = 0; i < N ; i++)
 	{
-		pk->createPacket(i);
+		pk->createPacket(i,i);
 	}	
 	
 	for (int i = 0; i < N ; i++)
 	{
-		pk->sendPacket(i);
+		pk->sendPacket(i,i);
 	}
 
 
@@ -106,30 +106,34 @@ int runMainFunction(string host)
 			struct sockaddr_in response;
 			int responseSize = sizeof(response);
 			int bytes = recvfrom(pk->sock, buf, MAX_REPLY_SIZE, 0, (struct sockaddr*)&response, &responseSize);
+
+			IPHeader* routerIpHeader = (IPHeader*)buf;
+			ICMPHeader* routerIcmpHead = (ICMPHeader*)(buf + 1);
 			if (bytes >= 56)
 			{
 				// error processing
 				// check if this packet came from the server to which we sent the query earlier
 
-				IPHeader* routerIpHeader = (IPHeader*)buf;
-				ICMPHeader* routerIcmpHead = (ICMPHeader*)(buf + 1);
-				printf("received a packet with size %d\n", ntohs(routerIpHeader->len));
+				printf("received a packet with size %d\n", htons(routerIpHeader->len));
 				printf(" router type %d | router code %d \n", routerIcmpHead->type, routerIcmpHead->code);
-				if (routerIcmpHead->type == ICMP_TTL_EXPIRED && routerIcmpHead->code == 0)
+				if (routerIcmpHead->type == ICMP_TTL_EXPIRED && routerIcmpHead->code == 0 )
 				{
 					IPHeader* packetIpHeader = (IPHeader*)(routerIcmpHead + 1);
 					ICMPHeader* packetIcmpHeader = (ICMPHeader*)(packetIpHeader + 1);
-					printf(" r source ip %d | r dest ip %d | p source ip %d | p dest %d |\n",
-						routerIpHeader->source_ip, routerIpHeader->dest_ip, packetIpHeader->source_ip, packetIpHeader->dest_ip);
+					printf(" r source ip %d | r dest ip %d | original source ip %d | original dest %d |\n",
+					routerIpHeader->source_ip, routerIpHeader->dest_ip, packetIpHeader->source_ip, packetIpHeader->dest_ip);
 
 				}
-				break;
+
+			//	break;
 			}
-			else
+			else if (bytes == 28 && routerIcmpHead->type == ICMP_ECHO_REPLY )
 			{
-				IPHeader* routerIpHeader = (IPHeader*)buf;
-				printf(" recived unwanted packet source ip %d | destination ip %d \n", routerIpHeader->source_ip, routerIpHeader->dest_ip);
+				printf(" router type %d | router code %d \n", routerIcmpHead->type, routerIcmpHead->code);
+				printf(" icmp seq %d | icmp id %d \n", routerIcmpHead->seq, routerIcmpHead->id);
+
 			}
+
 
 
 	}

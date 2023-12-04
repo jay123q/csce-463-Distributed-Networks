@@ -21,7 +21,7 @@ packetHelper::packetHelper(DWORD IP, std::string host) {
 		printf(" unable to create a raw socket: error %d \n", WSAGetLastError());
 	}
 	this->pd = new packetDetails[30];
-	packet_size = sizeof(ICMPHeader) + sizeof(IPHeader);
+	packet_size = sizeof(ICMPHeader);
 
 	memset(&remote, 0, sizeof(sockaddr_in));
 	remote.sin_family = AF_INET;
@@ -51,15 +51,15 @@ packetHelper::packetHelper(DWORD IP, std::string host) {
 packetHelper::~packetHelper() {
 
 }
-void packetHelper::createPacket(int seq)
+void packetHelper::createPacket(int seq , int ttl)
 {
 
 	memset(pd[seq].send_buf, 0, sizeof(MAX_ICMP_SIZE));
-	pd[seq].icmpPacket.type = ICMP_ECHO_REQUEST;
-	pd[seq].icmpPacket.code = 0;
-	pd[seq].icmpPacket.id = htons(GetCurrentProcessId());
-	pd[seq].icmpPacket.seq = seq;
-	pd[seq].icmpPacket.checksum = 0;
+	pd[seq].icmpPacket.type = (u_char) ICMP_ECHO_REQUEST;
+	pd[seq].icmpPacket.code = (u_char) 0;
+	pd[seq].icmpPacket.id = (u_short) GetCurrentProcessId();
+	pd[seq].icmpPacket.seq = (u_short) ttl;
+	pd[seq].icmpPacket.checksum = (u_short) 0;
 	pd[seq].icmpPacket.checksum = cc.ip_checksum((u_short*)pd[seq].send_buf, packet_size);
 	memcpy(pd[seq].send_buf, &pd[seq].icmpPacket, sizeof(ICMPHeader));
 	pd[seq].probe = 1;
@@ -82,8 +82,9 @@ void packetHelper::createPacket(int seq)
 	icmp->checksum = cc.ip_checksum((u_short*)send_buf, packet_size);
 	*/
 }
-void packetHelper::sendPacket(int ttl)
+void packetHelper::sendPacket(int seq, int ttl)
 {
+
 	if (setsockopt(sock, IPPROTO_IP, IP_TTL, (const char*)&ttl, sizeof(ttl)) == SOCKET_ERROR)
 	{
 		printf("setsockopt failed with %d\n", WSAGetLastError());
@@ -91,10 +92,10 @@ void packetHelper::sendPacket(int ttl)
 		// some cleanup
 		exit(-1);
 	}
-	pd[ttl].startTimer = clock();
+	pd[seq].startTimer = clock();
 
 	// we need to take to send the ICMP, and the IPheader part the server will take car of
-	if (sendto(sock, pd[ttl].send_buf , sizeof(ICMPHeader), 0, (struct sockaddr*)&remote, sizeof(remote)) == SOCKET_ERROR)
+	if (sendto(sock, pd[seq].send_buf , sizeof(ICMPHeader), 0, (struct sockaddr*)&remote, sizeof(remote)) == SOCKET_ERROR)
 	{
 		printf(" send to error %d\n", WSAGetLastError());
 		closesocket(sock);

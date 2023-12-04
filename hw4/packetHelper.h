@@ -27,7 +27,7 @@ public:
 	SOCKET sock;
 	packetHelper(DWORD IP, std::string host);
 	~packetHelper();
-	void createPacket(int seq);
-	void sendPacket(int ttl);
+	void createPacket(int seq, int ttl);
+	void sendPacket(int seq, int ttl);
 
 };
