@@ -52,12 +52,12 @@ int runMainFunction(string host)
 	// 
 
 
-	for (int i = 0; i < N ; i++)
+	for (int i = 1; i < N+1 ; i++)
 	{
 		pk->createPacket(i);
 	}	
 	
-	for (int i = 0; i < N ; i++)
+	for (int i = 1; i < N+1 ; i++)
 	{
 		pk->sendPacket(i);
 	}
@@ -69,6 +69,7 @@ int runMainFunction(string host)
 		pk->recvPackets();
 		if(pk->checkComplete() == true)
 		{
+			printf(" complete ");
 			break;
 		}
 		pk->retransmitPackets();
@@ -93,7 +94,7 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 	*/
-	string query("www.google.com");
+	string query("www.yahoo.com");
 	runMainFunction(query);
 
 	/*

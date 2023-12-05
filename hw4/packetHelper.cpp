@@ -20,7 +20,7 @@ packetHelper::packetHelper(DWORD IP, std::string host) {
 	{
 		printf(" unable to create a raw socket: error %d \n", WSAGetLastError());
 	}
-	this->pd = new packetDetails[30];
+	this->pd = new packetDetails[N+1];
 
 
 	packet_size = sizeof(ICMPHeader);
@@ -58,7 +58,6 @@ packetHelper::~packetHelper() {
 }
 void packetHelper::createPacket( int seq)
 {
-	int ttl = seq + 1;
 	memset(pd[seq].send_buf, 0, sizeof(MAX_ICMP_SIZE));
 	pd[seq].icmpPacket.type = (u_char) ICMP_ECHO_REQUEST;
 	pd[seq].icmpPacket.code = (u_char) 0;
@@ -76,7 +75,7 @@ void packetHelper::createPacket( int seq)
 }
 void packetHelper::sendPacket( int seq )
 {
-	int ttl = seq + 1;
+	int ttl = seq - 1;
 	if (setsockopt(sock, IPPROTO_IP, IP_TTL, (const char*)&ttl, sizeof(ttl)) == SOCKET_ERROR)
 	{
 		printf("setsockopt failed with %d\n", WSAGetLastError());
@@ -99,6 +98,7 @@ void packetHelper::sendPacket( int seq )
 }
 void packetHelper::resendPacket(int seq)
 {
+	std::cout << " resend packet seq # " << seq << std::endl;
 	if (sendto(sock, (char*) pd[seq].send_buf, sizeof(ICMPHeader), 0, (struct sockaddr*)&remote, sizeof(remote)) == SOCKET_ERROR)
 	{
 		printf(" send to error %d\n", WSAGetLastError());
@@ -111,14 +111,15 @@ void packetHelper::resendPacket(int seq)
 
 
 void packetHelper::retransmitPackets() {
-	for (int i = 0; i < N; i++)
+	for (int i = 1; i < N+1; i++)
 	{
 		if (pd[i].icmpComplete != true  && pd[i].probe <= 3)
 		{
 
 				if (pd[i].probe <= 3)
 				{
-					resendPacket(i);
+					std::cout << "resending packet " << i << std::endl;
+					sendPacket(i);
 				}
 				pd[i].probe += 1;
 		}
@@ -126,7 +127,7 @@ void packetHelper::retransmitPackets() {
 		{
 			// next time around we know we did not send
 			pd[i].icmpComplete = true;
-			pd[i].printString = std::to_string(i+1) + " *";
+			pd[i].printString = std::to_string(i) + " *";
 			// printf(" empty  domain failed to reach edit me later in retransmist \n");
 		}
 	}
@@ -136,7 +137,7 @@ void packetHelper::retransmitPackets() {
 
 bool packetHelper::checkComplete()
 {
-	for (int i = 0; i < N; i++)
+	for (int i = 1; i < N+1; i++)
 	{
 		if (pd[i].icmpComplete == false)
 		{
@@ -147,7 +148,7 @@ bool packetHelper::checkComplete()
 }
 
 void packetHelper::finalPrint() {
-	for (int i = 0; i < N; i++)
+	for (int i = 1; i < N+1; i++)
 	{
 		std::cout << pd[i].printString << std::endl;
 	}
@@ -156,16 +157,34 @@ void packetHelper::finalPrint() {
 std::string packetHelper::DNSlookup(std::string IP) {
 	struct hostent* r;
 	r = gethostbyaddr(IP.c_str(), sizeof(remote), AF_INET);
-	std::string ipAddy(r->h_name);
-	return ipAddy;
+	if (r == NULL)
+	{
+		std::string ipAddy = "<no DNS entry>";
+		return ipAddy;
+	}
+	else
+	{
+		std::string ipAddy(r->h_name);
+		return ipAddy;
+
+	}
 }
+
+void packetHelper::handleError(int error)
+{
+	if (error == 0)
+	{
+
+		printf(" error timeout \n");
+	}
+} 
 
 double packetHelper::setRTO()
 {
 
 	double RTO = 500;
 	double generalAverage = 0.0;
-	for (int i = 1; i < N - 1; i++)
+	for (int i = 1; i < N; i++)
 	{
 		if (pd[i].icmpComplete == false)
 		{
@@ -209,6 +228,10 @@ void packetHelper::recvPackets()
 		timeout.tv_usec = (RTO - RTO) * 1000;
 
 	}
+
+	timeout.tv_sec = 5;
+	timeout.tv_usec = (500 * 1000);
+
 	// set / RESET RTT HERE
 	int countGarbage = 0;
 	int oldSeq = 0;
@@ -231,9 +254,8 @@ void packetHelper::recvPackets()
 			int bytes = recvfrom(sock, (char*)&buf, MAX_REPLY_SIZE, 0, (struct sockaddr*)&response, &responseSize);
 			if (bytes >= 56 && routerIcmpHead->type == ICMP_TTL_EXPIRED && routerIcmpHead->code == 0)
 			{
+				printf(" icmp_ttl_expired \n");
 				pd[originalIcmpHeader->seq].icmpComplete = true;
-
-
 				// DNS RESPONSE HERE 
 				// thread
 				// gethostbyname
@@ -241,7 +263,7 @@ void packetHelper::recvPackets()
 				u_long temp = (routerIpHeader->source_ip);
 				u_char* IPArray = (u_char*)&temp;
 				// seq
-				std::string seqPrint = std::to_string(originalIcmpHeader->seq+1) + " ";
+				std::string seqPrint = std::to_string(originalIcmpHeader->seq) + " ";
 				printME += seqPrint;
 				// DNS
 				std::string IP((char*)IPArray);
@@ -257,10 +279,11 @@ void packetHelper::recvPackets()
 				std::string probePrint = "("+std::to_string(pd[originalIcmpHeader->seq].probe)+")";
 				printME += probePrint;
 				pd[originalIcmpHeader->seq].printString = printME;
-				// std::cout << printME << std::endl;
+				 std::cout << printME << std::endl;
 			}
 			else if (bytes >= 28 && routerIcmpHead->type == ICMP_ECHO_REPLY && routerIcmpHead->code == 0)
 			{
+				printf(" icmp_echo_reply \n");
 				pd[originalIcmpHeader->seq].icmpComplete = true;
 				u_long temp = (routerIpHeader->source_ip);
 				// this reply is my orginal destination
@@ -268,16 +291,16 @@ void packetHelper::recvPackets()
 				std::string IP ((char*) IPArray);
 
 
-				printf("hopNumber %d %d.%d.%d.%d \n", routerIcmpHead->seq + 1, IPArray[0], IPArray[1], IPArray[2], IPArray[3]);
+				printf("hopNumber %d %d.%d.%d.%d \n", routerIcmpHead->seq, IPArray[0], IPArray[1], IPArray[2], IPArray[3]);
 				printf(" router type %d | router code %d \n", routerIcmpHead->type, routerIcmpHead->code);
 				printf(" icmp seq %d | icmp id %d \n", htons(routerIcmpHead->seq), htons(routerIcmpHead->id));
 				//		pk->pd[routerIcmpHead->seq].icmpComplete = true;
-				break;
 
 			}
 			else
 			{
 				// garbage packets
+				printf(" garbage \n");
 				if (countGarbage == 5)
 				{
 					// std::cout << " dipping from garbage \n";
@@ -309,11 +332,3 @@ void packetHelper::recvPackets()
 	}
 }
 
-void packetHelper::handleError(int error)
-{
-	if (error == 0)
-	{
-		
-		printf(" error timeout \n");
-	}
-}
