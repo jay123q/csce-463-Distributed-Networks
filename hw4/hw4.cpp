@@ -93,7 +93,7 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 	*/
-	string query("www.yahoo.com");
+	string query("www.google.com");
 	runMainFunction(query);
 
 	/*
