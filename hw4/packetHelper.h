@@ -7,32 +7,31 @@ struct packetDetails {
 	int probe;
 	double startTimer;
 	bool icmpComplete;
-	bool giveUp;
-	DWORD dnsIp;
-	std::string dnsHost;
+	std::string printString;
 	double RTT;
 };
 
 
 class packetHelper {
 public:
-	double RTO;
-	bool dnsComplete;
+	bool firstIteration;
 	HANDLE socketReceiveReady;
 	struct sockaddr_in remote;
 	packetDetails* pd;
 	checksum cc;
 	int packet_size;
 	SOCKET sock;
-	// array size of 30  string, 
-	std::string print[30];
+
 	packetHelper(DWORD IP, std::string host);
 	~packetHelper();
 	void createPacket( int seq);
 	void sendPacket( int seq);
 	void resendPacket(int seq);
 	void retransmitPackets();
+	bool checkComplete();
 	void recvPackets();
+	void finalPrint();
 	std::string DNSlookup(std::string IP);
 	void handleError(int error);
+	double setRTO();
 };

@@ -64,10 +64,17 @@ int runMainFunction(string host)
 
 
 
+	while (true)
+	{
+		pk->recvPackets();
+		if(pk->checkComplete() == true)
+		{
+			break;
+		}
+		pk->retransmitPackets();
+	}
 
-
-
-	pk->recvPackets();
+	pk->finalPrint();
 
 	WSACleanup();
 	closesocket(pk->sock);
