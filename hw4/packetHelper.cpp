@@ -183,20 +183,20 @@ void packetHelper::recvPackets()
 			int bytes = recvfrom(sock, (char*)&buf, MAX_REPLY_SIZE, 0, (struct sockaddr*)&response, &responseSize);
 			if (bytes >= 56 && routerIcmpHead->type == ICMP_TTL_EXPIRED && routerIcmpHead->code == 0)
 			{
-				pd[originalIcmpHeader->seq].icmpComplete == true;
+				pd[originalIcmpHeader->seq].icmpComplete = true;
 
 
 				// DNS RESPONSE HERE 
 				// thread
 				// gethostbyname
-				std::string temp = "";
+				std::string printME = "";
+				u_long temp = (routerIpHeader->source_ip);
 				u_char* IPArray = (u_char*)&temp;
 				std::string IP((char*)IPArray);
 				std::string dnsString = DNSlookup(IP);
-
+				std::cout << " dns " << dnsString;
 				pd[originalIcmpHeader->seq].RTT = (double)(pd[originalIcmpHeader->seq].startTimer - clock()) / CLOCKS_PER_SEC;
-				u_long temp = (routerIpHeader->source_ip);
-				u_char* IPArray = (u_char*)&temp;
+				// u_char* IPArray = (u_char*)&temp;
 				printf(" (%d.%d.%d.%d)", IPArray[0], IPArray[1], IPArray[2], IPArray[3]);
 				printf(" %3f", pd[originalIcmpHeader->seq].RTT);
 				printf(" (%d)\n", pd[originalIcmpHeader->seq].probe);
@@ -204,7 +204,7 @@ void packetHelper::recvPackets()
 			}
 			else if (bytes >= 28 && routerIcmpHead->type == ICMP_ECHO_REPLY && routerIcmpHead->code == 0)
 			{
-				pd[originalIcmpHeader->seq].icmpComplete == true;
+				pd[originalIcmpHeader->seq].icmpComplete = true;
 				u_long temp = (routerIpHeader->source_ip);
 				// this reply is my orginal destination
 				u_char* IPArray = (u_char*)&temp;
