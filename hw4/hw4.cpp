@@ -52,12 +52,12 @@ int runMainFunction(string host)
 	// 
 
 
-	for (int i = 1; i < N+1 ; i++)
+	for (int i = sendNumber; i < N+1 ; i++)
 	{
 		pk->createPacket(i);
 	}	
 	
-	for (int i = 1; i < N+1 ; i++)
+	for (int i = sendNumber; i < N+1 ; i++)
 	{
 		pk->sendPacket(i);
 	}
@@ -67,12 +67,13 @@ int runMainFunction(string host)
 	while (true)
 	{
 		pk->recvPackets();
+		break;
 		if(pk->checkComplete() == true)
 		{
 			printf(" complete ");
 			break;
 		}
-		pk->retransmitPackets();
+		// pk->retransmitPackets();
 	}
 
 	pk->finalPrint();

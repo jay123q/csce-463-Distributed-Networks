@@ -58,6 +58,8 @@ packetHelper::~packetHelper() {
 }
 void packetHelper::createPacket( int seq)
 {
+
+
 	memset(pd[seq].send_buf, 0, sizeof(MAX_ICMP_SIZE));
 	pd[seq].icmpPacket.type = (u_char) ICMP_ECHO_REQUEST;
 	pd[seq].icmpPacket.code = (u_char) 0;
@@ -75,7 +77,7 @@ void packetHelper::createPacket( int seq)
 }
 void packetHelper::sendPacket( int seq )
 {
-	int ttl = seq - 1;
+	int ttl = 3;
 	if (setsockopt(sock, IPPROTO_IP, IP_TTL, (const char*)&ttl, sizeof(ttl)) == SOCKET_ERROR)
 	{
 		printf("setsockopt failed with %d\n", WSAGetLastError());
@@ -111,12 +113,12 @@ void packetHelper::resendPacket(int seq)
 
 
 void packetHelper::retransmitPackets() {
-	for (int i = 1; i < N+1; i++)
+	for (int i = sendNumber; i < N+1; i++)
 	{
 		if (pd[i].icmpComplete != true  && pd[i].probe <= 3)
 		{
 
-				if (pd[i].probe <= 3)
+				if (pd[i].probe < 3)
 				{
 					std::cout << "resending packet " << i << std::endl;
 					sendPacket(i);
@@ -137,7 +139,7 @@ void packetHelper::retransmitPackets() {
 
 bool packetHelper::checkComplete()
 {
-	for (int i = 1; i < N+1; i++)
+	for (int i = sendNumber; i < N+1; i++)
 	{
 		if (pd[i].icmpComplete == false)
 		{
@@ -148,7 +150,7 @@ bool packetHelper::checkComplete()
 }
 
 void packetHelper::finalPrint() {
-	for (int i = 1; i < N+1; i++)
+	for (int i = sendNumber; i < N+1; i++)
 	{
 		std::cout << pd[i].printString << std::endl;
 	}
@@ -235,95 +237,97 @@ void packetHelper::recvPackets()
 	// set / RESET RTT HERE
 	int countGarbage = 0;
 	int oldSeq = 0;
+
 	int ret = select(0, &readFds, NULL, NULL, &timeout);
 	if (ret > 0)
 	{
+		while (true)
+		{
+				u_char buf[MAX_REPLY_SIZE];
+				memset(buf, 0, MAX_REPLY_SIZE);
+				struct sockaddr_in response;
+				int responseSize = sizeof(response);
 
-
-	while (true)
-	{
-			u_char buf[MAX_REPLY_SIZE];
-			memset(buf, 0, MAX_REPLY_SIZE);
-			struct sockaddr_in response;
-			int responseSize = sizeof(response);
-
-			IPHeader* routerIpHeader = (IPHeader*)buf;
-			ICMPHeader* routerIcmpHead = (ICMPHeader*)(routerIpHeader + 1);
-			IPHeader* originalIpHeader = (IPHeader*)(routerIcmpHead + 1);
-			ICMPHeader* originalIcmpHeader = (ICMPHeader*)(originalIpHeader + 1);
-			int bytes = recvfrom(sock, (char*)&buf, MAX_REPLY_SIZE, 0, (struct sockaddr*)&response, &responseSize);
-			if (bytes >= 56 && routerIcmpHead->type == ICMP_TTL_EXPIRED && routerIcmpHead->code == 0)
-			{
-				printf(" icmp_ttl_expired \n");
-				pd[originalIcmpHeader->seq].icmpComplete = true;
-				// DNS RESPONSE HERE 
-				// thread
-				// gethostbyname
-				std::string printME = "";
-				u_long temp = (routerIpHeader->source_ip);
-				u_char* IPArray = (u_char*)&temp;
-				// seq
-				std::string seqPrint = std::to_string(originalIcmpHeader->seq) + " ";
-				printME += seqPrint;
-				// DNS
-				std::string IP((char*)IPArray);
-				 printME += DNSlookup(IP);
-				// IP
-				std::string Ipheader = " (" + std::to_string(IPArray[0]) + '.' + std::to_string(IPArray[1]) + '.' + std::to_string(IPArray[2]) + '.' + std::to_string(IPArray[3]) + ") ";
-				printME += Ipheader;
-				// RTT
-				pd[originalIcmpHeader->seq].RTT = (double)(clock() - pd[originalIcmpHeader->seq].startTimer ) / CLOCKS_PER_SEC;
-				std::string rttPrint = std::to_string(pd[originalIcmpHeader->seq].RTT)+" ms ";
-				printME += rttPrint;
-				// PROBE
-				std::string probePrint = "("+std::to_string(pd[originalIcmpHeader->seq].probe)+")";
-				printME += probePrint;
-				pd[originalIcmpHeader->seq].printString = printME;
-				 std::cout << printME << std::endl;
-			}
-			else if (bytes >= 28 && routerIcmpHead->type == ICMP_ECHO_REPLY && routerIcmpHead->code == 0)
-			{
-				printf(" icmp_echo_reply \n");
-				pd[originalIcmpHeader->seq].icmpComplete = true;
-				u_long temp = (routerIpHeader->source_ip);
-				// this reply is my orginal destination
-				u_char* IPArray = (u_char*)&temp;
-				std::string IP ((char*) IPArray);
-
-
-				printf("hopNumber %d %d.%d.%d.%d \n", routerIcmpHead->seq, IPArray[0], IPArray[1], IPArray[2], IPArray[3]);
-				printf(" router type %d | router code %d \n", routerIcmpHead->type, routerIcmpHead->code);
-				printf(" icmp seq %d | icmp id %d \n", htons(routerIcmpHead->seq), htons(routerIcmpHead->id));
-				//		pk->pd[routerIcmpHead->seq].icmpComplete = true;
-
-			}
-			else
-			{
-				// garbage packets
-				printf(" garbage \n");
-				if (countGarbage == 5)
+				IPHeader* routerIpHeader = (IPHeader*)buf;
+				ICMPHeader* routerIcmpHead = (ICMPHeader*)(routerIpHeader + 1);
+				IPHeader* originalIpHeader = (IPHeader*)(routerIcmpHead + 1);
+				ICMPHeader* originalIcmpHeader = (ICMPHeader*)(originalIpHeader + 1);
+				int bytes = recvfrom(sock, (char*)&buf, MAX_REPLY_SIZE, 0, (struct sockaddr*)&response, &responseSize);
+				if (bytes >= 56 && routerIcmpHead->type == ICMP_TTL_EXPIRED && routerIcmpHead->code == 0)
 				{
-					// std::cout << " dipping from garbage \n";
-					break;
+					printf(" icmp_ttl_expired \n");
+					pd[originalIcmpHeader->seq].icmpComplete = true;
+					// DNS RESPONSE HERE 
+					// thread
+					// gethostbyname
+					std::string printME = "";
+					u_long temp = (routerIpHeader->source_ip);
+					u_char* IPArray = (u_char*)&temp;
+					// seq
+					std::string seqPrint = std::to_string(originalIcmpHeader->seq) + " ";
+					printME += seqPrint;
+					// DNS
+					std::string IP((char*)IPArray);
+					 printME += DNSlookup(IP);
+					// IP
+					std::string Ipheader = " (" + std::to_string(IPArray[0]) + '.' + std::to_string(IPArray[1]) + '.' + std::to_string(IPArray[2]) + '.' + std::to_string(IPArray[3]) + ") ";
+					printME += Ipheader;
+					// RTT
+					pd[originalIcmpHeader->seq].RTT = (double)(clock() - pd[originalIcmpHeader->seq].startTimer ) / CLOCKS_PER_SEC;
+					std::string rttPrint = std::to_string(pd[originalIcmpHeader->seq].RTT)+" ms ";
+					printME += rttPrint;
+					// PROBE
+					std::string probePrint = "("+std::to_string(pd[originalIcmpHeader->seq].probe)+")";
+					printME += probePrint;
+					pd[originalIcmpHeader->seq].printString = printME;
+					 std::cout << printME << std::endl;
 				}
-				countGarbage += 1;
-				/*
-				u_long temp = (routerIpHeader->source_ip);
-				u_char* IPArray = (u_char*)&temp;
-				std::string IP((char*)IPArray);
-				printf("hopNumber %d %d.%d.%d.%d \n", routerIcmpHead->seq + 1, IPArray[0], IPArray[1], IPArray[2], IPArray[3]);
-				printf(" router type %d | router code %d \n", routerIcmpHead->type, routerIcmpHead->code);
-				printf(" icmp seq %d | icmp id %d \n", htons(routerIcmpHead->seq), htons(routerIcmpHead->id));
-				*/
-
-			}
+				else if (bytes >= 28 && routerIcmpHead->type == ICMP_ECHO_REPLY && routerIcmpHead->code == 0)
+				{
+					printf(" icmp_echo_reply \n");
+					pd[originalIcmpHeader->seq].icmpComplete = true;
+					u_long temp = (routerIpHeader->source_ip);
+					// this reply is my orginal destination
+					u_char* IPArray = (u_char*)&temp;
+					std::string IP ((char*) IPArray);
 
 
-	}
+					printf("hopNumber %d %d.%d.%d.%d \n", routerIcmpHead->seq, IPArray[0], IPArray[1], IPArray[2], IPArray[3]);
+					printf(" router type %d | router code %d \n", routerIcmpHead->type, routerIcmpHead->code);
+					printf(" icmp seq %d | icmp id %d \n", htons(routerIcmpHead->seq), htons(routerIcmpHead->id));
+					//		pk->pd[routerIcmpHead->seq].icmpComplete = true;
+
+				}
+				else
+				{
+					printf(" router type %d | router code %d \n", routerIcmpHead->type, routerIcmpHead->code);
+					printf(" icmp seq %d | icmp id %d \n", htons(routerIcmpHead->seq), htons(routerIcmpHead->id));
+
+					printf(" garbage \n");
+					if (countGarbage == 5)
+					{
+						// std::cout << " dipping from garbage \n";
+						break;
+					}
+					countGarbage += 1;
+					/*
+					u_long temp = (routerIpHeader->source_ip);
+					u_char* IPArray = (u_char*)&temp;
+					std::string IP((char*)IPArray);
+					printf("hopNumber %d %d.%d.%d.%d \n", routerIcmpHead->seq + 1, IPArray[0], IPArray[1], IPArray[2], IPArray[3]);
+					printf(" router type %d | router code %d \n", routerIcmpHead->type, routerIcmpHead->code);
+					printf(" icmp seq %d | icmp id %d \n", htons(routerIcmpHead->seq), htons(routerIcmpHead->id));
+					*/
+
+				}
+
+
+		}
 	}
 	else if (ret == 0)
 	{
 		printf(" timed out \n");
+		return;
 	}
 	else
 	{

@@ -45,6 +45,6 @@ typedef unsigned long u_long;
 #define ICMP_TTL_EXPIRED 11
 #define ICMP_ECHO_REQUEST 8 
 
-#define N 3
-
+#define N 0
+#define sendNumber 0
 #endif //PCH_H
