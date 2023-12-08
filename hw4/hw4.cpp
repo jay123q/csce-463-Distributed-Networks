@@ -154,7 +154,7 @@ int runMainFunction(string host)
 #endif // DEBUG
 
 	delete pk;
-	return 0;
+	return true;
 }
 
 void writeTxtFile()
@@ -187,7 +187,12 @@ int main(int argc, char* argv[])
 	for (size_t i = 0; i < 10000 ; i++)
 	{
 		std::string query = q.front();
-		runMainFunction(query) ;
+		if (runMainFunction(query) == false)
+		{
+			// remove the place, just grab anouther q
+			i--;
+		}
+		
 		q.pop();
 
 	}
