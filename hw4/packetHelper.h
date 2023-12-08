@@ -19,10 +19,14 @@ public:
 	struct sockaddr_in remote;
 	packetDetails* pd;
 	checksum cc;
+	int countSeq;
 	int packet_size;
+	DWORD storeIP;
+	std::string IPforlastPrint;
+	int countSeq;
 	SOCKET sock;
-
-	packetHelper(DWORD IP, std::string host);
+	bool errorBreak;
+	packetHelper(std::string host);
 	~packetHelper();
 	void createPacket( int seq);
 	void sendPacket( int seq);
@@ -32,6 +36,6 @@ public:
 	void recvPackets();
 	void finalPrint();
 	std::string DNSlookup(std::string IP);
-	void handleError(int error);
+	bool handleError(int type, int code);
 	double setRTO();
 };

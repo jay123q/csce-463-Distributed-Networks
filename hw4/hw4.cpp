@@ -25,21 +25,50 @@
 #define ICMP_TTL_EXPIRED 11
 #define ICMP_ECHO_REQUEST 8 
 using namespace std;
+queue<string> parseTXTFile(std::string filename)
+{
+	// cout << " in parser \n";
+	ifstream file(filename, ios::binary | ios::in);
+	std::string line;
+	std::queue <std::string> queueTotal;
 
+
+	while (!file.eof())
+	{
+		getline(file, line);
+		if (line[0] == '\0')
+		{
+			break;
+		}
+		line = line.substr(0, line.size() - 1);
+		//this->intFileSize += strlen(line.c_str());
+	 //   cout << " the line is " << line << std::endl;
+	//    cout << " push the file " << line << std::endl;
+		queueTotal.push(line);
+	}
+	return queueTotal;
+}
 
 int runMainFunction(string host)
 {
-
-	int seqNumber = 0;
 	string query = host;
-	printf("Lookup  : %s\n", query.c_str());
+#ifdef reportWork
+	queue<string> q = parseTXTFile("URL-input-1M.txt");
+	query = q.front();
+	q.pop();
+
+#endif // reportWork
 
 
-	DWORD IP = inet_addr(host.c_str());
+
+	// printf("Lookup  : %s\n", query.c_str());
+
+
+
 
 	// handle errors
 
-	packetHelper* pk  = new packetHelper(IP, host);
+	packetHelper* pk  = new packetHelper(host);
 
 
 	// remove handles later
@@ -67,20 +96,23 @@ int runMainFunction(string host)
 	while (true)
 	{
 		pk->recvPackets();
-		break;
-		if(pk->checkComplete() == true)
+		if (pk->errorBreak == true)
 		{
-			printf(" complete ");
 			break;
 		}
-		// pk->retransmitPackets();
+		if(pk->checkComplete() == true)
+		{
+			break;
+		}
+		pk->retransmitPackets();
 	}
 
 	pk->finalPrint();
+	printf(" Traceroute complete \n");
 
 	WSACleanup();
 	closesocket(pk->sock);
-
+	delete pk;
 	return 0;
 }
 
@@ -95,7 +127,7 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 	*/
-	string query("www.yahoo.com");
+	string query("yahoo.com");
 	runMainFunction(query);
 
 	/*
