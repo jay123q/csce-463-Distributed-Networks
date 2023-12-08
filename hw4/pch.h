@@ -29,6 +29,7 @@ typedef unsigned long u_long;
 #include <queue>
 #include <fstream>
 #include "helpers.h"
+#include <set>
 #include "packetHelper.h"
 
 #define IP_HDR_SIZE 20 /* RFC 791 */
@@ -50,7 +51,7 @@ typedef unsigned long u_long;
 #define N 30
 #define sendNumber 1
 
-// #define reportWork
+ #define reportWork
 // #define extraCredit
 
 #endif //PCH_H

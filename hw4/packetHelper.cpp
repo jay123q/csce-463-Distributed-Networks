@@ -7,7 +7,6 @@ packetHelper::packetHelper(std::string host) {
 	//handle socket creation and connection 
 	storeIP = inet_addr(host.c_str());
 	countSeq = 1;
-	IPforlastPrint = host;
 	WSADATA wsaData;
 	socketReceiveReady = CreateEvent(NULL, false, false, NULL);
 	//Initialize WinSock; once per program run
@@ -23,6 +22,7 @@ packetHelper::packetHelper(std::string host) {
 	if (sock == INVALID_SOCKET)
 	{
 		printf(" unable to create a raw socket: error %d \n", WSAGetLastError());
+		return;
 	}
 	this->pd = new packetDetails[N+1];
 	errorBreak = false;
@@ -41,6 +41,7 @@ packetHelper::packetHelper(std::string host) {
 		if (r == NULL)
 		{
 			printf("Connection error: %d\n", WSAGetLastError());
+			errorBreak = true;
 			return;
 		}
 		else // take the first IP address and copy into sin_addr
@@ -53,9 +54,9 @@ packetHelper::packetHelper(std::string host) {
 	{
 		remote.sin_addr.S_un.S_addr = storeIP;
 	}
-
+	IPforlastPrint = inet_ntoa(remote.sin_addr);
 	WSAEventSelect(this->sock, this->socketReceiveReady, FD_READ);
-	printf("Tracerouting to %s...\n", inet_ntoa(remote.sin_addr));
+	printf("Tracerouting to %s...\n", IPforlastPrint.c_str());
 }
 packetHelper::~packetHelper() {
 
@@ -161,8 +162,8 @@ void packetHelper::finalPrint() {
 }
 
 std::string packetHelper::DNSlookup(std::string IP) {
-	struct hostent* r;
 #ifndef reportWork
+	struct hostent* r;
 
 
 	r = gethostbyaddr(IP.c_str(), sizeof(remote), AF_INET);
@@ -239,9 +240,10 @@ void packetHelper::recvPackets()
 
 	}
 
-
+	/*
 	timeout.tv_sec = 2;
 	timeout.tv_usec = 0;
+	*/
 
 	// set / RESET RTT HERE
 	int countGarbage = 0;
@@ -262,7 +264,7 @@ void packetHelper::recvPackets()
 				IPHeader* originalIpHeader = (IPHeader*)(routerIcmpHead + 1);
 				ICMPHeader* originalIcmpHeader = (ICMPHeader*)(originalIpHeader + 1);
 				int bytes = recvfrom(sock, (char*)&buf, MAX_REPLY_SIZE, 0, (struct sockaddr*)&response, &responseSize);
-				printf(" icmp seq %d | icmp id %d \n", originalIcmpHeader->seq , originalIcmpHeader->id);
+				// printf(" icmp seq %d | icmp id %d \n", originalIcmpHeader->seq , originalIcmpHeader->id);
 
 				if (bytes >= 56 && routerIcmpHead->type == ICMP_TTL_EXPIRED && routerIcmpHead->code == 0)
 				{
@@ -278,6 +280,10 @@ void packetHelper::recvPackets()
 					printME += seqPrint;
 					// DNS
 					u_long temp = (routerIpHeader->source_ip);
+#ifdef reportWork
+					unique_ip.insert(temp);
+					countIp++;
+#endif
 					u_char* IPArray = (u_char*)&temp;
 					std::string IP((char*)IPArray);
 					 printME += DNSlookup(IP);
@@ -294,119 +300,56 @@ void packetHelper::recvPackets()
 					pd[originalIcmpHeader->seq].printString = printME;
 				//	 std::cout << printME << std::endl;
 				}
-				else if (bytes >= 28 && routerIcmpHead->type == ICMP_ECHO_REPLY && routerIcmpHead->code == 0)
+				else if (bytes == -1 && routerIcmpHead->type == ICMP_ECHO_REPLY && routerIcmpHead->code == 0)
 				{
+					// last packet recieved
 					// store RTT of last packet in another dumby variable?
 					// check helper for all packets outbound to know if I can store
-
-
-
-
 					/*
-				//	printf(" icmp_echo_reply \n");
-					pd[originalIcmpHeader->seq].icmpComplete = true;
-					pd[originalIcmpHeader->seq].RTT = ((double)(clock() - pd[originalIcmpHeader->seq].startTimer) / CLOCKS_PER_SEC) * 1000;
-					u_long temp = (routerIpHeader->source_ip);
-					// this reply is my orginal destination
-					u_char* IPArray = (u_char*)&temp;
-					std::string IP ((char*) IPArray);
-
-					// printf(" complete ! ");
-
-					printf("hopNumber %d %d.%d.%d.%d \n", routerIcmpHead->seq, IPArray[0], IPArray[1], IPArray[2], IPArray[3]);
-					printf(" router type %d | router code %d \n", routerIcmpHead->type, routerIcmpHead->code);
-					printf(" icmp seq %d | icmp id %d \n", htons(routerIcmpHead->seq), htons(routerIcmpHead->id));
+					std::cout << " router source name " << routerIpHeader->source_ip << std::endl;
+					std::cout << " router  destin name " << routerIpHeader->dest_ip << std::endl;
+					std::cout << " original source name " << originalIpHeader->source_ip << std::endl;
+					std::cout << " original  destin name " << originalIpHeader->dest_ip << std::endl;
+					std::cout << " seq num " << routerIcmpHead->seq << std::endl;
+					std::cout << " my count seq " << countSeq << std::endl;
 					*/
-					//		pk->pd[routerIcmpHead->seq].icmpComplete = true;
-
-					/*
-				}
-				else if( routerIcmpHead->type == ICMP_ECHO_REPLY && routerIcmpHead->code == 0)
-				{
-					// printf(" router type %d | router code %d \n", routerIcmpHead->type, routerIcmpHead->code);
-					// printf(" icmp seq %d | icmp id %d \n", htons(routerIcmpHead->seq), htons(routerIcmpHead->id));
-					std::cout << " seq count is " << countSeq << std::endl;
-
-
-
-					// watch the lst sequence 
-					// perphaps get by hostname
-
-					pd[countSeq].icmpComplete = true;
 					std::string printME = "";
-					printME += DNSlookup(IPforlastPrint);
-					
-					u_long temp = (storeIP);
-					u_char* IPArray = (u_char*)&temp;
-					std::string IP((char*)IPArray);
-					printME += DNSlookup(IP);
-					// IP
-					std::string Ipheader = " (" + std::to_string(IPArray[0]) + '.' + std::to_string(IPArray[1]) + '.' + std::to_string(IPArray[2]) + '.' + std::to_string(IPArray[3]) + ") ";
-					printME += Ipheader;
-					// rtt
-					pd[countSeq].RTT = ((double)(clock() - pd[countSeq].startTimer) / CLOCKS_PER_SEC) * 1000;
-					std::string rttPrint = std::to_string(pd[countSeq].RTT) + " ms ";
-					printME += rttPrint;
-					// probe
-					std::string probePrint = "(" + std::to_string(pd[countSeq].probe) + ")";
-					printME += probePrint;
-
-					pd[countSeq].printString = printME;
-					*/
-					break;
-					/*
-					// countSeq++;
-					printf(" bytes %d and ssequence number %d \n", bytes, countSeq );
-					printf(" seq recorded is %d \n", countSeq);
-					pd[countSeq].icmpComplete = true;
-					// DNS RESPONSE HERE 
-					// thread
-					// gethostbyname
-					std::string printME = "";
-					u_char* IPArray = (u_char*)&storeIP;
 					// seq
 					std::string seqPrint = std::to_string(countSeq) + " ";
 					printME += seqPrint;
 					// DNS
-					std::string IP((char*)IPArray);
-					printME += DNSlookup(IP);
+					// https://learn.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getnameinfo
+					char returnHostName[256];
+					char serviceBuffer[256];
+					sockaddr_in address;
+					memset(&address, 0, sizeof(address));
+					address.sin_family = AF_INET;
+					address.sin_addr.s_addr = inet_addr(IPforlastPrint.c_str());
+					int response = getnameinfo((sockaddr*)&address,sizeof(address),returnHostName,256,serviceBuffer,256,0);
+					// printME += DNSlookup(IPforlastPrint) +" ";
+					// 
 					// IP
-					std::string Ipheader = " (" + std::to_string(IPArray[0]) + '.' + std::to_string(IPArray[1]) + '.' + std::to_string(IPArray[2]) + '.' + std::to_string(IPArray[3]) + ") ";
-					printME += Ipheader;
-					// RTT
-					pd[countSeq].RTT = ((double)(clock() - pd[countSeq].startTimer) / CLOCKS_PER_SEC) * 1000;
-					std::string rttPrint = std::to_string(pd[countSeq].RTT) + " ms ";
-					printME += rttPrint;
-					// PROBE
-					std::string probePrint = "(" + std::to_string(pd[countSeq].probe) + ")";
-					printME += probePrint;
-					pd[countSeq].printString = printME;
-					break;
-					*/
-					/*
-					
-					if (countGarbage == 5)
-					{
-						break;
+					std::string lastName(returnHostName);
+					printME += lastName;
 
-						// std::cout << " dipping from garbage \n";
-					}
-					countGarbage += 1;
-					*/
-					/*
-					u_long temp = (routerIpHeader->source_ip);
-					u_char* IPArray = (u_char*)&temp;
+					u_char* IPArray = (u_char*)IPforlastPrint.c_str();
 					std::string IP((char*)IPArray);
-					printf("hopNumber %d %d.%d.%d.%d \n", routerIcmpHead->seq + 1, IPArray[0], IPArray[1], IPArray[2], IPArray[3]);
-					printf(" router type %d | router code %d \n", routerIcmpHead->type, routerIcmpHead->code);
-					printf(" icmp seq %d | icmp id %d \n", htons(routerIcmpHead->seq), htons(routerIcmpHead->id));
-					*/
+					printME += IP;
+					// RTT
+					RTTlast = ((double)(clock() - pd[countSeq].startTimer) / CLOCKS_PER_SEC) * 1000;
+					printME += " " + std::to_string(RTTlast);
+					// PROBE
+					std::string probePrint = " (" + std::to_string(pd[countSeq].probe) + ")";
+					printME += probePrint;
+					printLast = printME;
+					// std::cout << printLast << std::endl;
+					break;
 
 				}
 				else
 				{
 
-					printf(" error detected \n");
+					printf(" error detected is: ");
 					handleError(routerIcmpHead->type, routerIcmpHead->code);
 					errorBreak = true;
 				}

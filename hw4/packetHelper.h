@@ -23,7 +23,10 @@ public:
 	int packet_size;
 	DWORD storeIP;
 	std::string IPforlastPrint;
-	int countSeq;
+	std::string printLast;
+	std::set<u_long> unique_ip; // only used for report
+	int countIp; //  used in report only
+	double RTTlast;
 	SOCKET sock;
 	bool errorBreak;
 	packetHelper(std::string host);

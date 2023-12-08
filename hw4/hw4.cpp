@@ -4,7 +4,7 @@
 // fall 2023
 
 #include "pch.h"
-
+#include <utility>
 #include <iostream>
 
 // Get current flag
@@ -25,40 +25,56 @@
 #define ICMP_TTL_EXPIRED 11
 #define ICMP_ECHO_REQUEST 8 
 using namespace std;
+
+
+std::set<u_long> unique_ip;
+
+
 queue<string> parseTXTFile(std::string filename)
 {
-	// cout << " in parser \n";
-	ifstream file(filename, ios::binary | ios::in);
-	std::string line;
-	std::queue <std::string> queueTotal;
 
+	ifstream file(filename, ios::binary | ios::in);
+	std::string line; 
+	std::queue <std::string> queueTotal;
+	// std::cout << file.is_open() << endl;
 
 	while (!file.eof())
 	{
 		getline(file, line);
 		if (line[0] == '\0')
 		{
+		//	cout << " in parser \n";
 			break;
 		}
 		line = line.substr(0, line.size() - 1);
 		//this->intFileSize += strlen(line.c_str());
-	 //   cout << " the line is " << line << std::endl;
+	   // cout << " the line is " << line << std::endl;
 	//    cout << " push the file " << line << std::endl;
 		queueTotal.push(line);
 	}
 	return queueTotal;
 }
+struct params {
+		vector<double> executiontime;
+		int numberofIps;
+		bool badData;
+		vector<pair<int, std::string>>  hopCount;
 
-int runMainFunction(string host)
+};
+struct makeReportParams
+{
+	double singleExec;
+	int singleIpCount;
+	bool badData;
+	pair<int, std::string> hopPair;
+};
+makeReportParams runMainFunction(string host)
 {
 	string query = host;
-#ifdef reportWork
-	queue<string> q = parseTXTFile("URL-input-1M.txt");
-	query = q.front();
-	q.pop();
 
-#endif // reportWork
 
+		pair<int, std::string> hopPair;
+		makeReportParams a{ -1,-1,true, hopPair };
 
 
 	// printf("Lookup  : %s\n", query.c_str());
@@ -69,7 +85,10 @@ int runMainFunction(string host)
 	// handle errors
 
 	packetHelper* pk  = new packetHelper(host);
-
+	if (pk->errorBreak == true)
+	{
+		return a;
+	}
 
 	// remove handles later
 	// single socket, send all on that one
@@ -92,7 +111,7 @@ int runMainFunction(string host)
 	}
 
 
-
+	clock_t start = clock();
 	while (true)
 	{
 		pk->recvPackets();
@@ -102,18 +121,42 @@ int runMainFunction(string host)
 		}
 		if(pk->checkComplete() == true)
 		{
+			pk->pd[pk->countSeq].printString = pk->printLast;
 			break;
 		}
 		pk->retransmitPackets();
 	}
 
 	pk->finalPrint();
-	printf(" Traceroute complete \n");
+	double exectutionTime = ((double)(clock() - start) / CLOCKS_PER_SEC) * 1000;
+	printf("\n Total execution time: %f ms  \n",
+		exectutionTime
+		);
 
 	WSACleanup();
 	closesocket(pk->sock);
+
+
+	a.badData = false;
+	a.singleExec = exectutionTime;
+	a.hopPair = { pk->countSeq, host };
+	a.singleIpCount = pk->countIp;
+	unique_ip.insert(pk->unique_ip.begin(), pk->unique_ip.end());
+
 	delete pk;
-	return 0;
+	return a;
+}
+
+void writeTxtFile(vector<pair<int, std::string>>& hopCount)
+{
+	ofstream writeFile("hopCount.txt");
+
+	for (size_t i = 0; i < hopCount.size(); i++)
+	{
+		writeFile << hopCount.at(i).first << " | " << hopCount.at(i).second << '\n';
+	}
+
+	writeFile.close();
 }
 
 
@@ -127,8 +170,131 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 	*/
+#ifdef reportWork
+	queue<string> q = parseTXTFile("URL-input-1M.txt");
+	vector<pair<int, std::string>>  hopCount;
+	params p;
+	double exectutionTime = 0.0;
+	for (size_t i = 0; i < q.size(); i++)
+	{
+		std::string query = q.front();
+		makeReportParams rp = runMainFunction(query) ;
+		q.pop();
+		if (rp.badData == true)
+		{
+			continue;
+		}
+		p.hopCount.push_back(rp.hopPair);
+		p.numberofIps += rp.singleIpCount;
+
+	}
+	writeTxtFile(p.hopCount);
+	int binSizes[20];
+	for (size_t i = 0; i < p.executiontime.size() ; i++)
+	{
+		 exectutionTime = p.executiontime.at(i);
+
+		if (exectutionTime <= 50)
+		{
+			binSizes[0]++;
+		}
+		else if (exectutionTime <= 100)
+		{
+			binSizes[1]++;
+		}
+		else if (exectutionTime <= 150)
+		{
+			binSizes[2]++;
+		}
+		else if (exectutionTime <= 200)
+		{
+			binSizes[3]++;
+		}
+		else if (exectutionTime <= 300)
+		{
+			binSizes[4]++;
+		}
+		else if (exectutionTime <= 400)
+		{
+			binSizes[5]++;
+		}
+		else if (exectutionTime <= 450)
+		{
+			binSizes[6]++;
+		}
+		else if (exectutionTime <= 500)
+		{
+			binSizes[7]++;
+		}
+		else if (exectutionTime <= 550)
+		{
+			binSizes[8]++;
+		}
+		else if (exectutionTime <= 600)
+		{
+			binSizes[9]++;
+		}
+		else if (exectutionTime <= 650)
+		{
+			binSizes[10]++;
+		}
+		else if (exectutionTime <= 700)
+		{
+			binSizes[11]++;
+		}
+		else if (exectutionTime <= 750)
+		{
+			binSizes[12]++;
+		}
+		else if (exectutionTime <= 800)
+		{
+			binSizes[13]++;
+		}
+		else if (exectutionTime <= 850)
+		{
+			binSizes[14]++;
+		}
+		else if (exectutionTime <= 900)
+		{
+			binSizes[15]++;
+		}
+		else if (exectutionTime <= 950)
+		{
+			binSizes[16]++;
+		}
+		else if (exectutionTime <= 1000)
+		{
+			binSizes[17]++;
+		}
+		else if (exectutionTime <= 1050)
+		{
+			binSizes[18]++;
+		}
+		else if (exectutionTime <= 1100)
+		{
+			binSizes[19]++;
+		}
+	}
+	ofstream writeFile("histandIp.txt");
+
+	writeFile << " total number of ips " << p.numberofIps << " unqiue Ips " << unique_ip.size() << endl;
+	writeFile << " now bins " << endl;
+	for (size_t i = 0; i < 20; i++)
+	{
+		writeFile << binSizes[i] << ", ";
+	}
+
+	writeFile << endl;
+	writeFile.close();
+
+
+#endif // reportWork
+#ifndef reportWork
+
+
 	string query("yahoo.com");
 	runMainFunction(query);
+#endif // !reportWork
 
 	/*
 
