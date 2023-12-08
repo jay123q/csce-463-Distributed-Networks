@@ -68,13 +68,16 @@ struct makeReportParams
 	bool badData;
 	pair<int, std::string> hopPair;
 };
-makeReportParams runMainFunction(string host)
+int runMainFunction(string host)
 {
 	string query = host;
 
+#ifdef reportWork12
+
 
 		pair<int, std::string> hopPair;
-		makeReportParams a{ -1,-1,true, hopPair };
+		makeReportParams a { -1,-1,true, hopPair };
+#endif // reportWork12
 
 
 	// printf("Lookup  : %s\n", query.c_str());
@@ -87,7 +90,7 @@ makeReportParams runMainFunction(string host)
 	packetHelper* pk  = new packetHelper(host);
 	if (pk->errorBreak == true)
 	{
-		return a;
+		return 0;
 	}
 
 	// remove handles later
@@ -122,6 +125,7 @@ makeReportParams runMainFunction(string host)
 		if(pk->checkComplete() == true)
 		{
 			pk->pd[pk->countSeq].printString = pk->printLast;
+			// debug this
 			break;
 		}
 		pk->retransmitPackets();
@@ -136,15 +140,18 @@ makeReportParams runMainFunction(string host)
 	WSACleanup();
 	closesocket(pk->sock);
 
+#ifdef reportWork12
+
 
 	a.badData = false;
 	a.singleExec = exectutionTime;
 	a.hopPair = { pk->countSeq, host };
 	a.singleIpCount = pk->countIp;
 	unique_ip.insert(pk->unique_ip.begin(), pk->unique_ip.end());
+#endif // DEBUG
 
 	delete pk;
-	return a;
+	return 0;
 }
 
 void writeTxtFile(vector<pair<int, std::string>>& hopCount)
@@ -170,7 +177,7 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 	*/
-#ifdef reportWork
+#ifdef reportWork12
 	queue<string> q = parseTXTFile("URL-input-1M.txt");
 	vector<pair<int, std::string>>  hopCount;
 	params p;
@@ -189,6 +196,8 @@ int main(int argc, char* argv[])
 
 	}
 	writeTxtFile(p.hopCount);
+#endif
+#ifdef reportWork34
 	int binSizes[20];
 	for (size_t i = 0; i < p.executiontime.size() ; i++)
 	{
@@ -292,7 +301,7 @@ int main(int argc, char* argv[])
 #ifndef reportWork
 
 
-	string query("yahoo.com");
+	string query("google.com");
 	runMainFunction(query);
 #endif // !reportWork
 

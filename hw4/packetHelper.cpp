@@ -40,7 +40,7 @@ packetHelper::packetHelper(std::string host) {
 		r = gethostbyname(host.c_str());
 		if (r == NULL)
 		{
-			printf("Connection error: %d\n", WSAGetLastError());
+			 printf("Connection error: %d\n", WSAGetLastError());
 			errorBreak = true;
 			return;
 		}
@@ -76,7 +76,6 @@ void packetHelper::createPacket( int seq)
 	pd[seq].probe = 1;
 	pd[seq].icmpComplete = false;
 	firstIteration = true;
-	pd[seq].printString = std::to_string(seq) + " *";
 
 
 }
@@ -134,6 +133,8 @@ void packetHelper::retransmitPackets() {
 		{
 			// next time around we know we did not send
 			pd[i].icmpComplete = true;
+			pd[i].printString = std::to_string(i) + " *";
+			countSeq++;
 
 			// printf(" empty  domain failed to reach edit me later in retransmist \n");
 		}
@@ -280,7 +281,7 @@ void packetHelper::recvPackets()
 					printME += seqPrint;
 					// DNS
 					u_long temp = (routerIpHeader->source_ip);
-#ifdef reportWork
+#ifdef reportWork34
 					unique_ip.insert(temp);
 					countIp++;
 #endif

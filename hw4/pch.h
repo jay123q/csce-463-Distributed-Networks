@@ -51,7 +51,8 @@ typedef unsigned long u_long;
 #define N 30
 #define sendNumber 1
 
- #define reportWork
+// #define reportWork12
+// #define reportWork34
 // #define extraCredit
 
 #endif //PCH_H
