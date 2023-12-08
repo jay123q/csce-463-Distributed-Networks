@@ -27,7 +27,10 @@
 using namespace std;
 
 
-std::set<u_long> unique_ip;
+ pair < int, std::set<u_long>> count_uniqueIps;
+
+vector<pair<int, string>> hop_host;
+vector<double> executionVector;
 
 
 queue<string> parseTXTFile(std::string filename)
@@ -54,20 +57,7 @@ queue<string> parseTXTFile(std::string filename)
 	}
 	return queueTotal;
 }
-struct params {
-		vector<double> executiontime;
-		int numberofIps;
-		bool badData;
-		vector<pair<int, std::string>>  hopCount;
 
-};
-struct makeReportParams
-{
-	double singleExec;
-	int singleIpCount;
-	bool badData;
-	pair<int, std::string> hopPair;
-};
 int runMainFunction(string host)
 {
 	string query = host;
@@ -76,7 +66,6 @@ int runMainFunction(string host)
 
 
 		pair<int, std::string> hopPair;
-		makeReportParams a { -1,-1,true, hopPair };
 #endif // reportWork12
 
 
@@ -90,8 +79,10 @@ int runMainFunction(string host)
 	packetHelper* pk  = new packetHelper(host);
 	if (pk->errorBreak == true)
 	{
+		delete pk;
 		return 0;
 	}
+	cout << "past setup host " << host << endl;
 
 	// remove handles later
 	// single socket, send all on that one
@@ -124,43 +115,55 @@ int runMainFunction(string host)
 		}
 		if(pk->checkComplete() == true)
 		{
-			pk->pd[pk->countSeq].printString = pk->printLast;
+		//	cout << " count to break " << pk->countSeq << endl;
+			std::string seqPrint = std::to_string(pk->countSeq) + " ";
+			seqPrint += pk->printLast;
+			pk->pd[pk->countSeq].printString = seqPrint;
 			// debug this
 			break;
 		}
 		pk->retransmitPackets();
 	}
 
-	pk->finalPrint();
 	double exectutionTime = ((double)(clock() - start) / CLOCKS_PER_SEC) * 1000;
+#ifndef reportWork12
+	pk->finalPrint();
 	printf("\n Total execution time: %f ms  \n",
 		exectutionTime
 		);
+#endif // !reportWork12
 
 	WSACleanup();
 	closesocket(pk->sock);
 
+	if (pk->errorBreak == true)
+	{
+		return 0;
+	}
+
 #ifdef reportWork12
+	hop_host.push_back( { pk->countSeq, host } );
+#endif
 
+#ifdef reportWork34
+	// a.singleIpCount = pk->countIp;
+	executionVector.push_back(exectutionTime);
+	count_uniqueIps.first += pk->countIp,
+		count_uniqueIps.second.insert(pk->unique_ip.begin(), pk->unique_ip.end());
 
-	a.badData = false;
-	a.singleExec = exectutionTime;
-	a.hopPair = { pk->countSeq, host };
-	a.singleIpCount = pk->countIp;
-	unique_ip.insert(pk->unique_ip.begin(), pk->unique_ip.end());
 #endif // DEBUG
 
 	delete pk;
 	return 0;
 }
 
-void writeTxtFile(vector<pair<int, std::string>>& hopCount)
+void writeTxtFile()
 {
-	ofstream writeFile("hopCount.txt");
-
-	for (size_t i = 0; i < hopCount.size(); i++)
+	ofstream writeFile;
+	writeFile.open("hopCount.txt");
+	for (size_t i = 0; i < hop_host.size(); i++)
 	{
-		writeFile << hopCount.at(i).first << " | " << hopCount.at(i).second << '\n';
+		writeFile << hop_host.at(i).first << " | " << hop_host.at(i).second << '\n';
 	}
 
 	writeFile.close();
@@ -178,30 +181,27 @@ int main(int argc, char* argv[])
 	}
 	*/
 #ifdef reportWork12
-	queue<string> q = parseTXTFile("URL-input-1M.txt");
-	vector<pair<int, std::string>>  hopCount;
-	params p;
+	// queue<string> q = parseTXTFile("URL-input-1M.txt");
+	queue<string> q = parseTXTFile("URL-input-1M-2019.txt");
 	double exectutionTime = 0.0;
-	for (size_t i = 0; i < q.size(); i++)
+	for (size_t i = 0; i < 10000 ; i++)
 	{
 		std::string query = q.front();
-		makeReportParams rp = runMainFunction(query) ;
+		runMainFunction(query) ;
 		q.pop();
-		if (rp.badData == true)
-		{
-			continue;
-		}
-		p.hopCount.push_back(rp.hopPair);
-		p.numberofIps += rp.singleIpCount;
 
 	}
-	writeTxtFile(p.hopCount);
+	writeTxtFile();
 #endif
 #ifdef reportWork34
 	int binSizes[20];
-	for (size_t i = 0; i < p.executiontime.size() ; i++)
+	for (int i = 0; i < 20; i++)
 	{
-		 exectutionTime = p.executiontime.at(i);
+		binSizes[i] = 0;
+	}
+	for (size_t i = 0; i < executionVector.size() ; i++)
+	{
+		 exectutionTime = executionVector.at(i);
 
 		if (exectutionTime <= 50)
 		{
@@ -286,7 +286,7 @@ int main(int argc, char* argv[])
 	}
 	ofstream writeFile("histandIp.txt");
 
-	writeFile << " total number of ips " << p.numberofIps << " unqiue Ips " << unique_ip.size() << endl;
+	writeFile << " total number of ips " << count_uniqueIps.first << " unqiue Ips " << count_uniqueIps.second.size() << endl;
 	writeFile << " now bins " << endl;
 	for (size_t i = 0; i < 20; i++)
 	{
@@ -298,7 +298,7 @@ int main(int argc, char* argv[])
 
 
 #endif // reportWork
-#ifndef reportWork
+#ifndef reportWork12
 
 
 	string query("google.com");

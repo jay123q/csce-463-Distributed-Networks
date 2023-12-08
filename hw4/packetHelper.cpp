@@ -40,7 +40,7 @@ packetHelper::packetHelper(std::string host) {
 		r = gethostbyname(host.c_str());
 		if (r == NULL)
 		{
-			 printf("Connection error: %d\n", WSAGetLastError());
+			 // printf("Connection error: %d\n", WSAGetLastError());
 			errorBreak = true;
 			return;
 		}
@@ -134,7 +134,7 @@ void packetHelper::retransmitPackets() {
 			// next time around we know we did not send
 			pd[i].icmpComplete = true;
 			pd[i].printString = std::to_string(i) + " *";
-			countSeq++;
+			
 
 			// printf(" empty  domain failed to reach edit me later in retransmist \n");
 		}
@@ -316,8 +316,7 @@ void packetHelper::recvPackets()
 					*/
 					std::string printME = "";
 					// seq
-					std::string seqPrint = std::to_string(countSeq) + " ";
-					printME += seqPrint;
+
 					// DNS
 					// https://learn.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getnameinfo
 					char returnHostName[256];
@@ -331,7 +330,7 @@ void packetHelper::recvPackets()
 					// 
 					// IP
 					std::string lastName(returnHostName);
-					printME += lastName;
+					printME += lastName+" ";
 
 					u_char* IPArray = (u_char*)IPforlastPrint.c_str();
 					std::string IP((char*)IPArray);
@@ -343,7 +342,7 @@ void packetHelper::recvPackets()
 					std::string probePrint = " (" + std::to_string(pd[countSeq].probe) + ")";
 					printME += probePrint;
 					printLast = printME;
-					// std::cout << printLast << std::endl;
+					std::cout << printLast << std::endl;
 					break;
 
 				}
@@ -360,7 +359,8 @@ void packetHelper::recvPackets()
 	}
 	else if (ret == 0)
 	{
-	// 	printf(" timed out \n");
+		printf(" timed out \n");
+		countSeq++;
 		return;
 	}
 	else
