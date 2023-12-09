@@ -33,6 +33,48 @@ vector<pair<int, string>> hop_host;
 vector<double> executionVector;
 
 
+string parseString(string link) {
+
+	// cout << "URL: " << link << std::endl;
+	// cout << "\t   Parsing URL... ";
+
+	if (link.substr(0, 7) != "http://") {
+		//   cout << "failed with invalid scheme " << std::endl;
+		return "";
+	}
+
+	string hostStart = link.substr(7);
+
+	size_t fragmentIndex = hostStart.find_first_of('#');
+	if (fragmentIndex != string::npos) {
+		// this->fragment = hostStart.substr(fragmentIndex + 1);
+		hostStart = hostStart.substr(0, fragmentIndex);
+	}
+
+	size_t queryIndex = hostStart.find_first_of('?');
+	if (queryIndex != string::npos) {
+		// this->query = hostStart.substr(queryIndex + 1);
+		hostStart = hostStart.substr(0, queryIndex);
+	}
+
+	size_t pathIndex = hostStart.find_first_of('/');
+	if (pathIndex != string::npos) {
+		// this->path = hostStart.substr(pathIndex);
+		hostStart = hostStart.substr(0, pathIndex);
+	}
+	else {
+		// this->path = "/";
+	}
+
+	// cout <<" host " << this->host << " the port is " << this->port << " path is " << this->path << " query is " << this->query << " fragment is  " << this->fragment << std::endl;
+	 //this->host = hostStart;
+#ifndef reportWork12
+	std::cout << hostStart << endl;
+#endif // reportWork12
+	return hostStart;
+
+}
+
 queue<string> parseTXTFile(std::string filename)
 {
 
@@ -62,18 +104,6 @@ int runMainFunction(string host)
 {
 	string query = host;
 
-#ifdef reportWork12
-
-
-		pair<int, std::string> hopPair;
-#endif // reportWork12
-
-
-	// printf("Lookup  : %s\n", query.c_str());
-
-
-
-
 	// handle errors
 
 	packetHelper* pk  = new packetHelper(host);
@@ -82,7 +112,7 @@ int runMainFunction(string host)
 		delete pk;
 		return 0;
 	}
-	cout << "past setup host " << host << endl;
+
 
 	// remove handles later
 	// single socket, send all on that one
@@ -143,13 +173,19 @@ int runMainFunction(string host)
 
 #ifdef reportWork12
 	hop_host.push_back( { pk->countSeq, host } );
+	// std::cout << " packet hops is " << pk->countSeq << " packet host is " << host << endl;
 #endif
 
 #ifdef reportWork34
 	// a.singleIpCount = pk->countIp;
+	/*
 	executionVector.push_back(exectutionTime);
-	count_uniqueIps.first += pk->countIp,
-		count_uniqueIps.second.insert(pk->unique_ip.begin(), pk->unique_ip.end());
+	count_uniqueIps.first += pk->unique_ip.size(),
+		std::cout << " before insert size " << pk->unique_ip.size() << std::endl;
+	count_uniqueIps.second.insert(pk->unique_ip.begin(), pk->unique_ip.end());
+	std::cout << " execution delay " << exectutionTime << endl;
+	std::cout << " total ips is " << count_uniqueIps.first << "  unique ips " << count_uniqueIps.second.size() << endl;
+	*/
 
 #endif // DEBUG
 
@@ -169,44 +205,46 @@ void writeTxtFile()
 	writeFile.close();
 }
 
+struct MultiThread  {
+	queue<string> q;
 
-int main(int argc, char* argv[])
+};
+
+void reportWork()
 {
-
-	/*
-	if (argc != 3)
-	{
-		cout << " CHECK HOW YOU RUNNING OR WHAT WE ARE TESTING ./hw2.exe query ip \n";
-		return 0;
-	}
-	*/
-#ifdef reportWork12
-	// queue<string> q = parseTXTFile("URL-input-1M.txt");
 	queue<string> q = parseTXTFile("URL-input-1M-2019.txt");
 	double exectutionTime = 0.0;
-	for (size_t i = 0; i < 10000 ; i++)
+	ofstream writeFile("hopCount.txt");
+	for (size_t i = 0; i < 10000; i++)
 	{
+		// writeFile.open("hopCount.txt");
+		if (q.size() == 0)
+		{
+			break;
+		}
 		std::string query = q.front();
-		if (runMainFunction(query) == false)
+		if (runMainFunction(parseString(query)) == false)
 		{
 			// remove the place, just grab anouther q
 			i--;
 		}
-		
+
 		q.pop();
 
+		writeFile << hop_host.at(i).first << " | " << hop_host.at(i).second << '\n';
+
+
 	}
-	writeTxtFile();
-#endif
-#ifdef reportWork34
+		writeFile.close();
+	// writeTxtFile();
 	int binSizes[20];
 	for (int i = 0; i < 20; i++)
 	{
 		binSizes[i] = 0;
 	}
-	for (size_t i = 0; i < executionVector.size() ; i++)
+	for (size_t i = 0; i < executionVector.size(); i++)
 	{
-		 exectutionTime = executionVector.at(i);
+		exectutionTime = executionVector.at(i);
 
 		if (exectutionTime <= 50)
 		{
@@ -284,30 +322,48 @@ int main(int argc, char* argv[])
 		{
 			binSizes[18]++;
 		}
-		else if (exectutionTime <= 1100)
+		else
 		{
 			binSizes[19]++;
 		}
 	}
-	ofstream writeFile("histandIp.txt");
+	ofstream write34("histandIp.txt");
 
-	writeFile << " total number of ips " << count_uniqueIps.first << " unqiue Ips " << count_uniqueIps.second.size() << endl;
-	writeFile << " now bins " << endl;
+	write34 << " total number of ips " << count_uniqueIps.first << " unqiue Ips " << count_uniqueIps.second.size() << endl;
+	write34 << " now bins " << endl;
 	for (size_t i = 0; i < 20; i++)
 	{
-		writeFile << binSizes[i] << ", ";
+		write34 << binSizes[i] << ", ";
 	}
 
-	writeFile << endl;
-	writeFile.close();
+	write34 << endl;
+	write34.close();
 
 
-#endif // reportWork
+}
+int main(int argc, char* argv[])
+{
+
+	/*
+	if (argc != 2)
+	{
+		cout << " CHECK HOW YOU RUNNING OR WHAT WE ARE TESTING ./hw2.exe query ip \n";
+		return 0;
+	}
+
+	runMainFunction(argv[1]);
+	*/
+#ifdef reportWork12
+	reportWork();
+
+	
+#endif // reportWork12
 #ifndef reportWork12
-
+	/*
 
 	string query("google.com");
 	runMainFunction(query);
+	*/
 #endif // !reportWork
 
 	/*

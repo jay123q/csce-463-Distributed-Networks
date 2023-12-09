@@ -17,7 +17,7 @@ public:
 	bool firstIteration;
 	HANDLE socketReceiveReady;
 	struct sockaddr_in remote;
-	packetDetails* pd;
+	packetDetails pd [N + 1];
 	checksum cc;
 	int countSeq;
 	int packet_size;
@@ -25,7 +25,6 @@ public:
 	std::string IPforlastPrint;
 	std::string printLast;
 	std::set<u_long> unique_ip; // only used for report
-	int countIp; //  used in report only
 	double RTTlast;
 	SOCKET sock;
 	bool errorBreak;

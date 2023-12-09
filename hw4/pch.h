@@ -30,6 +30,8 @@ typedef unsigned long u_long;
 #include <fstream>
 #include "helpers.h"
 #include <set>
+#define N 30
+#define sendNumber 1
 #include "packetHelper.h"
 
 #define IP_HDR_SIZE 20 /* RFC 791 */
@@ -48,11 +50,11 @@ typedef unsigned long u_long;
 #define ICMP_TTL_EXPIRED 11
 #define ICMP_ECHO_REQUEST 8 
 
-#define N 30
-#define sendNumber 1
 
  #define reportWork12
  #define reportWork34
+/*
+*/
 // #define extraCredit
 
 #endif //PCH_H

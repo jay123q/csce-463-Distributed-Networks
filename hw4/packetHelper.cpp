@@ -24,7 +24,6 @@ packetHelper::packetHelper(std::string host) {
 		printf(" unable to create a raw socket: error %d \n", WSAGetLastError());
 		return;
 	}
-	this->pd = new packetDetails[N+1];
 	errorBreak = false;
 
 	packet_size = sizeof(ICMPHeader);
@@ -56,10 +55,11 @@ packetHelper::packetHelper(std::string host) {
 	}
 	IPforlastPrint = inet_ntoa(remote.sin_addr);
 	WSAEventSelect(this->sock, this->socketReceiveReady, FD_READ);
+#ifndef reportWork12
 	printf("Tracerouting to %s...\n", IPforlastPrint.c_str());
+#endif // reportWork12
 }
 packetHelper::~packetHelper() {
-
 }
 void packetHelper::createPacket( int seq)
 {
@@ -265,11 +265,9 @@ void packetHelper::recvPackets()
 				IPHeader* originalIpHeader = (IPHeader*)(routerIcmpHead + 1);
 				ICMPHeader* originalIcmpHeader = (ICMPHeader*)(originalIpHeader + 1);
 				int bytes = recvfrom(sock, (char*)&buf, MAX_REPLY_SIZE, 0, (struct sockaddr*)&response, &responseSize);
-				// printf(" icmp seq %d | icmp id %d \n", originalIcmpHeader->seq , originalIcmpHeader->id);
-
-				if (bytes >= 56 && routerIcmpHead->type == ICMP_TTL_EXPIRED && routerIcmpHead->code == 0)
+				if (bytes >= 56 && routerIcmpHead->type == ICMP_TTL_EXPIRED && routerIcmpHead->code == 0 )
 				{
-				//	printf(" icmp_ttl_expired \n");
+					// printf(" icmp_ttl_expired \n");
 					countSeq += 1;
 					pd[originalIcmpHeader->seq].icmpComplete = true;
 					// DNS RESPONSE HERE 
@@ -283,7 +281,6 @@ void packetHelper::recvPackets()
 					u_long temp = (routerIpHeader->source_ip);
 #ifdef reportWork34
 					unique_ip.insert(temp);
-					countIp++;
 #endif
 					u_char* IPArray = (u_char*)&temp;
 					std::string IP((char*)IPArray);
@@ -301,8 +298,9 @@ void packetHelper::recvPackets()
 					pd[originalIcmpHeader->seq].printString = printME;
 				//	 std::cout << printME << std::endl;
 				}
-				else if (bytes == -1 && routerIcmpHead->type == ICMP_ECHO_REPLY && routerIcmpHead->code == 0)
+				else if (bytes == -1 && routerIcmpHead->type == ICMP_ECHO_REPLY && routerIcmpHead->code == 0 )
 				{
+
 					// last packet recieved
 					// store RTT of last packet in another dumby variable?
 					// check helper for all packets outbound to know if I can store
@@ -333,6 +331,12 @@ void packetHelper::recvPackets()
 					printME += lastName+" ";
 
 					u_char* IPArray = (u_char*)IPforlastPrint.c_str();
+#ifdef reportWork34
+
+					unique_ip.insert(storeIP);
+					
+
+#endif
 					std::string IP((char*)IPArray);
 					printME += IP;
 					// RTT
@@ -342,16 +346,19 @@ void packetHelper::recvPackets()
 					std::string probePrint = " (" + std::to_string(pd[countSeq].probe) + ")";
 					printME += probePrint;
 					printLast = printME;
-					std::cout << printLast << std::endl;
+#ifndef reportWork12
+					// std::cout << printLast << std::endl;
+#endif // reportWork12
 					break;
 
 				}
-				else
+				else if(originalIcmpHeader->id == GetCurrentProcessId())
 				{
 
-					printf(" error detected is: ");
+					// printf(" error detected is: ");
 					handleError(routerIcmpHead->type, routerIcmpHead->code);
 					errorBreak = true;
+					break;
 				}
 
 
@@ -359,7 +366,9 @@ void packetHelper::recvPackets()
 	}
 	else if (ret == 0)
 	{
-		printf(" timed out \n");
+#ifndef reportWork12
+		// printf(" timed out \n");
+#endif // reportWork12
 		countSeq++;
 		return;
 	}
